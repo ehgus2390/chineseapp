@@ -21,14 +21,31 @@ class AppState extends ChangeNotifier {
     posts.add(Post(content: content, author: userName ?? "익명"));
     notifyListeners();
   }
-
+  void addComment(int postIndex, String commentContent) {
+    final post = posts[postIndex];
+    post.comments.add(
+      Comment(content: commentContent, author: userName ?? "익명"),
+    );
+    notifyListeners();
+  }
   bool get isLoggedIn => userName != null;
 }
 
 class Post {
   final String content;
   final String author;
-  Post({required this.content, required this.author});
+  final List<Comment> comments;
+
+  Post({
+    required this.content,
+    required this.author,
+    List<Comment>? comments,
+  }) : comments = comments ?? [];
+}
+class Comment {
+  final String content;
+  final String author;
+  Comment({required this.content, required this.author});
 }
 
 // ======================
@@ -136,7 +153,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("대학생 커뮤니티"),
+        title: const Text("Communication for students"),
         actions: [
           IconButton(icon: const Icon(Icons.search), onPressed: () {}),
           IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
@@ -150,10 +167,10 @@ class _MainScreenState extends State<MainScreen> {
           setState(() => _selectedIndex = index);
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "홈"),
-          BottomNavigationBarItem(icon: Icon(Icons.schedule), label: "시간표"),
-          BottomNavigationBarItem(icon: Icon(Icons.forum), label: "게시판"),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: "채팅"),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.schedule), label: "Schedule"),
+          BottomNavigationBarItem(icon: Icon(Icons.forum), label: "Noticeboard"),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Cheating"),
         ],
       ),
     );
@@ -194,9 +211,32 @@ class BoardPage extends StatelessWidget {
         itemCount: appState.posts.length,
         itemBuilder: (context, index) {
           final post = appState.posts[index];
-          return ListTile(
-            title: Text(post.content),
-            subtitle: Text("작성자: ${post.author}"),
+          return Card(
+            margin: const EdgeInsets.all(8),
+            child: ExpansionTile(
+              title: Text(post.content),
+              subtitle: Text("Host: ${post.author}"),
+              children: [
+                // 댓글 목록
+                ...post.comments.map(
+                      (c) => ListTile(
+                    title: Text(c.content),
+                    subtitle: Text("작성자: ${c.author}"),
+                  ),
+                ),
+                // 댓글 작성 버튼
+                TextButton.icon(
+                  icon: const Icon(Icons.comment),
+                  label: const Text("댓글 달기"),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => CommentDialog(postIndex: index),
+                    );
+                  },
+                )
+              ],
+            ),
           );
         },
       ),
@@ -209,6 +249,47 @@ class BoardPage extends StatelessWidget {
         },
         child: const Icon(Icons.edit),
       ),
+    );
+  }
+}
+// ======================
+// 댓글작성 다이얼로그
+// ======================
+class CommentDialog extends StatefulWidget {
+  final int postIndex;
+  const CommentDialog({super.key, required this.postIndex});
+
+  @override
+  State<CommentDialog> createState() => _CommentDialogState();
+}
+
+class _CommentDialogState extends State<CommentDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("댓글 작성"),
+      content: TextField(
+        controller: _controller,
+        decoration: const InputDecoration(hintText: "댓글을 입력하세요"),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("취소"),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_controller.text.isNotEmpty) {
+              Provider.of<AppState>(context, listen: false)
+                  .addComment(widget.postIndex, _controller.text);
+              Navigator.pop(context);
+            }
+          },
+          child: const Text("등록"),
+        ),
+      ],
     );
   }
 }
