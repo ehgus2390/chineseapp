@@ -1,96 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  await NotificationService().init();
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AppState(),
+      child: const MyApp(),
+    ),
+  );
 }
 
-// ======================
-// AppState (상태 관리)
-// ======================
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: '대학 커뮤니티',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorSchemeSeed: Colors.indigo,
+        useMaterial3: true,
+      ),
+      home: const LoginPage(),
+    );
+  }
+}
+
+// ------------------ STATE 관리 ------------------
+
 class AppState extends ChangeNotifier {
   String? userName;
-  final List<Post> posts = [];
 
   void login(String name) {
     userName = name;
     notifyListeners();
   }
 
-  void addPost(String content) {
-    posts.add(Post(content: content, author: userName ?? "익명"));
+  void logout() {
+    userName = null;
     notifyListeners();
   }
-  void addComment(int postIndex, String commentContent) {
-    final post = posts[postIndex];
-    post.comments.add(
-      Comment(content: commentContent, author: userName ?? "익명"),
-    );
-    notifyListeners();
-  }
-  bool get isLoggedIn => userName != null;
 }
 
-class Post {
-  final String content;
-  final String author;
-  final List<Comment> comments;
+// ------------------ 로그인 페이지 ------------------
 
-  Post({
-    required this.content,
-    required this.author,
-    List<Comment>? comments,
-  }) : comments = comments ?? [];
-}
-class Comment {
-  final String content;
-  final String author;
-  Comment({required this.content, required this.author});
-}
-
-// ======================
-// 메인 앱
-// ======================
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppState(),
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Community App',
-        theme: ThemeData(primarySwatch: Colors.blue),
-        home: const RootPage(),
-      ),
-    );
-  }
-}
-
-// ======================
-// RootPage: 로그인 여부 체크
-// ======================
-class RootPage extends StatelessWidget {
-  const RootPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, _) {
-        if (appState.isLoggedIn) {
-          return const MainScreen();
-        } else {
-          return const LoginPage();
-        }
-      },
-    );
-  }
-}
-
-// ======================
-// 로그인 페이지
-// ======================
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -99,39 +59,43 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _controller = TextEditingController();
+  final controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text("로그인")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text("닉네임을 입력하세요"),
-            TextField(controller: _controller),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                if (_controller.text.isNotEmpty) {
-                  Provider.of<AppState>(context, listen: false)
-                      .login(_controller.text);
-                }
-              },
-              child: const Text("로그인"),
-            )
-          ],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('🎓 대학 커뮤니티 로그인', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(labelText: '닉네임 입력'),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  appState.login(controller.text.trim().isEmpty ? "익명" : controller.text.trim());
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainScreen()));
+                },
+                child: const Text('입장하기'),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ======================
-// 메인 화면 (탭 구조)
-// ======================
+// ------------------ 메인 화면 ------------------
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -140,205 +104,331 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-
-  final List<Widget> _pages = const [
-    HomePage(),
-    TimetablePage(),
-    BoardPage(),
-    ChatPage(),
+  int index = 0;
+  final pages = [
+    const HomePage(),
+    const BoardPage(),
+    const ChatPage(),
+    const MyPage(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Communication for students"),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.account_circle), onPressed: () {}),
-        ],
-      ),
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() => _selectedIndex = index);
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.schedule), label: "Schedule"),
-          BottomNavigationBarItem(icon: Icon(Icons.forum), label: "Noticeboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Cheating"),
+      body: pages[index],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (i) => setState(() => index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home), label: '홈'),
+          NavigationDestination(icon: Icon(Icons.forum), label: '게시판'),
+          NavigationDestination(icon: Icon(Icons.chat), label: '채팅'),
+          NavigationDestination(icon: Icon(Icons.person), label: '내정보'),
         ],
       ),
     );
   }
 }
 
-// ======================
-// 페이지 예시
-// ======================
+// ------------------ 홈 ------------------
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text("홈 화면 - 교내소식, 인기글, 링크"));
+    final appState = Provider.of<AppState>(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text('홈')),
+      body: Center(
+        child: Text(
+          '안녕하세요, ${appState.userName ?? "익명"}님 👋\n오늘도 좋은 하루 되세요!',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 18),
+        ),
+      ),
+    );
   }
 }
 
-class TimetablePage extends StatelessWidget {
-  const TimetablePage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text("시간표 만들기 화면"));
-  }
-}
+// ------------------ 게시판 ------------------
 
-// ======================
-// 게시판 페이지 (글쓰기 가능)
-// ======================
 class BoardPage extends StatelessWidget {
   const BoardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final firestore = FirestoreService();
     final appState = Provider.of<AppState>(context);
 
     return Scaffold(
-      body: ListView.builder(
-        itemCount: appState.posts.length,
-        itemBuilder: (context, index) {
-          final post = appState.posts[index];
-          return Card(
-            margin: const EdgeInsets.all(8),
-            child: ExpansionTile(
-              title: Text(post.content),
-              subtitle: Text("Host: ${post.author}"),
-              children: [
-                // 댓글 목록
-                ...post.comments.map(
-                      (c) => ListTile(
-                    title: Text(c.content),
-                    subtitle: Text("작성자: ${c.author}"),
+      appBar: AppBar(title: const Text('게시판')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: firestore.getPosts(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) return const Center(child: Text("아직 게시글이 없습니다."));
+
+          return ListView(
+            children: docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.all(8),
+                child: ListTile(
+                  title: Text(data['content'] ?? ''),
+                  subtitle: Text("작성자: ${data['author']}"),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${data['likes'] ?? 0}'),
+                      IconButton(
+                        icon: const Icon(Icons.favorite_border),
+                        onPressed: () => firestore.likePost(doc.id),
+                      ),
+                    ],
                   ),
-                ),
-                // 댓글 작성 버튼
-                TextButton.icon(
-                  icon: const Icon(Icons.comment),
-                  label: const Text("댓글 달기"),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => CommentDialog(postIndex: index),
-                    );
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => CommentPage(postId: doc.id),
+                    ));
                   },
-                )
-              ],
-            ),
+                ),
+              );
+            }).toList(),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (_) => const PostDialog(),
-          );
-        },
-        child: const Icon(Icons.edit),
+        onPressed: () => showDialog(
+          context: context,
+          builder: (_) => PostDialog(firestore: firestore, author: appState.userName ?? "익명"),
+        ),
+        child: const Icon(Icons.add),
       ),
     );
   }
 }
-// ======================
-// 댓글작성 다이얼로그
-// ======================
-class CommentDialog extends StatefulWidget {
-  final int postIndex;
-  const CommentDialog({super.key, required this.postIndex});
 
-  @override
-  State<CommentDialog> createState() => _CommentDialogState();
-}
-
-class _CommentDialogState extends State<CommentDialog> {
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("댓글 작성"),
-      content: TextField(
-        controller: _controller,
-        decoration: const InputDecoration(hintText: "댓글을 입력하세요"),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("취소"),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            if (_controller.text.isNotEmpty) {
-              Provider.of<AppState>(context, listen: false)
-                  .addComment(widget.postIndex, _controller.text);
-              Navigator.pop(context);
-            }
-          },
-          child: const Text("등록"),
-        ),
-      ],
-    );
-  }
-}
-
-// ======================
-// 글쓰기 다이얼로그
-// ======================
 class PostDialog extends StatefulWidget {
-  const PostDialog({super.key});
+  final FirestoreService firestore;
+  final String author;
+  const PostDialog({super.key, required this.firestore, required this.author});
 
   @override
   State<PostDialog> createState() => _PostDialogState();
 }
 
 class _PostDialogState extends State<PostDialog> {
-  final TextEditingController _controller = TextEditingController();
+  final controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("새 게시글 작성"),
-      content: TextField(
-        controller: _controller,
-        decoration: const InputDecoration(hintText: "내용을 입력하세요"),
-      ),
+      title: const Text('새 게시글 작성'),
+      content: TextField(controller: controller, decoration: const InputDecoration(hintText: '내용을 입력하세요')),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("취소"),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
         ElevatedButton(
-          onPressed: () {
-            if (_controller.text.isNotEmpty) {
-              Provider.of<AppState>(context, listen: false)
-                  .addPost(_controller.text);
-              Navigator.pop(context);
-            }
+          onPressed: () async {
+            await widget.firestore.addPost(widget.author, controller.text);
+            Navigator.pop(context);
           },
-          child: const Text("등록"),
-        ),
+          child: const Text('등록'),
+        )
       ],
     );
   }
 }
 
-class ChatPage extends StatelessWidget {
-  const ChatPage({super.key});
+// ------------------ 댓글 ------------------
+
+class CommentPage extends StatefulWidget {
+  final String postId;
+  const CommentPage({super.key, required this.postId});
+
+  @override
+  State<CommentPage> createState() => _CommentPageState();
+}
+
+class _CommentPageState extends State<CommentPage> {
+  final _firestore = FirebaseFirestore.instance;
+  final _controller = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text("채팅 화면"));
+    final appState = Provider.of<AppState>(context);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("댓글")),
+      body: Column(
+        children: [
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestore.collection('posts').doc(widget.postId).collection('comments').orderBy('createdAt').snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                final comments = snapshot.data!.docs;
+                return ListView(
+                  children: comments.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return ListTile(
+                      title: Text(data['content'] ?? ''),
+                      subtitle: Text(data['author'] ?? ''),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(child: TextField(controller: _controller, decoration: const InputDecoration(hintText: '댓글 입력...'))),
+              IconButton(
+                icon: const Icon(Icons.send),
+                onPressed: () {
+                  _firestore.collection('posts').doc(widget.postId).collection('comments').add({
+                    'author': appState.userName ?? '익명',
+                    'content': _controller.text,
+                    'createdAt': FieldValue.serverTimestamp(),
+                  });
+                  _controller.clear();
+                },
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+}
+
+// ------------------ 채팅 ------------------
+
+class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
+
+  @override
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  final _firestore = FirebaseFirestore.instance;
+  final _controller = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text("실시간 채팅")),
+      body: Column(
+        children: [
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestore.collection('chats/general/messages').orderBy('timestamp').snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                final messages = snapshot.data!.docs;
+                return ListView(
+                  children: messages.map((doc) {
+                    final msg = doc.data() as Map<String, dynamic>;
+                    return ListTile(title: Text(msg['text']), subtitle: Text(msg['sender']));
+                  }).toList(),
+                );
+              },
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(child: TextField(controller: _controller, decoration: const InputDecoration(hintText: "메시지 입력"))),
+              IconButton(
+                icon: const Icon(Icons.send),
+                onPressed: () {
+                  _firestore.collection('chats/general/messages').add({
+                    'text': _controller.text,
+                    'sender': appState.userName ?? '익명',
+                    'timestamp': FieldValue.serverTimestamp(),
+                  });
+                  _controller.clear();
+                },
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+}
+
+// ------------------ 마이페이지 ------------------
+
+class MyPage extends StatelessWidget {
+  const MyPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text('내 정보')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('닉네임: ${appState.userName ?? "익명"}', style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                appState.logout();
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
+              },
+              child: const Text('로그아웃'),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ------------------ FIRESTORE SERVICE ------------------
+
+class FirestoreService {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  Future<void> addPost(String author, String content) async {
+    await _db.collection('posts').add({
+      'author': author,
+      'content': content,
+      'likes': 0,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> likePost(String postId) async {
+    final postRef = _db.collection('posts').doc(postId);
+    await _db.runTransaction((tx) async {
+      final doc = await tx.get(postRef);
+      if (doc.exists) {
+        final likes = (doc['likes'] ?? 0) + 1;
+        tx.update(postRef, {'likes': likes});
+      }
+    });
+  }
+
+  Stream<QuerySnapshot> getPosts() {
+    return _db.collection('posts').orderBy('createdAt', descending: true).snapshots();
+  }
+}
+
+// ------------------ NOTIFICATION SERVICE ------------------
+
+class NotificationService {
+  final _fcm = FirebaseMessaging.instance;
+
+  Future<void> init() async {
+    await _fcm.requestPermission();
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('🔔 알림: ${message.notification?.title}');
+    });
   }
 }
