@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
 import 'l10n/app_localizations.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/discover_screen.dart';
@@ -9,6 +11,7 @@ import 'screens/chat_list_screen.dart';
 import 'screens/chat_room_screen.dart';
 import 'screens/profile_screen.dart';
 import 'state/app_state.dart';
+import 'state/locale_state.dart';
 
 class KkiriApp extends StatelessWidget {
   const KkiriApp({super.key});
@@ -16,6 +19,7 @@ class KkiriApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final locale = context.watch<LocaleState>().locale;
 
     final router = GoRouter(
       initialLocation: state.isOnboarded ? '/home/discover' : '/onboarding',
@@ -64,6 +68,7 @@ class KkiriApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       routerConfig: router,
       title: 'Kkiri',
+      locale: locale,
       theme: ThemeData(
         colorSchemeSeed: Colors.pink,
         useMaterial3: true,

@@ -13,7 +13,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final available = const ['ko','en','ja','zh'];
+  static const List<String> available = <String>['ko', 'en', 'ja', 'zh'];
 
   @override
   Widget build(BuildContext context) {
@@ -48,26 +48,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(l.prefTarget),
         Wrap(
           spacing: 8,
-          children: available.map((code) {
-            final selected = state.myPreferredLanguages.contains(code);
+          children: available.map((String code) {
+            final bool selected = state.myPreferredLanguages.contains(code);
             return FilterChip(
               label: Text(code.toUpperCase()),
               selected: selected,
-              onSelected: (v) {
-                if (v) {
-                  if (!state.myPreferredLanguages.contains(code)) {
-                    state.myPreferredLanguages.add(code);
-                  }
-                } else {
-                  state.myPreferredLanguages.remove(code);
-                }
-                state.notifyListeners();
+              onSelected: (bool value) async {
+                await state.setPreferredLanguage(code, value);
               },
             );
           }).toList(),
         ),
         const SizedBox(height: 16),
-        FilledButton(onPressed: () {}, child: Text(l.save)),
+        FilledButton(
+          onPressed: () async {
+            await state.savePreferredLanguages();
+          },
+          child: Text(l.save),
+        ),
       ],
     );
   }
