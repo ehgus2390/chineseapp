@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 
@@ -18,7 +19,7 @@ class ChatListScreen extends StatelessWidget {
           leading: CircleAvatar(backgroundImage: NetworkImage(partner.avatarUrl)),
           title: Text(partner.name),
           subtitle: Text('새로운 대화를 시작해보세요'),
-          onTap: () => Navigator.pushNamed(context, '/home/chat/room/${m.id}'),
+          onTap: () => context.go('/home/chat/room/${m.id}'),
         );
       }).toList(),
     );
