@@ -12,6 +12,8 @@ import '../models/profile.dart';
 import '../services/chat_service.dart';
 import '../services/match_service.dart';
 import '../services/preferences_storage.dart';
+import '../services/auth_service.dart';
+import '../models/user_profile.dart';
 
 class AppState extends ChangeNotifier {
   AppState();
