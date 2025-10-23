@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geoflutterfire2/geoflutterfire2.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import 'user_profile_popup.dart';
+import 'package:http/http.dart' as http;
+import 'dart:typed_data';
 
 class NearbyMapScreen extends StatefulWidget {
   const NearbyMapScreen({super.key});
@@ -17,20 +20,18 @@ class NearbyMapScreen extends StatefulWidget {
 }
 
 class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProviderStateMixin {
-  final geo = GeoFlutterFire();
+  final geo = GeoFlutterFirePlus();
   GoogleMapController? _mapController;
   double _radiusKm = 5;
   final Map<MarkerId, Marker> _markers = {};
-  final Map<CircleId, Circle> _circles = {};
+  StreamSubscription<List<DocumentSnapshot<Map<String, dynamic>>>>? _nearbySub;
 
-  StreamSubscription<List<DocumentSnapshot>>? _nearbySub;
-
-  // 펄스 애니메이션 (내 위치 강조)
+  // 🔵 내 위치 펄스 애니메이션
   late final AnimationController _pulseCtrl = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 2),
   )..repeat(reverse: true);
-  late final Animation<double> _pulse = Tween<double>(begin: 120, end: 300).animate(_pulseCtrl); // 미터
+  late final Animation<double> _pulse = Tween<double>(begin: 120, end: 300).animate(_pulseCtrl);
 
   @override
   void initState() {
@@ -50,36 +51,83 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
     super.dispose();
   }
 
+  /// 주변 사용자 구독
   void _subscribeNearby() {
     _nearbySub?.cancel();
     final loc = context.read<LocationProvider>();
     if (loc.position == null) return;
 
-    final center = geo.point(latitude: loc.position!.latitude, longitude: loc.position!.longitude);
+    final center = GeoFirePoint(GeoPoint(loc.position!.latitude, loc.position!.longitude));
     final col = FirebaseFirestore.instance.collection('users');
 
-    _nearbySub = geo.collection(collectionRef: col)
-        .within(center: center, radius: _radiusKm, field: 'position')
+    _nearbySub = geo
+        .collection(collectionRef: col)
+        .within(center: center, radiusInKm: _radiusKm, field: 'position')
         .listen((docs) => _buildMarkers(docs));
   }
 
-  void _buildMarkers(List<DocumentSnapshot> docs) {
+  /// 🔹 썸네일 원형 이미지 생성 (NetworkImage → BitmapDescriptor)
+  Future<BitmapDescriptor> _createProfileMarker(String imageUrl) async {
+    try {
+      final response = await http.get(Uri.parse(imageUrl));
+      final bytes = response.bodyBytes;
+
+      final codec = await ui.instantiateImageCodec(bytes, targetWidth: 120);
+      final frame = await codec.getNextFrame();
+      final image = frame.image;
+
+      final pictureRecorder = ui.PictureRecorder();
+      final canvas = Canvas(pictureRecorder);
+      final paint = Paint()..isAntiAlias = true;
+
+      final radius = 60.0;
+      final center = Offset(radius, radius);
+
+      // 원형 마스크
+      canvas.drawCircle(center, radius, paint);
+      paint.blendMode = BlendMode.srcIn;
+      canvas.drawImageRect(
+        image,
+        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+        Rect.fromCircle(center: center, radius: radius),
+        paint,
+      );
+
+      final img = await pictureRecorder
+          .endRecording()
+          .toImage(radius.toInt() * 2, radius.toInt() * 2);
+      final data = await img.toByteData(format: ui.ImageByteFormat.png);
+      return BitmapDescriptor.fromBytes(Uint8List.view(data!.buffer));
+    } catch (_) {
+      return BitmapDescriptor.defaultMarker; // 실패 시 기본 마커
+    }
+  }
+
+  /// 🗺️ Firestore → 마커 렌더링
+  Future<void> _buildMarkers(List<DocumentSnapshot<Map<String, dynamic>>> docs) async {
     final auth = context.read<AuthProvider>();
-    final me = auth.currentUser!.uid;
+    final myId = auth.currentUser!.uid;
     final Map<MarkerId, Marker> m = {};
 
     for (final d in docs) {
-      final data = d.data() as Map<String, dynamic>;
-      if (data['position'] == null) continue;
-      final GeoPoint p = data['position'];
+      final data = d.data();
+      if (data == null || data['position'] == null) continue;
 
+      final GeoPoint p = data['position'];
       final id = MarkerId(d.id);
+
+      // 프로필 이미지 마커 적용
+      BitmapDescriptor icon;
+      if (data['photoUrl'] != null && data['photoUrl'].toString().startsWith('http')) {
+        icon = await _createProfileMarker(data['photoUrl']);
+      } else {
+        icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
+      }
+
       m[id] = Marker(
         markerId: id,
         position: LatLng(p.latitude, p.longitude),
-        icon: d.id == me
-            ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure)
-            : BitmapDescriptor.defaultMarker,
+        icon: icon,
         infoWindow: InfoWindow(
           title: data['displayName'] ?? 'User',
           snippet: '@${data['searchId'] ?? ''}',
@@ -97,36 +145,44 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       );
     }
 
-    setState(() => _markers
-      ..clear()
-      ..addAll(m));
+    if (mounted) {
+      setState(() {
+        _markers
+          ..clear()
+          ..addAll(m);
+      });
+    }
   }
 
+  /// 🔵 내 위치 펄스 애니메이션 (내 주변 강조)
   Set<Circle> _buildPulseCircle() {
     final loc = context.read<LocationProvider>();
     if (loc.position == null) return {};
     final myCenter = LatLng(loc.position!.latitude, loc.position!.longitude);
+    final radiusMeters = _pulse.value;
 
-    // 펄스 반경은 애니메이션 값(미터)로 표현
-    final currentMeters = _pulse.value;
-    final c = Circle(
-      circleId: const CircleId('pulse'),
-      center: myCenter,
-      radius: currentMeters,
-      fillColor: Colors.blue.withOpacity(0.12),
-      strokeColor: Colors.blue.withOpacity(0.30),
-      strokeWidth: 1,
-    );
-    return {c};
+    return {
+      Circle(
+        circleId: const CircleId('pulse'),
+        center: myCenter,
+        radius: radiusMeters,
+        fillColor: Colors.blue.withOpacity(0.15),
+        strokeColor: Colors.blue.withOpacity(0.4),
+        strokeWidth: 2,
+      ),
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocationProvider>();
     if (loc.position == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
-    final myLatLng = LatLng(loc.position!.latitude, loc.position!.longitude);
+
+    final myPos = LatLng(loc.position!.latitude, loc.position!.longitude);
 
     return AnimatedBuilder(
       animation: _pulse,
@@ -134,8 +190,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
         return Scaffold(
           appBar: AppBar(title: const Text('주변 사용자')),
           body: GoogleMap(
-            onMapCreated: (c) => _mapController = c,
-            initialCameraPosition: CameraPosition(target: myLatLng, zoom: 14),
+            onMapCreated: (controller) => _mapController = controller,
+            initialCameraPosition: CameraPosition(target: myPos, zoom: 14),
             myLocationEnabled: true,
             myLocationButtonEnabled: true,
             markers: _markers.values.toSet(),
@@ -154,23 +210,18 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
                     divisions: 19,
                     label: '${_radiusKm.toInt()} km',
                     onChanged: (v) => setState(() => _radiusKm = v),
-                    onChangeEnd: (_) => _subscribeNearby(), // 반경 바뀌면 재구독
+                    onChangeEnd: (_) => _subscribeNearby(),
                   ),
                 ),
                 IconButton(
                   tooltip: '내 위치로 이동',
                   icon: const Icon(Icons.my_location),
                   onPressed: () => _mapController?.animateCamera(
-                    CameraUpdate.newLatLngZoom(myLatLng, 14),
+                    CameraUpdate.newLatLngZoom(myPos, 14),
                   ),
                 ),
               ],
             ),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _mapController?.animateCamera(CameraUpdate.zoomIn()),
-            label: const Text('확대'),
-            icon: const Icon(Icons.add),
           ),
         );
       },

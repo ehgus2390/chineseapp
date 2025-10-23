@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: '내 프로필'),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: '친구'),
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: '채팅'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),   // ✅ 추가
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),
           BottomNavigationBarItem(icon: Icon(Icons.article), label: '게시판'),
           BottomNavigationBarItem(icon: Icon(Icons.menu), label: '더보기'),
         ],
