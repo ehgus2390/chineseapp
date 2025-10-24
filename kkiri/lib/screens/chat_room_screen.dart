@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../state/app_state.dart';
+
+import '../l10n/app_localizations.dart';
 import '../models/message.dart';
+import '../state/app_state.dart';
 
 class ChatRoomScreen extends StatefulWidget {
-  final String matchId;
-  const ChatRoomScreen({super.key, required this.matchId});
+  final String threadId;
+  const ChatRoomScreen({super.key, required this.threadId});
 
   @override
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
@@ -17,10 +19,21 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final msgs = state.chat.getMessages(widget.matchId);
+    final thread = state.threadById(widget.threadId);
+    final partner = state.getById(thread.friendId);
+    final msgs = state.chat.getMessages(widget.threadId);
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chat')),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            CircleAvatar(radius: 18, backgroundImage: NetworkImage(partner.avatarUrl)),
+            const SizedBox(width: 12),
+            Text(partner.name),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -29,14 +42,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               itemCount: msgs.length,
               itemBuilder: (_, i) {
                 final Message m = msgs[msgs.length - 1 - i];
-                final isMe = m.senderId == state.me.id;
+                final bool isMe = m.senderId == state.me.id;
                 return Align(
                   alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.all(8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isMe ? Colors.pink.shade50 : Colors.grey.shade200,
+                      color: isMe
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(m.text),
@@ -51,9 +66,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 Expanded(
                   child: TextField(
                     controller: ctrl,
-                    decoration: const InputDecoration(
-                      hintText: '메시지를 입력하세요',
-                      contentPadding: EdgeInsets.all(12),
+                    decoration: InputDecoration(
+                      hintText: l.messagePlaceholder,
+                      contentPadding: const EdgeInsets.all(12),
                     ),
                   ),
                 ),
@@ -62,7 +77,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   onPressed: () {
                     final text = ctrl.text.trim();
                     if (text.isEmpty) return;
-                    state.chat.send(widget.matchId, state.me.id, text);
+                    state.sendMessage(widget.threadId, text);
                     ctrl.clear();
                     setState(() {});
                   },
