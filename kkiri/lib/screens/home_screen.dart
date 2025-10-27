@@ -7,7 +7,6 @@ import 'tabs/profile_screen.dart';
 import 'tabs/board_screen.dart';
 import 'settings/settings_screen.dart';
 import 'search/search_screen.dart';
-import 'map/nearby_map_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,22 +21,29 @@ class _HomeScreenState extends State<HomeScreen> {
     FriendsScreen(),
     ChatListScreen(),
     BoardScreen(),
+    MapScreen(),
     SettingsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final pages = List<Widget>.from(_pages);
-    // ③ 채팅과 ④ 게시판 사이에 지도 탭 추가 (원하시는 위치로 조정)
-    pages.insert(3, NearbyMapScreen()); // index 3에 지도 삽입
-
+    final auth = context.watch<AuthProvider>();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kkiri'),
         centerTitle: true,
-        actions: [/* ...검색/설정 동일... */],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen())),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          ),
+        ],
       ),
-      body: pages[_selectedIndex],
+      body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         type: BottomNavigationBarType.fixed,
@@ -48,8 +54,12 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: '내 프로필'),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: '친구'),
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: '채팅'),
+<<<<<<< HEAD
           BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),
+=======
+>>>>>>> parent of 3697d61 (sadsad)
           BottomNavigationBarItem(icon: Icon(Icons.article), label: '게시판'),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),
           BottomNavigationBarItem(icon: Icon(Icons.menu), label: '더보기'),
         ],
       ),

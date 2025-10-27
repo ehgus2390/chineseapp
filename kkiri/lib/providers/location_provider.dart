@@ -1,67 +1,39 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geoflutterfire2/geoflutterfire2.dart';
+import 'package:flutter/foundation.dart';
 
 class LocationProvider extends ChangeNotifier {
-  Position? _position;
-  Position? get position => _position;
+  final geo = Geoflutterfire();
+  final db = FirebaseFirestore.instance;
 
-  StreamSubscription<Position>? _sub;
-  DateTime _lastUpload = DateTime.fromMillisecondsSinceEpoch(0);
-
-  Future<bool> _ensurePermission() async {
-    if (!await Geolocator.isLocationServiceEnabled()) return false;
-    LocationPermission p = await Geolocator.checkPermission();
-    if (p == LocationPermission.denied) {
-      p = await Geolocator.requestPermission();
+  Future<void> updateMyLocation(String uid) async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
     }
-    return p == LocationPermission.always || p == LocationPermission.whileInUse;
-  }
-
-  Future<void> startAutoUpdate(String uid) async {
-    final ok = await _ensurePermission();
-    if (!ok) return;
-
-    // 현재 위치 1회 업데이트
-    _position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    await _upload(uid);
-    notifyListeners();
-
-    // 스트림 구독(배터리 고려: accuracy balanced, interval ~10초)
-    _sub?.cancel();
-    _sub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 15, // 15m 이동 시 이벤트
-      ),
-    ).listen((pos) async {
-      _position = pos;
-      // 10초 쓰로틀
-      if (DateTime.now().difference(_lastUpload).inSeconds >= 10) {
-        await _upload(uid);
-      }
-      notifyListeners();
+    final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    final geoPoint = geo.point(latitude: pos.latitude, longitude: pos.longitude);
+    await db.collection('users').doc(uid).update({
+      'position': geoPoint.geoPoint,
+      'geohash': geoPoint.hash,
     });
   }
 
-  Future<void> _upload(String uid) async {
-    if (_position == null) return;
-    _lastUpload = DateTime.now();
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'position': GeoPoint(_position!.latitude, _position!.longitude),
-      'updatedAt': FieldValue.serverTimestamp(),
+  Stream<List<DocumentSnapshot>> nearbyUsersStream(String uid, double radiusKm) {
+    return db.collection('users').doc(uid).snapshots().asyncExpand((snap) {
+      final data = snap.data();
+      if (data == null || data['position'] == null) return const Stream.empty();
+      final center = geo.point(
+        latitude: data['position'].latitude,
+        longitude: data['position'].longitude,
+      );
+      final collectionRef = db.collection('users');
+      return geo.collection(collectionRef: collectionRef)
+          .within(center: center, radius: radiusKm, field: 'position');
     });
-  }
-
-  Future<void> stop() async {
-    await _sub?.cancel();
-    _sub = null;
-  }
-
-  @override
-  void dispose() {
-    _sub?.cancel();
-    super.dispose();
   }
 }
