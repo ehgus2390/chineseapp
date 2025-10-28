@@ -86,6 +86,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       // 원형 마스크
       canvas.drawCircle(center, radius, paint);
       paint.blendMode = BlendMode.srcIn;
+
+      // 원형 마스크 적용하여 이미지 그리기
       canvas.drawImageRect(
         image,
         Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
@@ -227,4 +229,4 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       },
     );
   }
-}
+
