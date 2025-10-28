@@ -12,7 +12,10 @@ class ChatListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final chatProv = context.watch<ChatProvider>();
-    final uid = auth.currentUser!.uid;
+    final uid = auth.currentUser?.uid;
+    if (uid == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: chatProv.myChatRooms(uid),

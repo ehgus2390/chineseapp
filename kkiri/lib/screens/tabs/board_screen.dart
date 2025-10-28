@@ -35,7 +35,12 @@ class _BoardScreenState extends State<BoardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = context.watch<AuthProvider>().currentUser!.uid;
+    final uid = context.watch<AuthProvider>().currentUser?.uid;
+    if (uid == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('커뮤니티 게시판')),

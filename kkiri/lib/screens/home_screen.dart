@@ -10,38 +10,35 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _index = 2;
+  static const _tabs = <String>[
+    '/home/profile',
+    '/home/friends',
+    '/home/chat',
+    '/home/map',
+    '/home/board',
+    '/home/settings',
+  ];
 
-  void _onTap(int i) {
-    setState(() => _index = i);
-    switch (i) {
-      case 0:
-        context.go('/home/profile');
-        break;
-      case 1:
-        context.go('/home/friends');
-        break;
-      case 2:
-        context.go('/home/chat');
-        break;
-      case 3:
-        context.go('/home/map');
-        break;
-      case 4:
-        context.go('/home/board');
-        break;
-      case 5:
-        context.go('/home/settings');
-        break;
+  void _onTap(int index) {
+    if (index < 0 || index >= _tabs.length) return;
+    final target = _tabs[index];
+    if (GoRouter.of(context).location != target) {
+      context.go(target);
     }
+  }
+
+  int _locationToIndex(String location) {
+    final matchIndex = _tabs.indexWhere((path) => location.startsWith(path));
+    return matchIndex == -1 ? 2 : matchIndex;
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = _locationToIndex(GoRouter.of(context).location);
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
+        currentIndex: currentIndex,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,

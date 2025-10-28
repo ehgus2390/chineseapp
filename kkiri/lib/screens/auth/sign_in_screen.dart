@@ -11,13 +11,15 @@ class SignInScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('로그인')),
       body: Center(
-        child: ElevatedButton.icon(
-          icon: const Icon(Icons.person),
-          label: const Text('익명 로그인'),
-          onPressed: auth.isLoading ? null : () async {
-            await auth.signInAnonymously();
-          },
-        ),
+        child: auth.isLoading
+            ? const CircularProgressIndicator()
+            : ElevatedButton.icon(
+                icon: const Icon(Icons.person),
+                label: const Text('익명 로그인'),
+                onPressed: () async {
+                  await auth.signInAnonymously();
+                },
+              ),
       ),
     );
   }

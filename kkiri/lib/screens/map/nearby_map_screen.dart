@@ -30,8 +30,10 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
   late final AnimationController _pulseCtrl = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 2),
-  )..repeat(reverse: true);
-  late final Animation<double> _pulse = Tween<double>(begin: 120, end: 300).animate(_pulseCtrl);
+  )
+    ..repeat(reverse: true);
+  late final Animation<double> _pulse = Tween<double>(begin: 120, end: 300)
+      .animate(_pulseCtrl);
 
   @override
   void initState() {
@@ -40,7 +42,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       final auth = context.read<AuthProvider>();
       final loc = context.read<LocationProvider>();
       final uid = auth.currentUser?.uid;
-      if(uid == null) {
+      if (uid == null) {
         return;
       }
       await loc.startAutoUpdate(uid);
@@ -61,7 +63,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
     final loc = context.read<LocationProvider>();
     if (loc.position == null) return;
 
-    final center = GeoFirePoint(GeoPoint(loc.position!.latitude, loc.position!.longitude));
+    final center = GeoFirePoint(
+        GeoPoint(loc.position!.latitude, loc.position!.longitude));
     final col = FirebaseFirestore.instance.collection('users');
 
     _nearbySub = geo
@@ -82,7 +85,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
 
       final pictureRecorder = ui.PictureRecorder();
       final canvas = Canvas(pictureRecorder);
-      final paint = Paint()..isAntiAlias = true;
+      final paint = Paint()
+        ..isAntiAlias = true;
 
       final radius = 60.0;
       final center = Offset(radius, radius);
@@ -110,7 +114,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
   }
 
   /// 🗺️ Firestore → 마커 렌더링
-  Future<void> _buildMarkers(List<DocumentSnapshot<Map<String, dynamic>>> docs) async {
+  Future<void> _buildMarkers(
+      List<DocumentSnapshot<Map<String, dynamic>>> docs) async {
     final auth = context.read<AuthProvider>();
     final myId = auth.currentUser?.uid;
     if (myId == null) return;
@@ -125,7 +130,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
 
       // 프로필 이미지 마커 적용
       BitmapDescriptor icon;
-      if (data['photoUrl'] != null && data['photoUrl'].toString().startsWith('http')) {
+      if (data['photoUrl'] != null &&
+          data['photoUrl'].toString().startsWith('http')) {
         icon = await _createProfileMarker(data['photoUrl']);
       } else {
         icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
@@ -141,11 +147,12 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
           onTap: () {
             showModalBottomSheet(
               context: context,
-              builder: (_) => UserProfilePopup(
-                uid: d.id,
-                displayName: data['displayName'],
-                photoUrl: data['photoUrl'],
-              ),
+              builder: (_) =>
+                  UserProfilePopup(
+                    uid: d.id,
+                    displayName: data['displayName'],
+                    photoUrl: data['photoUrl'],
+                  ),
             );
           },
         ),
@@ -223,9 +230,10 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
                 IconButton(
                   tooltip: '내 위치로 이동',
                   icon: const Icon(Icons.my_location),
-                  onPressed: () => _mapController?.animateCamera(
-                    CameraUpdate.newLatLngZoom(myPos, 14),
-                  ),
+                  onPressed: () =>
+                      _mapController?.animateCamera(
+                        CameraUpdate.newLatLngZoom(myPos, 14),
+                      ),
                 ),
               ],
             ),
@@ -234,4 +242,4 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       },
     );
   }
-
+}

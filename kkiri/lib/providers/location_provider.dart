@@ -1,39 +1,97 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geoflutterfire2/geoflutterfire2.dart';
 import 'package:flutter/foundation.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
+import 'package:geolocator/geolocator.dart';
 
 class LocationProvider extends ChangeNotifier {
-  final geo = Geoflutterfire();
+  final geo = GeoFlutterFirePlus();
   final db = FirebaseFirestore.instance;
 
-  Future<void> updateMyLocation(String uid) async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
-    LocationPermission permission = await Geolocator.checkPermission();
+  Position? position;
+  StreamSubscription<Position>? _positionSub;
+
+  Future<bool> _ensureServiceAndPermission() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return false;
+    }
+    var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
     }
-    final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    if (permission == LocationPermission.deniedForever ||
+        permission == LocationPermission.denied) {
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _saveToFirestore(String uid, Position pos) async {
     final geoPoint = geo.point(latitude: pos.latitude, longitude: pos.longitude);
-    await db.collection('users').doc(uid).update({
+    await db.collection('users').doc(uid).set({
       'position': geoPoint.geoPoint,
       'geohash': geoPoint.hash,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> startAutoUpdate(String uid) async {
+    if (!await _ensureServiceAndPermission()) {
+      return;
+    }
+
+    final current = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    position = current;
+    await _saveToFirestore(uid, current);
+    notifyListeners();
+
+    await _positionSub?.cancel();
+    _positionSub = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 30,
+      ),
+    ).listen((pos) async {
+      position = pos;
+      notifyListeners();
+      await _saveToFirestore(uid, pos);
     });
   }
 
-  Stream<List<DocumentSnapshot>> nearbyUsersStream(String uid, double radiusKm) {
+  Future<void> stopAutoUpdate() async {
+    await _positionSub?.cancel();
+    _positionSub = null;
+  }
+
+  Future<void> updateMyLocation(String uid) async {
+    if (!await _ensureServiceAndPermission()) {
+      return;
+    }
+    final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    position = pos;
+    await _saveToFirestore(uid, pos);
+    notifyListeners();
+  }
+
+  Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(String uid, double radiusKm) {
     return db.collection('users').doc(uid).snapshots().asyncExpand((snap) {
       final data = snap.data();
-      if (data == null || data['position'] == null) return const Stream.empty();
-      final center = geo.point(
-        latitude: data['position'].latitude,
-        longitude: data['position'].longitude,
-      );
+      if (data == null || data['position'] == null) {
+        return Stream<List<DocumentSnapshot<Map<String, dynamic>>>>.empty();
+      }
+      final point = data['position'] as GeoPoint;
+      final center = geo.point(latitude: point.latitude, longitude: point.longitude);
       final collectionRef = db.collection('users');
-      return geo.collection(collectionRef: collectionRef)
+      return geo
+          .collection(collectionRef: collectionRef)
           .within(center: center, radius: radiusKm, field: 'position');
     });
+  }
+
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    super.dispose();
   }
 }

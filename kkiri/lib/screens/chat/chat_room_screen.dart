@@ -32,7 +32,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   Future<void> _sendImage() async {
     if (_previewImage == null) return;
-    final uid = context.read<AuthProvider>().currentUser!.uid;
+    final uid = context.read<AuthProvider>().currentUser?.uid;
+    if (uid == null) return;
     final storage = StorageService();
     final chatProv = context.read<ChatProvider>();
 
@@ -52,7 +53,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = context.read<AuthProvider>().currentUser!.uid;
+    final uid = context.read<AuthProvider>().currentUser?.uid;
+    if (uid == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final chatProv = context.read<ChatProvider>();
 
     return Scaffold(
@@ -77,7 +83,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   ),
                   ElevatedButton.icon(
                     onPressed: _sending ? null : _sendImage,
-                    icon: _sending ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.send),
+                    icon: _sending
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send),
                     label: const Text('전송'),
                   )
                 ],

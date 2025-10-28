@@ -19,7 +19,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
     final auth = context.watch<AuthProvider>();
     final friendsProv = context.watch<FriendsProvider>();
     final chatProv = context.read<ChatProvider>();
-    final myUid = auth.currentUser!.uid;
+    final myUid = auth.currentUser?.uid;
+    if (myUid == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return Column(
       children: [
