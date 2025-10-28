@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geoflutterfire2/geoflutterfire2.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:flutter/foundation.dart';
 
 class LocationProvider extends ChangeNotifier {
-  final geo = Geoflutterfire();
+  final geo = GeoFlutterFirePlus();
   final db = FirebaseFirestore.instance;
 
   Future<void> updateMyLocation(String uid) async {

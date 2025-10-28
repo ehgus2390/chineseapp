@@ -228,5 +228,3 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
     );
   }
 }
-=======
->>>>>>> parent of 3697d61 (sadsad)
