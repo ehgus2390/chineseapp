@@ -1,7 +1,6 @@
 name: kkiri
 description: "A Flutter app connecting exchange students in Korea."
 publish_to: 'none'
-http: ^1.2.0
 version: 1.0.0+1
 
 environment:
@@ -12,26 +11,27 @@ dependencies:
     sdk: flutter
   provider: ^6.1.2
 
-  # 🔥 Firebase (Core 3.x 세대)
+  # Firebase (Core 3.x 세대)
   firebase_core: ^3.4.0
   firebase_auth: ^5.1.3
   cloud_firestore: ^5.5.1
   firebase_storage: ^12.1.3
 
-  # 🌍 지도 및 위치
+  # 지도/위치
   google_maps_flutter: ^2.7.0
   geolocator: ^10.1.1
   geocoding: ^3.0.0
   geoflutterfire_plus: ^0.0.32
+  http: ^1.2.0
 
-  # 🖼️ 이미지 업로드
+  # 이미지
   image_picker: ^1.0.7
 
-  # ⚙️ 기타
+  # 기타
   go_router: ^14.2.2
   shared_preferences: ^2.3.2
 
-  # 🌐 다국어
+  # 다국어
   flutter_localizations:
     sdk: flutter
   intl: ^0.20.2

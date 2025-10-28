@@ -8,8 +8,7 @@ class ChatProvider extends ChangeNotifier {
     final ids = [uid1, uid2]..sort();
     final chatId = ids.join('_');
     final ref = _db.collection('chats').doc(chatId);
-    final doc = await ref.get();
-    if (!doc.exists) {
+    if (!(await ref.get()).exists) {
       await ref.set({
         'members': ids,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -19,6 +18,13 @@ class ChatProvider extends ChangeNotifier {
     return chatId;
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> myChatRooms(String uid) {
+    return _db.collection('chats')
+        .where('members', arrayContains: uid)
+        .orderBy('updatedAt', descending: true)
+        .snapshots();
+  }
+
   Stream<QuerySnapshot<Map<String, dynamic>>> messagesStream(String chatId) {
     return _db.collection('chats').doc(chatId)
         .collection('messages')
@@ -26,23 +32,27 @@ class ChatProvider extends ChangeNotifier {
         .snapshots();
   }
 
-  Future<void> sendMessage(String chatId, String senderId, String text) async {
+  Future<void> sendTextMessage(String chatId, String senderId, String text) async {
     final msgRef = _db.collection('chats').doc(chatId).collection('messages').doc();
     await msgRef.set({
       'senderId': senderId,
       'text': text,
+      'imageUrl': null,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    await _db.collection('chats').doc(chatId).update({
-      'updatedAt': FieldValue.serverTimestamp(),
-      'lastMessage': text,
-    });
+    await _db.collection('chats').doc(chatId)
+        .update({'updatedAt': FieldValue.serverTimestamp(), 'lastMessage': text});
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> myChatRooms(String uid) {
-    return _db.collection('chats')
-        .where('members', arrayContains: uid)
-        .orderBy('updatedAt', descending: true)
-        .snapshots();
+  Future<void> sendImageMessage(String chatId, String senderId, String imageUrl) async {
+    final msgRef = _db.collection('chats').doc(chatId).collection('messages').doc();
+    await msgRef.set({
+      'senderId': senderId,
+      'text': null,
+      'imageUrl': imageUrl,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    await _db.collection('chats').doc(chatId)
+        .update({'updatedAt': FieldValue.serverTimestamp(), 'lastMessage': '📷 photo'});
   }
 }
