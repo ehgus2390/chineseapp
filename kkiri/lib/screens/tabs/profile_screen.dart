@@ -22,7 +22,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _upload() async {
-    final uid = context.read<AuthProvider>().currentUser!.uid;
+    final uid = context.read<AuthProvider>().currentUser?.uid;
+    if (uid == null) return;
     final storage = StorageService();
     if (_image == null) return;
     final url = await storage.uploadProfileImage(uid: uid, file: _image!);
