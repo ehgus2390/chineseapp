@@ -1,0 +1,85 @@
+diff --git a/kkiri/lib/screens/home_screen.dart b/kkiri/lib/screens/home_screen.dart
+index 8ffc87f7599badcbdbc37f04db142d00436f0fa1..5d4961f8706a88ad3b4a5d93fa593e04d76487bb 100644
+--- a/kkiri/lib/screens/home_screen.dart
++++ b/kkiri/lib/screens/home_screen.dart
+@@ -1,60 +1,57 @@
+ import 'package:flutter/material.dart';
+ import 'package:go_router/go_router.dart';
+ 
+ class HomeScreen extends StatefulWidget {
+   final Widget child;
+   const HomeScreen({super.key, required this.child});
+ 
+   @override
+   State<HomeScreen> createState() => _HomeScreenState();
+ }
+ 
+ class _HomeScreenState extends State<HomeScreen> {
+-  int _index = 2;
++  static const _tabs = <String>[
++    '/home/profile',
++    '/home/friends',
++    '/home/chat',
++    '/home/map',
++    '/home/board',
++    '/home/settings',
++  ];
+ 
+-  void _onTap(int i) {
+-    setState(() => _index = i);
+-    switch (i) {
+-      case 0:
+-        context.go('/home/profile');
+-        break;
+-      case 1:
+-        context.go('/home/friends');
+-        break;
+-      case 2:
+-        context.go('/home/chat');
+-        break;
+-      case 3:
+-        context.go('/home/map');
+-        break;
+-      case 4:
+-        context.go('/home/board');
+-        break;
+-      case 5:
+-        context.go('/home/settings');
+-        break;
++  void _onTap(int index) {
++    if (index < 0 || index >= _tabs.length) return;
++    final target = _tabs[index];
++    if (GoRouter.of(context).location != target) {
++      context.go(target);
+     }
+   }
+ 
++  int _locationToIndex(String location) {
++    final matchIndex = _tabs.indexWhere((path) => location.startsWith(path));
++    return matchIndex == -1 ? 2 : matchIndex;
++  }
++
+   @override
+   Widget build(BuildContext context) {
++    final currentIndex = _locationToIndex(GoRouter.of(context).location);
+     return Scaffold(
+       body: widget.child,
+       bottomNavigationBar: BottomNavigationBar(
+-        currentIndex: _index,
++        currentIndex: currentIndex,
+         type: BottomNavigationBarType.fixed,
+         selectedItemColor: Colors.blueAccent,
+         unselectedItemColor: Colors.grey,
+         onTap: _onTap,
+         items: const [
+           BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
+           BottomNavigationBarItem(icon: Icon(Icons.group), label: '친구'),
+           BottomNavigationBarItem(icon: Icon(Icons.chat), label: '채팅'),
+           BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),
+           BottomNavigationBarItem(icon: Icon(Icons.article), label: '게시판'),
+           BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
+         ],
+       ),
+     );
+   }
+ }

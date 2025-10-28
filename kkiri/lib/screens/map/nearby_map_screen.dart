@@ -39,7 +39,11 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
       final loc = context.read<LocationProvider>();
-      await loc.startAutoUpdate(auth.currentUser!.uid);
+      final uid = auth.currentUser?.uid;
+      if(uid == null) {
+        return;
+      }
+      await loc.startAutoUpdate(uid);
       _subscribeNearby();
     });
   }
@@ -86,6 +90,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       // 원형 마스크
       canvas.drawCircle(center, radius, paint);
       paint.blendMode = BlendMode.srcIn;
+
+      // 원형 마스크 적용하여 이미지 그리기
       canvas.drawImageRect(
         image,
         Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
@@ -106,7 +112,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
   /// 🗺️ Firestore → 마커 렌더링
   Future<void> _buildMarkers(List<DocumentSnapshot<Map<String, dynamic>>> docs) async {
     final auth = context.read<AuthProvider>();
-    final myId = auth.currentUser!.uid;
+    final myId = auth.currentUser?.uid;
+    if (myId == null) return;
     final Map<MarkerId, Marker> m = {};
 
     for (final d in docs) {
@@ -227,6 +234,4 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       },
     );
   }
-}
-=======
->>>>>>> parent of 3697d61 (sadsad)
+
