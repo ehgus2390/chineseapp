@@ -94,4 +94,6 @@ class LocationProvider extends ChangeNotifier {
     _positionSub?.cancel();
     super.dispose();
   }
+
+  static GeoFlutterFirePlus() {}
 }

@@ -242,4 +242,10 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       },
     );
   }
+
+  static GeoFlutterFirePlus() {}
 }
+
+// class UserProfilePopup {
+
+// }
