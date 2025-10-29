@@ -1,158 +1,144 @@
-import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../widgets/chat_bubble.dart';
-import '../../services/storage_service.dart';
 
 class ChatRoomScreen extends StatefulWidget {
-  final String chatId;
-  const ChatRoomScreen({super.key, required this.chatId});
+  final String peerId;
+  final String peerName;
+  final String? peerPhoto;
+
+  const ChatRoomScreen({
+    super.key,
+    required this.peerId,
+    required this.peerName,
+    this.peerPhoto,
+  });
 
   @override
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
-  final ctrl = TextEditingController();
-  final _picker = ImagePicker();
-  File? _previewImage;
-  bool _sending = false;
-
-  Future<void> _pickImage() async {
-    final x = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (x == null) return;
-    setState(() => _previewImage = File(x.path));
-  }
-
-  Future<void> _sendImage() async {
-    if (_previewImage == null) return;
-    final uid = context.read<AuthProvider>().currentUser?.uid;
-    if (uid == null) return;
-    final storage = StorageService();
-    final chatProv = context.read<ChatProvider>();
-
-    setState(() => _sending = true);
-    try {
-      final url = await storage.uploadChatImage(
-        chatId: widget.chatId,
-        senderUid: uid,
-        file: _previewImage!,
-      );
-      await chatProv.sendImageMessage(widget.chatId, uid, url);
-      setState(() => _previewImage = null);
-    } finally {
-      setState(() => _sending = false);
-    }
-  }
+  final _controller = TextEditingController();
+  final _scrollCtrl = ScrollController();
 
   @override
   Widget build(BuildContext context) {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
-    if (uid == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    final chatProv = context.read<ChatProvider>();
+    final auth = context.read<AuthProvider>();
+    final chat = context.read<ChatProvider>();
+    final myId = auth.currentUser!.uid;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('채팅')),
+      appBar: AppBar(
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            CircleAvatar(
+              backgroundImage: (widget.peerPhoto != null &&
+                  widget.peerPhoto!.startsWith('http'))
+                  ? NetworkImage(widget.peerPhoto!)
+                  : const AssetImage('assets/images/logo.png')
+              as ImageProvider,
+            ),
+            const SizedBox(width: 8),
+            Text(widget.peerName),
+          ],
+        ),
+      ),
       body: Column(
         children: [
-          if (_previewImage != null)
-            Container(
-              color: Colors.black12,
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(_previewImage!, width: 72, height: 72, fit: BoxFit.cover),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text('이미지 전송 준비…', style: TextStyle(color: Colors.grey[800]))),
-                  TextButton(
-                    onPressed: _sending ? null : () => setState(() => _previewImage = null),
-                    child: const Text('취소'),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _sending ? null : _sendImage,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send),
-                    label: const Text('전송'),
-                  )
-                ],
-              ),
-            ),
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: chatProv.messagesStream(widget.chatId),
-              builder: (_, snap) {
-                if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-                final messages = snap.data!.docs;
+              stream: chat.messageStream(myId, widget.peerId),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
+                final docs = snapshot.data!.docs;
                 return ListView.builder(
-                  padding: const EdgeInsets.only(top: 10, bottom: 10),
-                  itemCount: messages.length,
-                  itemBuilder: (_, i) {
-                    final m = messages[i].data();
-                    final isMe = m['senderId'] == uid;
-                    final time = (m['createdAt'] as Timestamp?)?.toDate();
+                  controller: _scrollCtrl,
+                  padding: const EdgeInsets.all(12),
+                  itemCount: docs.length,
+                  itemBuilder: (context, i) {
+                    final msg = docs[i].data();
+                    final isMe = msg['senderId'] == myId;
+
+                    final ts = msg['createdAt'] as Timestamp?;
+                    final time = ts != null
+                        ? DateFormat('HH:mm').format(ts.toDate())
+                        : '';
 
                     return ChatBubble(
+                      text: msg['text'] ?? '',
                       isMe: isMe,
-                      text: m['text'],
-                      imageUrl: m['imageUrl'],
+                      photoUrl: isMe ? auth.currentUser?.photoURL : widget.peerPhoto,
                       time: time,
-                      avatarUrl: isMe ? null : null, // 필요 시 상대방 photoUrl 전달
                     );
                   },
                 );
               },
             ),
           ),
-          SafeArea(
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.photo),
-                  onPressed: _pickImage,
-                  tooltip: '사진 첨부',
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: ctrl,
-                    decoration: const InputDecoration(
-                      hintText: '메시지 입력...',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () async {
-                    final text = ctrl.text.trim();
-                    if (text.isEmpty) return;
-                    await chatProv.sendTextMessage(widget.chatId, uid, text);
-                    ctrl.clear();
-                  },
-                ),
-              ],
-            ),
-          ),
+          _buildInputArea(chat, myId),
         ],
       ),
+    );
+  }
+
+  Widget _buildInputArea(ChatProvider chat, String myId) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                textInputAction: TextInputAction.send,
+                decoration: InputDecoration(
+                  hintText: '메시지 입력...',
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                onSubmitted: (_) => _send(chat, myId),
+              ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.send, color: Colors.blueAccent),
+              onPressed: () => _send(chat, myId),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _send(ChatProvider chat, String myId) async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    await chat.sendMessage(
+      senderId: myId,
+      receiverId: widget.peerId,
+      text: text,
+    );
+    _controller.clear();
+    await Future.delayed(const Duration(milliseconds: 100));
+    _scrollCtrl.animateTo(
+      _scrollCtrl.position.maxScrollExtent + 80,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
     );
   }
 }

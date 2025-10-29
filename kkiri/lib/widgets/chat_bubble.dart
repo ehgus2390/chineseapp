@@ -1,70 +1,64 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class ChatBubble extends StatelessWidget {
+  final String text;
   final bool isMe;
-  final String? text;
-  final String? imageUrl;
-  final DateTime? time;
-  final String? avatarUrl; // 좌측 아바타(상대방만 표시)
+  final String? photoUrl;
+  final String time;
 
   const ChatBubble({
     super.key,
+    required this.text,
     required this.isMe,
-    this.text,
-    this.imageUrl,
-    this.time,
-    this.avatarUrl,
+    this.photoUrl,
+    required this.time,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bubbleColor = isMe ? Colors.lightBlue[100] : Colors.grey[200];
-    final timeStr = time != null ? DateFormat('a h:mm').format(time!) : '';
+    final radius = Radius.circular(16);
 
-    final bubble = Container(
-      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.65),
-      padding: imageUrl != null ? const EdgeInsets.all(4) : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: imageUrl != null ? null : bubbleColor,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(12),
-          topRight: const Radius.circular(12),
-          bottomLeft: isMe ? const Radius.circular(12) : Radius.zero,
-          bottomRight: isMe ? Radius.zero : const Radius.circular(12),
-        ),
-      ),
-      child: imageUrl != null
-          ? ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(imageUrl!, fit: BoxFit.cover),
-      )
-          : Text(text ?? '', style: const TextStyle(fontSize: 15)),
-    );
-
-    final content = Row(
-      mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+    return Row(
+      mainAxisAlignment:
+      isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (!isMe)
           CircleAvatar(
-            radius: 15,
-            backgroundImage: (avatarUrl != null && avatarUrl!.startsWith('http')) ? NetworkImage(avatarUrl!) : null,
-            child: (avatarUrl == null) ? const Icon(Icons.person, size: 15) : null,
+            radius: 16,
+            backgroundImage: (photoUrl != null && photoUrl!.startsWith('http'))
+                ? NetworkImage(photoUrl!)
+                : const AssetImage('assets/images/logo.png') as ImageProvider,
           ),
-        if (!isMe) const SizedBox(width: 6),
-        Flexible(child: bubble),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: isMe ? Colors.blueAccent : Colors.grey[200],
+              borderRadius: BorderRadius.only(
+                topLeft: radius,
+                topRight: radius,
+                bottomLeft: isMe ? radius : Radius.zero,
+                bottomRight: isMe ? Radius.zero : radius,
+              ),
+            ),
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isMe ? Colors.white : Colors.black87,
+                fontSize: 15,
+              ),
+            ),
+          ),
+        ),
         const SizedBox(width: 4),
-        Text(timeStr, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+        Text(
+          time,
+          style: const TextStyle(fontSize: 11, color: Colors.grey),
+        ),
       ],
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-      child: Align(
-        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-        child: content,
-      ),
     );
   }
 }
