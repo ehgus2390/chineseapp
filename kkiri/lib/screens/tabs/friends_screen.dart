@@ -81,7 +81,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       onPressed: () async {
                         final chatId = await chatProv.createOrGetChatId(myUid, f['uid']);
                         if (!mounted) return;
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => ChatRoomScreen(chatId: chatId)));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => ChatRoomScreen(peerId: peerId)));
                       },
                     ),
                   );
