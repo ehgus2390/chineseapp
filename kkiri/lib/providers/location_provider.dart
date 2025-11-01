@@ -85,7 +85,7 @@ class LocationProvider extends ChangeNotifier {
       final collectionRef = db.collection('users');
       return geo
           .collection(collectionRef: collectionRef)
-          .within(center: center, radius: radiusKm, field: 'position');
+          .within(center: center, radiusInKm: radiusKm, field: 'position');
     });
   }
 

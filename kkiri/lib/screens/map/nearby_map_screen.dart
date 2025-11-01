@@ -20,7 +20,7 @@ class NearbyMapScreen extends StatefulWidget {
 }
 
 class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProviderStateMixin {
-  final geo = GeoFlutterFirePlus();
+  final GeoFlutterFirePlus geo = GeoFlutterFirePlus();
   GoogleMapController? _mapController;
   double _radiusKm = 5;
   final Map<MarkerId, Marker> _markers = {};
@@ -63,8 +63,10 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
     final loc = context.read<LocationProvider>();
     if (loc.position == null) return;
 
-    final center = GeoFirePoint(
-        GeoPoint(loc.position!.latitude, loc.position!.longitude));
+    final center = geo.point(
+      latitude: loc.position!.latitude,
+      longitude: loc.position!.longitude,
+    );
     final col = FirebaseFirestore.instance.collection('users');
 
     _nearbySub = geo
