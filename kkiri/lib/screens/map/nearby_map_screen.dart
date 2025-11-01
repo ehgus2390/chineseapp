@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -20,7 +19,6 @@ class NearbyMapScreen extends StatefulWidget {
 }
 
 class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProviderStateMixin {
-  final GeoFlutterFirePlus geo = GeoFlutterFirePlus();
   GoogleMapController? _mapController;
   double _radiusKm = 5;
   final Map<MarkerId, Marker> _markers = {};
@@ -61,18 +59,11 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
   void _subscribeNearby() {
     _nearbySub?.cancel();
     final loc = context.read<LocationProvider>();
-    if (loc.position == null) return;
+    final auth = context.read<AuthProvider>();
+    final uid = auth.currentUser?.uid;
+    if (loc.position == null || uid == null) return;
 
-    final center = geo.point(
-      latitude: loc.position!.latitude,
-      longitude: loc.position!.longitude,
-    );
-    final col = FirebaseFirestore.instance.collection('users');
-
-    _nearbySub = geo
-        .collection(collectionRef: col)
-        .within(center: center, radiusInKm: _radiusKm, field: 'position')
-        .listen((docs) => _buildMarkers(docs));
+    _nearbySub = loc.nearbyUsersStream(uid, _radiusKm).listen((docs) => _buildMarkers(docs));
   }
 
   /// 🔹 썸네일 원형 이미지 생성 (NetworkImage → BitmapDescriptor)
@@ -127,7 +118,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       final data = d.data();
       if (data == null || data['position'] == null) continue;
 
-      final GeoPoint p = data['position'];
+      final GeoPoint p = data['position']['geopoint'];
       final id = MarkerId(d.id);
 
       // 프로필 이미지 마커 적용
@@ -145,7 +136,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
         icon: icon,
         infoWindow: InfoWindow(
           title: data['displayName'] ?? 'User',
-          snippet: '@${data['searchId'] ?? ''}',
+          snippet: '@\${data['searchId'] ?? ''}',
           onTap: () {
             showModalBottomSheet(
               context: context,
@@ -224,7 +215,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
                     min: 1,
                     max: 20,
                     divisions: 19,
-                    label: '${_radiusKm.toInt()} km',
+                    label: '\${_radiusKm.toInt()} km',
                     onChanged: (v) => setState(() => _radiusKm = v),
                     onChangeEnd: (_) => _subscribeNearby(),
                   ),
