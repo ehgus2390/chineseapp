@@ -35,6 +35,22 @@ class ChatProvider with ChangeNotifier {
       'users': [senderId, receiverId],
     });
   }
+  /// 두 사용자의 채팅방을 생성하거나 기존 ID 반환
+  Future<String> createOrGetChatId(String userA, String userB) async {
+    final roomId = _chatRoomId(userA, userB);
+    final roomRef = _firestore.collection('chats').doc(roomId);
+    final snapshot = await roomRef.get();
+
+    if (!snapshot.exists) {
+      await roomRef.set({
+        'users': [userA, userB],
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+    return roomId;
+  }
 
   /// 실시간 메시지 스트림
   Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(

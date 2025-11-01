@@ -5,7 +5,7 @@ import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 
 class LocationProvider extends ChangeNotifier {
-  final geo = GeoFlutterFirePlus();
+  final GeoFlutterFirePlus geo = GeoFlutterFirePlus();
   final db = FirebaseFirestore.instance;
 
   Position? position;
@@ -94,6 +94,4 @@ class LocationProvider extends ChangeNotifier {
     _positionSub?.cancel();
     super.dispose();
   }
-
-  static GeoFlutterFirePlus() {}
 }
