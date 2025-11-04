@@ -14,7 +14,6 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  GoogleMapController? _mapController;
   final double radiusKm = 5.0;
 
   @override
@@ -60,6 +59,7 @@ class _MapScreenState extends State<MapScreen> {
                     final chatId = await chatProv.createOrGetChatId(uid, u.id);
                     if (!mounted) return;
                     Navigator.pop(context);
+                    if (!mounted) return;
                     Navigator.pushNamed(context, '/chatroom', arguments: chatId);
                   },
                 ),
@@ -69,7 +69,6 @@ class _MapScreenState extends State<MapScreen> {
         }
 
         return GoogleMap(
-          onMapCreated: (c) => _mapController = c,
           myLocationEnabled: true,
           initialCameraPosition: const CameraPosition(target: LatLng(37.5665, 126.9780), zoom: 13),
           markers: markers,

@@ -16,13 +16,17 @@ class PostProvider extends ChangeNotifier {
         .snapshots();
   }
 
-  Future<void> writePost(String authorId, String content) async {
-    await _db.collection('posts').add({
-      'authorId': authorId,
-      'content': content,
-      'createdAt': FieldValue.serverTimestamp(),
+  Future<String> addPost(String uid, String text, {String? imageUrl}) async {
+    final ref = await _db.collection('posts').add({
+      'authorId': uid,
+      'text': text,
+      'imageUrl': imageUrl,
       'likesCount': 0,
+      'commentsCount': 0,
+      'isPopular': false,
+      'createdAt': FieldValue.serverTimestamp(),
     });
+    return ref.id;
   }
 
   Future<void> toggleLike(String postId, String uid) async {

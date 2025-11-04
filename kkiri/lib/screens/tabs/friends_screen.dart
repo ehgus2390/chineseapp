@@ -78,10 +78,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     subtitle: Text('@${f['searchId'] ?? ''}'),
                     trailing: IconButton(
                       icon: const Icon(Icons.chat_bubble_outline),
-                      onPressed: () async {
-                        final chatId = await chatProv.createOrGetChatId(myUid, f['uid']);
+                      onPressed: () {
                         if (!mounted) return;
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => ChatRoomScreen(peerId: peerId)));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => ChatRoomScreen(
+                          peerId: f['uid'],
+                          peerName: f['displayName'] ?? f['uid'],
+                          peerPhoto: f['photoUrl'],
+                        )));
                       },
                     ),
                   );
