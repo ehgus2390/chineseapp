@@ -9,39 +9,36 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  provider: ^6.1.2
+  flutter_localizations:
+    sdk: flutter
 
-  # Firebase (Core 3.x 세대)
+  # Core
+  provider: ^6.1.2
+  cupertino_icons: ^1.0.8
+  go_router: ^14.1.4
+  shared_preferences: ^2.2.3
+  http: ^1.2.1
+  intl: ^0.20.0
+
+  # Firebase
   firebase_core: ^4.2.0
   firebase_auth: ^6.1.1
   cloud_firestore: ^6.0.3
   firebase_storage: ^13.0.3
   google_sign_in: ^6.2.1
 
-  # 지도/위치
+  # Map/Location
   google_maps_flutter: ^2.7.0
-  geolocator: ^14.0.2
-  geocoding: ^4.0.0
-  http: ^1.2.0
-
-  # 이미지
-  image_picker: ^1.0.7
-
-  # 기타
-  go_router: ^16.3.0
-  shared_preferences: ^2.3.2
-
-  # 다국어
-  flutter_localizations:
-    sdk: flutter
-  intl: ^0.20.2
-
-  cupertino_icons: ^1.0.8
+  geolocator: ^12.0.0
+  geocoding: ^3.0.0
   geoflutterfire_plus: ^0.0.32
 
+  # Image
+  image_picker: ^1.1.2
+
 dev_dependencies:
-  flutter_launcher_icons: ^0.14.4
-  flutter_lints: ^6.0.0
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter_icons:
   android: true

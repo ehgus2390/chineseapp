@@ -114,6 +114,11 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
     if (myId == null) return;
     final Map<MarkerId, Marker> m = {};
 
+    final myDoc = await FirebaseFirestore.instance.collection('users').doc(myId).get();
+    final myData = myDoc.data();
+    if (myData == null) return;
+    final myInterests = Set<String>.from(myData['interests'] ?? []);
+
     for (final d in docs) {
       final data = d.data();
       if (data == null || data['position'] == null) continue;
@@ -121,9 +126,14 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       final GeoPoint p = data['position']['geopoint'];
       final id = MarkerId(d.id);
 
+      final userInterests = Set<String>.from(data['interests'] ?? []);
+      final hasCommonInterests = myInterests.intersection(userInterests).isNotEmpty;
+
       // 프로필 이미지 마커 적용
       BitmapDescriptor icon;
-      if (data['photoUrl'] != null &&
+      if (hasCommonInterests) {
+        icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow);
+      } else if (data['photoUrl'] != null &&
           data['photoUrl'].toString().startsWith('http')) {
         icon = await _createProfileMarker(data['photoUrl']);
       } else {
@@ -136,19 +146,19 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
         icon: icon,
         infoWindow: InfoWindow(
           title: data['displayName'] ?? 'User',
-          snippet: '@\${data['searchId'] ?? ''}',
-          onTap: () {
-            showModalBottomSheet(
-              context: context,
-              builder: (_) =>
-                  UserProfilePopup(
-                    uid: d.id,
-                    displayName: data['displayName'],
-                    photoUrl: data['photoUrl'],
-                  ),
-            );
-          },
+          snippet: '@${data['searchId'] ?? ''}',
         ),
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            builder: (_) =>
+                UserProfilePopup(
+                  uid: d.id,
+                  displayName: data['displayName'],
+                  photoUrl: data['photoUrl'],
+                ),
+          );
+        },
       );
     }
 
