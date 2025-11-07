@@ -11,12 +11,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const _tabs = <String>[
-    '/home/profile',
-    '/home/friends',
+    '/home/discover',
+    '/home/matches',
     '/home/chat',
     '/home/map',
-    '/home/board',
-    '/home/settings',
+    '/home/profile',
   ];
 
   void _onTap(int index) {
@@ -34,28 +33,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = _locationToIndex(GoRouter.of(context).location);
+    final locationInfo = GoRouter.of(context).routeInformationProvider.value;
+    final currentPath = locationInfo.uri.toString();
+    final currentIndex = _locationToIndex(currentPath);
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blueAccent,
+        selectedItemColor: Colors.pinkAccent,
         unselectedItemColor: Colors.grey,
         onTap: _onTap,
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: '발견'),
+          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: '매칭'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: '채팅'),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: '근처'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: '친구'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: '채팅'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: '게시판'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
         ],
       ),
     );
   }
-}
-
-extension on GoRouter {
-  get location => null;
 }

@@ -205,7 +205,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       animation: _pulse,
       builder: (_, __) {
         return Scaffold(
-          appBar: AppBar(title: const Text('주변 사용자')),
+          appBar: AppBar(title: const Text('근처 인연 지도')),
           body: GoogleMap(
             onMapCreated: (controller) => _mapController = controller,
             initialCameraPosition: CameraPosition(target: myPos, zoom: 14),
@@ -218,7 +218,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                const Text('반경'),
+                const Text('검색 반경'),
                 Expanded(
                   child: Slider(
                     value: _radiusKm,

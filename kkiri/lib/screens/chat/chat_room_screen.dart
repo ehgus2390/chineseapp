@@ -27,6 +27,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final _scrollCtrl = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = context.read<AuthProvider>();
+      final chat = context.read<ChatProvider>();
+      final myId = auth.currentUser?.uid;
+      if (myId != null) {
+        await chat.createOrGetChatId(myId, widget.peerId);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final chat = context.read<ChatProvider>();
