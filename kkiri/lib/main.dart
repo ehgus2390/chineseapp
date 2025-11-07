@@ -6,15 +6,15 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
-import 'providers/friends_provider.dart';
+import 'providers/match_provider.dart';
 import 'providers/location_provider.dart';
 import 'screens/auth/sign_in_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/map/nearby_map_screen.dart';
 import 'screens/settings/settings_screen.dart';
-import 'screens/tabs/board_screen.dart';
 import 'screens/tabs/chat_list_screen.dart';
-import 'screens/tabs/friends_screen.dart';
+import 'screens/tabs/discover_screen.dart';
+import 'screens/tabs/matches_screen.dart';
 import 'screens/tabs/profile_screen.dart';
 
 Future<void> main() async {
@@ -31,7 +31,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => FriendsProvider()),
+        ChangeNotifierProvider(create: (_) => MatchProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
       ],
       child: const KkiriApp(),
@@ -46,7 +46,7 @@ class KkiriApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final router = GoRouter(
-      initialLocation: '/home/chat',
+      initialLocation: '/home/discover',
       refreshListenable: auth,
       redirect: (context, state) {
         final isLoggedIn = auth.currentUser != null;
@@ -55,7 +55,7 @@ class KkiriApp extends StatelessWidget {
           return loggingIn ? null : '/sign-in';
         }
         if (loggingIn) {
-          return '/home/chat';
+          return '/home/discover';
         }
         return null;
       },
@@ -64,11 +64,11 @@ class KkiriApp extends StatelessWidget {
         ShellRoute(
           builder: (context, state, child) => HomeScreen(child: child),
           routes: [
-            GoRoute(path: '/home/profile', builder: (_, __) => const ProfileScreen()),
-            GoRoute(path: '/home/friends', builder: (_, __) => const FriendsScreen()),
+            GoRoute(path: '/home/discover', builder: (_, __) => const DiscoverScreen()),
+            GoRoute(path: '/home/matches', builder: (_, __) => const MatchesScreen()),
             GoRoute(path: '/home/chat', builder: (_, __) => const ChatListScreen()),
             GoRoute(path: '/home/map', builder: (_, __) => const NearbyMapScreen()),
-            GoRoute(path: '/home/board', builder: (_, __) => const BoardScreen()),
+            GoRoute(path: '/home/profile', builder: (_, __) => const ProfileScreen()),
             GoRoute(path: '/home/settings', builder: (_, __) => const SettingsScreen()),
           ],
         ),
@@ -76,8 +76,8 @@ class KkiriApp extends StatelessWidget {
     );
 
     return MaterialApp.router(
-      title: 'Kkiri',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blueAccent),
+      title: 'HeartLink',
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.pinkAccent),
       routerConfig: router,
     );
   }
