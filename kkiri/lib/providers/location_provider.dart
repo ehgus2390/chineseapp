@@ -30,8 +30,7 @@ class LocationProvider extends ChangeNotifier {
   Future<void> _saveToFirestore(String uid, Position pos) async {
     final geoPoint = geo.point(latitude: pos.latitude, longitude: pos.longitude);
     await db.collection('users').doc(uid).set({
-      'position': geoPoint.geoPoint,
-      'geohash': geoPoint.hash,
+      'position': geoPoint.data,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -77,12 +76,21 @@ class LocationProvider extends ChangeNotifier {
   Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(String uid, double radiusKm) {
     return db.collection('users').doc(uid).snapshots().asyncExpand((snap) {
       final data = snap.data();
-      if (data == null || data['position'] == null) {
-        return Stream<List<DocumentSnapshot<Map<String, dynamic>>>>.empty();
+      // Add robust check for position data to handle inconsistent data formats
+      if (data == null) {
+        return Stream.empty();
       }
-      final point = data['position'] as GeoPoint;
+      
+      final positionData = data['position'];
+      if (positionData is! Map<String, dynamic> || positionData['geopoint'] is! GeoPoint) {
+        // If data is not in the expected format, return an empty stream to avoid crashes.
+        return Stream.empty();
+      }
+
+      final point = positionData['geopoint'] as GeoPoint;
       final center = geo.point(latitude: point.latitude, longitude: point.longitude);
       final collectionRef = db.collection('users');
+      
       return geo
           .collection(collectionRef: collectionRef)
           .within(center: center, radiusInKm: radiusKm, field: 'position');
