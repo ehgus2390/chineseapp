@@ -35,12 +35,19 @@ class AuthProvider extends ChangeNotifier {
         final snapshot = await doc.get();
         if (!snapshot.exists) {
           await doc.set({
-            'displayName': 'User_${currentUser!.uid.substring(0, 6)}',
+            'displayName': 'Heart_${currentUser!.uid.substring(0, 6)}',
             'photoUrl': null,
+            'bio': '새로운 인연을 찾아요!',
+            'age': null,
+            'gender': null,
+            'interests': <String>[],
+            'likesSent': <String>[],
+            'likesReceived': <String>[],
+            'matches': <String>[],
+            'passes': <String>[],
             'email': currentUser!.email,
             'createdAt': FieldValue.serverTimestamp(),
             'lang': 'ko',
-            'friends': [],
             'searchId': currentUser!.uid.substring(0, 6),
           });
         }
@@ -63,7 +70,16 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateProfile({String? displayName, String? photoUrl, String? searchId, String? lang}) async {
+  Future<void> updateProfile({
+    String? displayName,
+    String? photoUrl,
+    String? searchId,
+    String? lang,
+    String? bio,
+    int? age,
+    String? gender,
+    List<String>? interests,
+  }) async {
     final uid = currentUser?.uid;
     if (uid == null) return;
     final data = <String, dynamic>{};
@@ -77,6 +93,10 @@ class AuthProvider extends ChangeNotifier {
     }
     if (searchId != null) data['searchId'] = searchId;
     if (lang != null) data['lang'] = lang;
+    if (bio != null) data['bio'] = bio;
+    if (age != null) data['age'] = age;
+    if (gender != null) data['gender'] = gender;
+    if (interests != null) data['interests'] = interests;
     if (data.isNotEmpty) {
       await _db.collection('users').doc(uid).update(data);
       notifyListeners();
