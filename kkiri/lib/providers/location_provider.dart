@@ -35,7 +35,8 @@ class LocationProvider extends ChangeNotifier {
   }
 
   Future<void> _saveToFirestore(String uid, Position pos) async {
-    final geoPoint = geo.point(latitude: pos.latitude, longitude: pos.longitude);
+    final geoPoint = geo.point(
+        latitude: pos.latitude, longitude: pos.longitude);
     await db.collection('users').doc(uid).set({
       'position': geoPoint.data,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -50,7 +51,8 @@ class LocationProvider extends ChangeNotifier {
     try {
       isUpdating = true;
       notifyListeners();
-      final current = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final current = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
       position = current;
       await _saveToFirestore(uid, current);
       errorMessage = null;
@@ -89,7 +91,8 @@ class LocationProvider extends ChangeNotifier {
       return;
     }
     try {
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
       position = pos;
       await _saveToFirestore(uid, pos);
       errorMessage = null;
@@ -100,7 +103,8 @@ class LocationProvider extends ChangeNotifier {
     }
   }
 
-  Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(String uid, double radiusKm) {
+  Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(
+      String uid, double radiusKm) {
     return db.collection('users').doc(uid).snapshots().asyncExpand((snap) {
       final data = snap.data();
       // Add robust check for position data to handle inconsistent data formats
@@ -109,13 +113,15 @@ class LocationProvider extends ChangeNotifier {
       }
 
       final positionData = data['position'];
-      if (positionData is! Map<String, dynamic> || positionData['geopoint'] is! GeoPoint) {
+      if (positionData is! Map<String, dynamic> ||
+          positionData['geopoint'] is! GeoPoint) {
         // If data is not in the expected format, return an empty stream to avoid crashes.
         return Stream.empty();
       }
 
       final point = positionData['geopoint'] as GeoPoint;
-      final center = geo.point(latitude: point.latitude, longitude: point.longitude);
+      final center = geo.point(
+          latitude: point.latitude, longitude: point.longitude);
       final collectionRef = db.collection('users');
 
       return geo
@@ -123,3 +129,4 @@ class LocationProvider extends ChangeNotifier {
           .within(center: center, radiusInKm: radiusKm, field: 'position');
     });
   }
+}
