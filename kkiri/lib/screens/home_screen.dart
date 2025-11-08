@@ -21,9 +21,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onTap(int index) {
     if (index < 0 || index >= _tabs.length) return;
     final target = _tabs[index];
-    if (GoRouter.of(context).location != target) {
-      context.go(target);
+    final router = GoRouter.of(context);
+    final currentUri = router.routeInformationProvider.value.uri.toString();
+
+    if (currentUri != target) {
+      router.go(target);
     }
+
   }
 
   int _locationToIndex(String location) {
