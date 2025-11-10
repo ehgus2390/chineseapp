@@ -5,7 +5,7 @@ import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 
 class LocationProvider extends ChangeNotifier {
-  final geo = GeoFlutterFire();
+  final geo = Geoflutterfire();
   final db = FirebaseFirestore.instance;
 
   Position? position;
@@ -51,8 +51,11 @@ class LocationProvider extends ChangeNotifier {
     try {
       isUpdating = true;
       notifyListeners();
-      final current = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+      final current = await Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).first;
       position = current;
       await _saveToFirestore(uid, current);
       errorMessage = null;
@@ -91,8 +94,11 @@ class LocationProvider extends ChangeNotifier {
       return;
     }
     try {
-      final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+      final pos = await Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).first;
       position = pos;
       await _saveToFirestore(uid, pos);
       errorMessage = null;
