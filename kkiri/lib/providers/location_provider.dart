@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 
+
+
 class LocationProvider extends ChangeNotifier {
   final geo = Geoflutterfire();
   final db = FirebaseFirestore.instance;
@@ -135,4 +137,15 @@ class LocationProvider extends ChangeNotifier {
           .within(center: center, radiusInKm: radiusKm, field: 'position');
     });
   }
+
+  static Geoflutterfire() {}
+  
+  // Future<DocumentReference> _addGeoPoint() async {
+  //   var pos = await Geolocator.getCurrentPosition();
+  //   GeoFirePoint point = geo.point(latitude: pos.latitude, longitude: pos.longitude);
+  //   return firestore.collection('locations').add({
+  //     'position': point.data,
+  //     'timestamp': FieldValue.serverTimestamp(),
+  //   }
+  // }
 }
