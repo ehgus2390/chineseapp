@@ -1,23 +1,14 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.ant.company"
+    namespace = "com.example.kkiri"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
-
-    defaultConfig {
-        applicationId = "com.ant.company"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-        multiDexEnabled = true
-    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -28,31 +19,22 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            // ✅ ProGuard rules 포함 (Firebase, Maps, Geolocator 충돌 방지)
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-            signingConfig = signingConfigs.getByName("debug")
-        }
-        debug {
-            signingConfig = signingConfigs.getByName("debug")
-        }
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.example.kkiri"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
-    packaging {
-        resources {
-            excludes += setOf(
-                "META-INF/LICENSE",
-                "META-INF/LICENSE.txt",
-                "META-INF/NOTICE",
-                "META-INF/NOTICE.txt",
-                "META-INF/DEPENDENCIES"
-            )
+    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
@@ -62,14 +44,6 @@ flutter {
 }
 
 dependencies {
-    // ✅ 필수: Firebase 및 Google Play Services
+    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
     implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-firestore")
-    implementation("com.google.firebase:firebase-storage")
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
-    implementation("com.google.android.gms:play-services-location:21.2.0")
-
-    // ✅ Kotlin 표준 라이브러리
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:${project.extra["kotlin_version"]}")
 }
