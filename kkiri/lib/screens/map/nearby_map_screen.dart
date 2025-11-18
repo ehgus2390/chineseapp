@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import 'user_profile_popup.dart';
@@ -193,6 +194,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocationProvider>();
+    final l10n = context.l10n;
     if (loc.position == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -205,7 +207,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
       animation: _pulse,
       builder: (_, __) {
         return Scaffold(
-          appBar: AppBar(title: const Text('주변 사용자')),
+          appBar: AppBar(title: Text(l10n.mapTitle)),
           body: GoogleMap(
             onMapCreated: (controller) => _mapController = controller,
             initialCameraPosition: CameraPosition(target: myPos, zoom: 14),
@@ -218,20 +220,20 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                const Text('반경'),
+                Text(l10n.searchRadius),
                 Expanded(
                   child: Slider(
                     value: _radiusKm,
                     min: 1,
                     max: 20,
                     divisions: 19,
-                    label: '\${_radiusKm.toInt()} km',
+                    label: l10n.radiusDisplay(_radiusKm),
                     onChanged: (v) => setState(() => _radiusKm = v),
                     onChangeEnd: (_) => _subscribeNearby(),
                   ),
                 ),
                 IconButton(
-                  tooltip: '내 위치로 이동',
+                  tooltip: l10n.recenter,
                   icon: const Icon(Icons.my_location),
                   onPressed: () =>
                       _mapController?.animateCamera(
