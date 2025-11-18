@@ -4,10 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 
-
-
 class LocationProvider extends ChangeNotifier {
-  final geo = Geoflutterfire();
+  final GeoFlutterFirePlus geo = GeoFlutterFirePlus.instance;
   final db = FirebaseFirestore.instance;
 
   Position? position;
@@ -37,8 +35,7 @@ class LocationProvider extends ChangeNotifier {
   }
 
   Future<void> _saveToFirestore(String uid, Position pos) async {
-    final geoPoint = geo.point(
-        latitude: pos.latitude, longitude: pos.longitude);
+    final geoPoint = geo.point(latitude: pos.latitude, longitude: pos.longitude);
     await db.collection('users').doc(uid).set({
       'position': geoPoint.data,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -53,11 +50,7 @@ class LocationProvider extends ChangeNotifier {
     try {
       isUpdating = true;
       notifyListeners();
-      final current = await Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      ).first;
+      final current = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       position = current;
       await _saveToFirestore(uid, current);
       errorMessage = null;
@@ -96,11 +89,7 @@ class LocationProvider extends ChangeNotifier {
       return;
     }
     try {
-      final pos = await Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      ).first;
+      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       position = pos;
       await _saveToFirestore(uid, pos);
       errorMessage = null;
@@ -111,41 +100,33 @@ class LocationProvider extends ChangeNotifier {
     }
   }
 
-  Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(
-      String uid, double radiusKm) {
+  Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(String uid, double radiusKm) {
     return db.collection('users').doc(uid).snapshots().asyncExpand((snap) {
       final data = snap.data();
       // Add robust check for position data to handle inconsistent data formats
       if (data == null) {
         return Stream.empty();
       }
-
+      
       final positionData = data['position'];
-      if (positionData is! Map<String, dynamic> ||
-          positionData['geopoint'] is! GeoPoint) {
+      if (positionData is! Map<String, dynamic> || positionData['geopoint'] is! GeoPoint) {
         // If data is not in the expected format, return an empty stream to avoid crashes.
         return Stream.empty();
       }
 
       final point = positionData['geopoint'] as GeoPoint;
-      final center = geo.point(
-          latitude: point.latitude, longitude: point.longitude);
+      final center = geo.point(latitude: point.latitude, longitude: point.longitude);
       final collectionRef = db.collection('users');
-
+      
       return geo
           .collection(collectionRef: collectionRef)
           .within(center: center, radiusInKm: radiusKm, field: 'position');
     });
   }
 
-  static Geoflutterfire() {}
-  
-  // Future<DocumentReference> _addGeoPoint() async {
-  //   var pos = await Geolocator.getCurrentPosition();
-  //   GeoFirePoint point = geo.point(latitude: pos.latitude, longitude: pos.longitude);
-  //   return firestore.collection('locations').add({
-  //     'position': point.data,
-  //     'timestamp': FieldValue.serverTimestamp(),
-  //   }
-  // }
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    super.dispose();
+  }
 }
