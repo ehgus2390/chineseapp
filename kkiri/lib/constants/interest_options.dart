@@ -19,7 +19,6 @@ const List<InterestOption> kInterestOptions = [
   InterestOption(id: 'kdrama', icon: Icons.live_tv),
   InterestOption(id: 'fitness', icon: Icons.self_improvement),
 ];
-
-const Set<String> kInterestOptionIds = {
+final Set<String> kInterestOptionIds = {
   for (final option in kInterestOptions) option.id,
 };
