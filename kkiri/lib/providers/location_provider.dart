@@ -50,12 +50,13 @@ class LocationProvider extends ChangeNotifier {
       isUpdating = true;
       notifyListeners();
 
-      final current = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
+    try {
+      isUpdating = true;
+      notifyListeners();
+      final current = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       position = current;
       await _saveToFirestore(uid, current);
+      errorMessage = null;
       notifyListeners();
 
       await _positionSub?.cancel();
@@ -67,6 +68,9 @@ class LocationProvider extends ChangeNotifier {
       ).listen((pos) async {
         position = pos;
         await _saveToFirestore(uid, pos);
+        notifyListeners();
+      }, onError: (Object e) {
+        errorMessage = '위치 업데이트 중 오류가 발생했습니다.';
         notifyListeners();
       });
     } catch (e) {

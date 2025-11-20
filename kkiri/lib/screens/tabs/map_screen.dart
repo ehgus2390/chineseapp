@@ -32,7 +32,7 @@ class _MapScreenState extends State<MapScreen> {
     final chatProv = context.read<ChatProvider>();
     final uid = auth.currentUser!.uid;
 
-    return StreamBuilder<List<DocumentSnapshot>>(
+    return StreamBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
       stream: locProv.nearbyUsersStream(uid, radiusKm),
       builder: (_, snap) {
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
@@ -41,8 +41,12 @@ class _MapScreenState extends State<MapScreen> {
 
         for (final u in users) {
           if (u.id == uid) continue;
-          final data = u.data() as Map<String, dynamic>;
-          final geoPoint = data['position'];
+          final data = u.data();
+          if (data == null) continue;
+          final position = data['position'];
+          if (position is! Map<String, dynamic>) continue;
+          final geoPoint = position['geopoint'];
+          if (geoPoint is! GeoPoint) continue;
           final LatLng pos = LatLng(geoPoint.latitude, geoPoint.longitude);
 
           markers.add(Marker(
