@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../constants/interest_options.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/match_provider.dart';
@@ -14,6 +16,7 @@ class MatchesScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final matchProv = context.watch<MatchProvider>();
     final chatProv = context.read<ChatProvider>();
+    final l10n = context.l10n;
     final myUid = auth.currentUser?.uid;
 
     if (myUid == null) {
@@ -22,7 +25,7 @@ class MatchesScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('매칭된 인연'),
+        title: Text(l10n.matchesTitle),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: matchProv.matchesStream(myUid),
@@ -33,13 +36,10 @@ class MatchesScreen extends StatelessWidget {
 
           final matches = snapshot.data!;
           if (matches.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  '아직 매칭된 사람이 없어요. 발견 탭에서 마음에 드는 사람에게 좋아요를 보내보세요!',
-                  textAlign: TextAlign.center,
-                ),
+                padding: const EdgeInsets.all(24),
+                child: Text(l10n.matchesEmpty, textAlign: TextAlign.center),
               ),
             );
           }
@@ -51,9 +51,13 @@ class MatchesScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final match = matches[index];
               final photoUrl = match['photoUrl'] as String?;
-              final displayName = match['displayName'] as String? ?? '알 수 없는 사용자';
-              final bio = match['bio'] as String? ?? '소개글이 아직 없어요.';
+              final displayName = match['displayName'] as String? ?? l10n.profileTitle;
+              final bio = match['bio'] as String? ?? l10n.bioHint;
               final interests = (match['interests'] as List?)?.cast<String>() ?? <String>[];
+              final interestLabels = interests
+                  .map((interest) =>
+                      kInterestOptionIds.contains(interest) ? context.l10n.interestLabelText(interest) : interest)
+                  .toList();
 
               return ListTile(
                 leading: CircleAvatar(
@@ -72,13 +76,13 @@ class MatchesScreen extends StatelessWidget {
                   children: [
                     const SizedBox(height: 4),
                     Text(bio, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    if (interests.isNotEmpty)
+                    if (interestLabels.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 6),
                         child: Wrap(
                           spacing: 6,
                           runSpacing: -4,
-                          children: interests
+                          children: interestLabels
                               .take(3)
                               .map((interest) => Chip(
                                     label: Text(interest),
@@ -93,7 +97,7 @@ class MatchesScreen extends StatelessWidget {
                 isThreeLine: true,
                 trailing: IconButton(
                   icon: const Icon(Icons.chat_bubble_outline, color: Colors.pinkAccent),
-                  tooltip: '채팅 시작',
+                  tooltip: l10n.recommendedStartChat,
                   onPressed: () async {
                     final otherUid = match['uid'] as String;
                     await chatProv.createOrGetChatId(myUid, otherUid);

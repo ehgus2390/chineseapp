@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../l10n/l10n_extensions.dart';
+import '../providers/auth_provider.dart';
+import '../providers/location_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   final Widget child;
@@ -11,23 +16,32 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const _tabs = <String>[
-    '/home/discover',
-    '/home/matches',
     '/home/chat',
+    '/home/discover',
     '/home/map',
+    '/home/matches',
     '/home/profile',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = context.read<AuthProvider>();
+      final loc = context.read<LocationProvider>();
+      final uid = auth.currentUser?.uid;
+      if (uid != null) {
+        await loc.startAutoUpdate(uid);
+      }
+    });
+  }
 
   void _onTap(int index) {
     if (index < 0 || index >= _tabs.length) return;
     final target = _tabs[index];
-    final router = GoRouter.of(context);
-    final currentUri = router.routeInformationProvider.value.uri.toString();
-
-    if (currentUri != target) {
-      router.go(target);
+    if (GoRouter.of(context).location != target) {
+      context.go(target);
     }
-
   }
 
   int _locationToIndex(String location) {
@@ -37,23 +51,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final locationInfo = GoRouter.of(context).routeInformationProvider.value;
     final currentPath = locationInfo.uri.toString();
     final currentIndex = _locationToIndex(currentPath);
     return Scaffold(
       body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.pinkAccent,
-        unselectedItemColor: Colors.grey,
-        onTap: _onTap,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: '발견'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: '매칭'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: '채팅'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: '근처'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: _onTap,
+        destinations: [
+          NavigationDestination(icon: const Icon(Icons.chat_bubble_outline), label: l10n.chatTab),
+          NavigationDestination(icon: const Icon(Icons.favorite_outline), label: l10n.discoverTab),
+          NavigationDestination(icon: const Icon(Icons.map_outlined), label: l10n.mapTab),
+          NavigationDestination(icon: const Icon(Icons.favorite), label: l10n.matchesTab),
+          NavigationDestination(icon: const Icon(Icons.person_outline), label: l10n.profileTab),
         ],
       ),
     );

@@ -6,6 +6,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../constants/interest_options.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
@@ -21,9 +24,10 @@ class DiscoverScreen extends StatefulWidget {
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
   final PageController _pageController = PageController();
-  double _radiusKm = 10;
+  double _radiusKm = 5;
   int _currentIndex = 0;
   bool _isProcessing = false;
+  final Set<String> _selectedFilters = {};
 
   @override
   void initState() {
@@ -58,6 +62,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final auth = context.read<AuthProvider>();
     final chatProv = context.read<ChatProvider>();
     final matchProv = context.read<MatchProvider>();
+    final l10n = context.l10n;
     final uid = auth.currentUser?.uid;
     if (uid == null) {
       setState(() => _isProcessing = false);
@@ -70,13 +75,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         await chatProv.createOrGetChatId(uid, user.uid);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('새로운 매칭! ${user.displayName ?? '상대방'}와 연결되었습니다.')),
+          SnackBar(content: Text(l10n.newMatchSnack)),
         );
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${user.displayName ?? '상대방'}에게 호감을 보냈어요.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.likeSentSnack)));
       }
     } finally {
       if (mounted) {
@@ -112,6 +115,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final auth = context.watch<AuthProvider>();
     final loc = context.watch<LocationProvider>();
     final matchProv = context.watch<MatchProvider>();
+    final l10n = context.l10n;
 
     final uid = auth.currentUser?.uid;
     if (uid == null) {
@@ -120,11 +124,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('새 인연 찾기'),
+        title: Text(l10n.discoverTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.map_outlined),
-            tooltip: '근처 사람 지도 보기',
+            tooltip: l10n.openMap,
             onPressed: () => context.go('/home/map'),
           ),
         ],
@@ -142,7 +146,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       const Icon(Icons.location_off, size: 64, color: Colors.pinkAccent),
                       const SizedBox(height: 16),
                       Text(
-                        loc.errorMessage!,
+                        loc.errorMessage ?? l10n.pleaseShareLocation,
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontSize: 16),
                       ),
@@ -153,7 +157,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         child: ElevatedButton.icon(
                           onPressed: () => loc.updateMyLocation(uid),
                           icon: const Icon(Icons.refresh),
-                          label: const Text('다시 시도'),
+                          label: Text(l10n.retry),
                         ),
                       ),
                   ],
@@ -178,7 +182,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    final candidates = snapshot.data!
+                    var candidates = snapshot.data!
                         .where((doc) => doc.id != uid)
                         .where((doc) => doc.data() != null)
                         .where((doc) => !liked.contains(doc.id))
@@ -186,6 +190,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         .where((doc) => !matches.contains(doc.id))
                         .map((doc) => UserModel.fromFirestore(doc))
                         .toList();
+
+                    if (_selectedFilters.isNotEmpty) {
+                      candidates = candidates
+                          .where((user) =>
+                              user.interests?.any((interest) => _selectedFilters.contains(interest)) ?? false)
+                          .toList();
+                    }
 
                     candidates.sort((a, b) {
                       final aScore = _scoreCandidate(a, myInterests);
@@ -201,12 +212,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           children: [
                             const Icon(Icons.favorite_border, size: 64, color: Colors.pinkAccent),
                             const SizedBox(height: 16),
-                            const Text(
-                              '반경 내에 새로운 추천이 없어요. 반경을 넓혀보거나 잠시 후 다시 시도해보세요!',
+                            Text(
+                              l10n.noCandidates,
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 24),
-                            _radiusSlider(),
+                            _radiusSlider(l10n),
                           ],
                         ),
                       );
@@ -224,7 +235,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     return Column(
                       children: [
                         const SizedBox(height: 12),
-                        _radiusSlider(),
+                        _radiusSlider(l10n),
+                        _interestFilterChips(l10n),
                         Expanded(
                           child: PageView.builder(
                             controller: _pageController,
@@ -235,6 +247,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                               final distanceKm = _distanceKm(loc.position, user.position);
                               return _UserCard(
                                 user: user,
+                                l10n: l10n,
                                 distanceKm: distanceKm,
                                 onPass: () async {
                                   await _handlePass(user);
@@ -258,7 +271,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  Widget _radiusSlider() {
+  Widget _radiusSlider(AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
@@ -270,10 +283,52 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               min: 1,
               max: 30,
               divisions: 29,
-              label: '${_radiusKm.toStringAsFixed(0)}km',
+              label: l10n.radiusDisplay(_radiusKm),
               onChanged: (value) => setState(() => _radiusKm = value),
             ),
           ),
+          Text(l10n.radiusLabel),
+        ],
+      ),
+    );
+  }
+
+  Widget _interestFilterChips(AppLocalizations l10n) {
+    return SizedBox(
+      height: 80,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12, top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.interestFilterLabel, style: Theme.of(context).textTheme.bodySmall),
+                Text(l10n.recDistanceTag, style: Theme.of(context).textTheme.labelSmall),
+              ],
+            ),
+          ),
+          ...kInterestOptions.map((option) {
+            final selected = _selectedFilters.contains(option.id);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: FilterChip(
+                label: Text(l10n.interestLabelText(option.id)),
+                selected: selected,
+                onSelected: (value) {
+                  setState(() {
+                    if (value) {
+                      _selectedFilters.add(option.id);
+                    } else {
+                      _selectedFilters.remove(option.id);
+                    }
+                  });
+                },
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -294,6 +349,7 @@ class _UserCard extends StatelessWidget {
     required this.onPass,
     required this.onLike,
     required this.isProcessing,
+    required this.l10n,
     this.distanceKm,
   });
 
@@ -302,6 +358,7 @@ class _UserCard extends StatelessWidget {
   final Future<void> Function() onLike;
   final bool isProcessing;
   final double? distanceKm;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -331,7 +388,7 @@ class _UserCard extends StatelessWidget {
                     left: 16,
                     right: 16,
                     bottom: 16,
-                    child: _CardInfo(user: user, distanceKm: distanceKm),
+                    child: _CardInfo(user: user, distanceKm: distanceKm, l10n: l10n),
                   ),
                 ],
               ),
@@ -345,7 +402,7 @@ class _UserCard extends StatelessWidget {
                   ElevatedButton.icon(
                     onPressed: isProcessing ? null : onPass,
                     icon: const Icon(Icons.close, color: Colors.redAccent),
-                    label: const Text('패스'),
+                    label: Text(l10n.passButton),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red.shade50,
                       foregroundColor: Colors.redAccent,
@@ -354,7 +411,7 @@ class _UserCard extends StatelessWidget {
                   ElevatedButton.icon(
                     onPressed: isProcessing ? null : onLike,
                     icon: const Icon(Icons.favorite, color: Colors.white),
-                    label: const Text('좋아요'),
+                    label: Text(l10n.likeButton),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.pinkAccent,
                       foregroundColor: Colors.white,
@@ -371,16 +428,21 @@ class _UserCard extends StatelessWidget {
 }
 
 class _CardInfo extends StatelessWidget {
-  const _CardInfo({required this.user, this.distanceKm});
+  const _CardInfo({required this.user, this.distanceKm, required this.l10n});
 
   final UserModel user;
   final double? distanceKm;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     final chips = (user.interests ?? <String>[])
         .map((interest) => Chip(
-              label: Text(interest),
+              label: Text(
+                kInterestOptionIds.contains(interest)
+                    ? l10n.interestLabelText(interest)
+                    : interest,
+              ),
               backgroundColor: Colors.white.withOpacity(0.85),
               side: BorderSide.none,
             ))
@@ -431,6 +493,6 @@ class _CardInfo extends StatelessWidget {
   String _titleText() {
     final agePart = user.age != null ? ' · ${user.age}세' : '';
     final distancePart = distanceKm != null ? ' · ${distanceKm!.toStringAsFixed(1)}km' : '';
-    return '${user.displayName ?? '미등록 사용자'}$agePart$distancePart';
+    return '${user.displayName ?? l10n.profileTitle}$agePart$distancePart';
   }
 }
