@@ -36,6 +36,7 @@ class LocationProvider extends ChangeNotifier {
 
   Future<void> _saveToFirestore(String uid, Position pos) async {
     final geoPoint = geo.point(latitude: pos.latitude, longitude: pos.longitude);
+
     await db.collection('users').doc(uid).set({
       'position': geoPoint.data,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -43,17 +44,18 @@ class LocationProvider extends ChangeNotifier {
   }
 
   Future<void> startAutoUpdate(String uid) async {
-    if (!await _ensureServiceAndPermission()) {
-      return;
-    }
+    if (!await _ensureServiceAndPermission()) return;
 
     try {
       isUpdating = true;
       notifyListeners();
-      final current = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+
+      final current = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
       position = current;
       await _saveToFirestore(uid, current);
-      errorMessage = null;
       notifyListeners();
 
       await _positionSub?.cancel();
@@ -65,9 +67,6 @@ class LocationProvider extends ChangeNotifier {
       ).listen((pos) async {
         position = pos;
         await _saveToFirestore(uid, pos);
-        notifyListeners();
-      }, onError: (Object e) {
-        errorMessage = '위치 업데이트 중 오류가 발생했습니다.';
         notifyListeners();
       });
     } catch (e) {
@@ -84,42 +83,24 @@ class LocationProvider extends ChangeNotifier {
     _positionSub = null;
   }
 
-  Future<void> updateMyLocation(String uid) async {
-    if (!await _ensureServiceAndPermission()) {
-      return;
-    }
-    try {
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      position = pos;
-      await _saveToFirestore(uid, pos);
-      errorMessage = null;
-      notifyListeners();
-    } catch (e) {
-      errorMessage = '위치를 갱신하지 못했습니다.';
-      notifyListeners();
-    }
-  }
-
-  Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(String uid, double radiusKm) {
+  Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(
+      String uid, double radiusKm) {
     return db.collection('users').doc(uid).snapshots().asyncExpand((snap) {
       final data = snap.data();
-      // Add robust check for position data to handle inconsistent data formats
-      if (data == null) {
-        return Stream.empty();
-      }
-      
-      final positionData = data['position'];
-      if (positionData is! Map<String, dynamic> || positionData['geopoint'] is! GeoPoint) {
-        // If data is not in the expected format, return an empty stream to avoid crashes.
+      if (data == null) return Stream.empty();
+
+      final posData = data['position'];
+      if (posData is! Map<String, dynamic> ||
+          posData['geopoint'] is! GeoPoint) {
         return Stream.empty();
       }
 
-      final point = positionData['geopoint'] as GeoPoint;
-      final center = geo.point(latitude: point.latitude, longitude: point.longitude);
-      final collectionRef = db.collection('users');
-      
+      final gp = posData['geopoint'] as GeoPoint;
+      final center = geo.point(latitude: gp.latitude, longitude: gp.longitude);
+
+      final col = db.collection('users');
       return geo
-          .collection(collectionRef: collectionRef)
+          .collection(collectionRef: col)
           .within(center: center, radiusInKm: radiusKm, field: 'position');
     });
   }

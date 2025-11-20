@@ -39,7 +39,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onTap(int index) {
     if (index < 0 || index >= _tabs.length) return;
     final target = _tabs[index];
-    if (GoRouter.of(context).location != target) {
+
+    final current = GoRouter.of(context)
+        .routeInformationProvider
+        .value
+        .uri
+        .toString();
+
+    if (current != target) {
       context.go(target);
     }
   }
@@ -52,9 +59,15 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final locationInfo = GoRouter.of(context).routeInformationProvider.value;
-    final currentPath = locationInfo.uri.toString();
+
+    final currentPath = GoRouter.of(context)
+        .routeInformationProvider
+        .value
+        .uri
+        .toString();
+
     final currentIndex = _locationToIndex(currentPath);
+
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: NavigationBar(
