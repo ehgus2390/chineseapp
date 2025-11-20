@@ -122,12 +122,18 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
 
     for (final d in docs) {
       final data = d.data();
-      if (data == null || data['position'] == null) continue;
+      final position = data?['position'];
+      if (data == null || position == null || position is! Map<String, dynamic>) continue;
+      final geoPoint = position['geopoint'];
+      if (geoPoint is! GeoPoint) continue;
 
-      final GeoPoint p = data['position']['geopoint'];
+      final GeoPoint p = geoPoint;
       final id = MarkerId(d.id);
 
-      final userInterests = Set<String>.from(data['interests'] ?? []);
+      final rawInterests = data['interests'];
+      final userInterests = rawInterests is Iterable
+          ? Set<String>.from(rawInterests.map((e) => e.toString()))
+          : <String>{};
       final hasCommonInterests = myInterests.intersection(userInterests).isNotEmpty;
 
       // 프로필 이미지 마커 적용

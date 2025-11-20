@@ -60,7 +60,9 @@ class KkiriApp extends StatelessWidget {
           return loggingIn ? null : '/sign-in';
         }
         if (loggingIn) {
-          return '/home/discover';
+          // Chat is the primary MVP experience. After a successful sign-in,
+          // keep users in the chat-first flow instead of jumping to discover.
+          return '/home/chat';
         }
         return null;
       },

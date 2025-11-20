@@ -45,7 +45,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final chat = context.read<ChatProvider>();
-    final myId = auth.currentUser!.uid;
+    final myId = auth.currentUser?.uid;
+    if (myId == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final l10n = context.l10n;
     final colorScheme = Theme.of(context).colorScheme;
 
