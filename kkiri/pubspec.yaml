@@ -12,11 +12,11 @@ dependencies:
   provider: ^6.1.2
 
   # Firebase (compatible versions)
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.16.0
-  cloud_firestore: ^4.15.5
-  firebase_storage: ^11.6.6
-  google_sign_in: ^6.2.1
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  cloud_firestore: ^6.1.0
+  firebase_storage: ^13.0.4
+  google_sign_in: ^7.2.0
 
   # 지도/위치
   google_maps_flutter: ^2.7.0
