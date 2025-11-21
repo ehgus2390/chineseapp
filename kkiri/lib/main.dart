@@ -26,7 +26,7 @@ Future<void> main() async {
   if (options != null) {
     await Firebase.initializeApp(options: options);
   } else {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform,);
   }
 
   runApp(
