@@ -1,3 +1,7 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -28,14 +32,23 @@ android {
         jvmTarget = "17"
     }
 
-    // ✅ 반드시 signingConfigs 블록을 먼저 선언해야 함
     signingConfigs {
         create("release") {
-            // 디버그 키로 일단 서명 (release 빌드 실행 가능)
-            storeFile = file("${project.rootDir}/android/app/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            val props = Properties()
+            val keyPropsFile = rootProject.file("key.properties")
+
+            if (keyPropsFile.exists()) {
+                keyPropsFile.inputStream().use { props.load(it) }
+            }
+
+            keyAlias = props.getProperty("keyAlias")
+            keyPassword = props.getProperty("keyPassword")
+            storePassword = props.getProperty("storePassword")
+
+            val keystoreName = props.getProperty("storeFile")
+            if (keystoreName != null) {
+                storeFile = rootProject.file("android/app/$keystoreName")
+            }
         }
     }
 
