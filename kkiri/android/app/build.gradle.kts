@@ -1,50 +1,51 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
     namespace = "com.ant.company"
-//    compileSdk = flutter.compileSdkVersion
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
+
+    defaultConfig {
+        applicationId = "com.ant.company"
+        minSdk = flutter.minSdkVersion
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+
+        multiDexEnabled = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-//    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        kotlinOptions {
-////        jvmTarget = JavaVersion.VERSION_11.toString()
+    kotlinOptions {
         jvmTarget = "17"
-        }
-//    }
+    }
 
-    defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.ant.company"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-//        targetSdk = flutter.targetSdkVersion
-        targetSdk = 34
-//        minSdk = flutter.minSdkVersion
-        minSdk = 23
-//        versionCode = flutter.versionCode
-        versionCode = 1
-//        versionName = flutter.versionName
-        versionName = "1.0"
+    // ✅ 반드시 signingConfigs 블록을 먼저 선언해야 함
+    signingConfigs {
+        create("release") {
+            // 디버그 키로 일단 서명 (release 빌드 실행 가능)
+            storeFile = file("${project.rootDir}/android/app/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
-//            minifyEnabled = false
-//            shrinkResources = false
+            signingConfig = signingConfigs.getByName("release")
+
+            // R8 난독화 비활성화 (원하는 경우 변경 가능)
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
