@@ -1,7 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
 
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -19,7 +18,6 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
         multiDexEnabled = true
     }
 
@@ -33,36 +31,41 @@ android {
     }
 
     signingConfigs {
+
         create("release") {
+
             val props = Properties()
-            val keyPropsFile = rootProject.file("key.properties")
+            val propFile = rootProject.file("key.properties")
 
-            if (keyPropsFile.exists()) {
-                keyPropsFile.inputStream().use { props.load(it) }
+            if (propFile.exists()) {
+                props.load(FileInputStream(propFile))
             }
 
-            keyAlias = props.getProperty("keyAlias")
-            keyPassword = props.getProperty("keyPassword")
-            storePassword = props.getProperty("storePassword")
+            keyAlias = props["keyAlias"] as String?
+            keyPassword = props["keyPassword"] as String?
+            storePassword = props["storePassword"] as String?
 
-            val keystoreName = props.getProperty("storeFile")
-            if (keystoreName != null) {
-                storeFile = rootProject.file("android/app/$keystoreName")
-            }
+            // ⭐ keystore 파일은 android/app/ 기준으로 찾음
+            storeFile = file("release-key.keystore")
         }
     }
 
     buildTypes {
-        release {
+        getByName("release") {
             signingConfig = signingConfigs.getByName("release")
-
-            // R8 난독화 비활성화 (원하는 경우 변경 가능)
             isMinifyEnabled = false
             isShrinkResources = false
+        }
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("androidx.multidex:multidex:2.0.1")
 }
