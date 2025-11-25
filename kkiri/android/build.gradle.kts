@@ -1,3 +1,16 @@
+//plugins {
+//    // Flutter 공식 호환 AGP 버전
+//    id("com.android.application") version "8.3.1" apply false
+//    id("org.jetbrains.kotlin.android") version "1.9.25" apply false
+//}
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 allprojects {
     repositories {
         google()
