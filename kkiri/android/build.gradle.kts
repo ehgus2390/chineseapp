@@ -1,13 +1,11 @@
-//plugins {
-//    // Flutter 공식 호환 AGP 버전
-//    id("com.android.application") version "8.3.1" apply false
-//    id("org.jetbrains.kotlin.android") version "1.9.25" apply false
-//}
-
+// 🔥 google-services 플러그인을 사용하려면 반드시 필요
 buildscript {
     repositories {
         google()
         mavenCentral()
+    }
+    dependencies {
+        classpath("com.google.gms:google-services:4.4.4")
     }
 }
 
@@ -22,12 +20,14 @@ val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")
         .get()
+
 rootProject.layout.buildDirectory.value(newBuildDir)
 
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
@@ -41,4 +41,3 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         jvmTarget = "17"
     }
 }
-
