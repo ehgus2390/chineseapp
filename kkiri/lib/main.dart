@@ -95,8 +95,11 @@ class KkiriApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final settings = context.watch<SettingsProvider>();
+    final initialLocation = auth.currentUser == null ? '/sign-in' : '/home/chat';
     final router = GoRouter(
-      initialLocation: '/home/chat',
+      // Always start on the sign-in screen for new sessions so users see
+      // authentication first. Auth changes will redirect to chat after login.
+      initialLocation: initialLocation,
       refreshListenable: auth,
       redirect: (context, state) {
         final isLoggedIn = auth.currentUser != null;
