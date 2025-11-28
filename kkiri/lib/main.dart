@@ -131,7 +131,7 @@ class KkiriApp extends StatelessWidget {
       useMaterial3: true,
       colorSchemeSeed: Colors.teal,
       scaffoldBackgroundColor: const Color(0xFFF6F7FB),
-      textTheme: ThemeData().textTheme.apply(letterSpacingDelta: 0.1),
+      textTheme: ThemeData().textTheme,
     );
 
     return MaterialApp.router(

@@ -1,0 +1,4 @@
+storeFile=dev-key.keystore
+storePassword=123456
+keyAlias=dev
+keyPassword=123456

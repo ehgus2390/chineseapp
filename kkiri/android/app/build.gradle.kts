@@ -10,17 +10,21 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+/* -----------------------------------------------------
+   🔐 Signing Properties Load (release / dev fallback)
+----------------------------------------------------- */
 val signingProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-val devKeystorePropertiesFile = file("key.properties.dev")
 
-val activePropertiesFile = when {
-    keystorePropertiesFile.exists() -> keystorePropertiesFile
-    devKeystorePropertiesFile.exists() -> devKeystorePropertiesFile
+val releaseKeystore = rootProject.file("key.properties")
+val devKeystore = rootProject.file("key.properties.dev")
+
+val activeKeystore = when {
+    releaseKeystore.exists() -> releaseKeystore
+    devKeystore.exists() -> devKeystore
     else -> null
 }
 
-activePropertiesFile?.inputStream()?.use(signingProperties::load)
+activeKeystore?.inputStream()?.use(signingProperties::load)
 
 android {
     namespace = "com.ant.company"
@@ -36,30 +40,15 @@ android {
         multiDexEnabled = true
     }
 
+    /* -----------------------------------------------------
+       🔐 signingConfigs — release는 여기서 딱 1번만 생성!
+    ----------------------------------------------------- */
     signingConfigs {
-        // 기본 debug signing
+
+        // 기본 debug
         getByName("debug")
 
-        // 선택적 release signing
-        create("release") {
-            val propsFile = rootProject.file("key.properties")
-            if (propsFile.exists()) {
-                val props = Properties()
-                props.load(FileInputStream(propsFile))
-
-                storeFile = file(props["storeFile"] as String)
-                storePassword = props["storePassword"] as String?
-                keyAlias = props["keyAlias"] as String?
-                keyPassword = props["keyPassword"] as String?
-            } else {
-                // 🔥 Keystore 없으면 release도 debug 키로 서명하도록 fallback
-                println("⚠️ key.properties 없음 → release 빌드도 debug 키로 자동 fallback")
-                initWith(getByName("debug"))  // debug signing 재사용
-            }
-        }
-    }
-
-    signingConfigs {
+        // release 생성 (중복 금지!)
         create("release") {
             if (signingProperties.isNotEmpty()) {
                 val storeFilePath = signingProperties.getProperty("storeFile")
@@ -70,18 +59,22 @@ android {
                 keyAlias = signingProperties.getProperty("keyAlias")
                 keyPassword = signingProperties.getProperty("keyPassword")
             } else {
+                println("⚠️ key.properties 없음 → release 빌드에 debug 서명 사용")
                 initWith(getByName("debug"))
             }
         }
     }
 
+    /* -----------------------------------------------------
+       🔨 buildTypes 설정
+    ----------------------------------------------------- */
     buildTypes {
-        release {
+        getByName("release") {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
         }
-        debug {
+        getByName("debug") {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -103,5 +96,3 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
-
-
