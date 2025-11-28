@@ -10,6 +10,7 @@ class AuthProvider extends ChangeNotifier {
 
   User? currentUser;
   bool isLoading = false;
+  String? lastError;
 
   AuthProvider() {
     currentUser = _auth.currentUser;
@@ -24,8 +25,9 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> signInAnonymously() async {
+  Future<bool> signInAnonymously() async {
     isLoading = true;
+    lastError = null;
     notifyListeners();
     try {
       final cred = await _auth.signInAnonymously();
@@ -52,6 +54,13 @@ class AuthProvider extends ChangeNotifier {
           });
         }
       }
+      return true;
+    } on FirebaseAuthException catch (e) {
+      lastError = e.message ?? '로그인 중 문제가 발생했습니다. Firebase 구성을 확인해주세요.';
+      return false;
+    } catch (e) {
+      lastError = '로그인 중 문제가 발생했습니다. 인터넷 연결과 Firebase 구성을 확인해주세요.';
+      return false;
     } finally {
       isLoading = false;
       notifyListeners();

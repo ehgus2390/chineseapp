@@ -10,6 +10,18 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+val signingProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+val devKeystorePropertiesFile = file("key.properties.dev")
+
+val activePropertiesFile = when {
+    keystorePropertiesFile.exists() -> keystorePropertiesFile
+    devKeystorePropertiesFile.exists() -> devKeystorePropertiesFile
+    else -> null
+}
+
+activePropertiesFile?.inputStream()?.use(signingProperties::load)
+
 android {
     namespace = "com.ant.company"
     compileSdk = 36
@@ -43,6 +55,22 @@ android {
                 // 🔥 Keystore 없으면 release도 debug 키로 서명하도록 fallback
                 println("⚠️ key.properties 없음 → release 빌드도 debug 키로 자동 fallback")
                 initWith(getByName("debug"))  // debug signing 재사용
+            }
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            if (signingProperties.isNotEmpty()) {
+                val storeFilePath = signingProperties.getProperty("storeFile")
+                if (!storeFilePath.isNullOrBlank()) {
+                    storeFile = file(storeFilePath)
+                }
+                storePassword = signingProperties.getProperty("storePassword")
+                keyAlias = signingProperties.getProperty("keyAlias")
+                keyPassword = signingProperties.getProperty("keyPassword")
+            } else {
+                initWith(getByName("debug"))
             }
         }
     }
