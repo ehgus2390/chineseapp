@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../l10n/l10n_extensions.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../widgets/chat_bubble.dart';
@@ -27,10 +29,30 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final _scrollCtrl = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = context.read<AuthProvider>();
+      final chat = context.read<ChatProvider>();
+      final myId = auth.currentUser?.uid;
+      if (myId != null) {
+        await chat.createOrGetChatId(myId, widget.peerId);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final chat = context.read<ChatProvider>();
-    final myId = auth.currentUser!.uid;
+    final myId = auth.currentUser?.uid;
+    if (myId == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final l10n = context.l10n;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -84,13 +106,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               },
             ),
           ),
-          _buildInputArea(chat, myId),
+          _buildInputArea(chat, myId, l10n.chatHint, colorScheme.primary),
         ],
       ),
     );
   }
 
-  Widget _buildInputArea(ChatProvider chat, String myId) {
+  Widget _buildInputArea(ChatProvider chat, String myId, String hint, Color accent) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -101,7 +123,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 controller: _controller,
                 textInputAction: TextInputAction.send,
                 decoration: InputDecoration(
-                  hintText: '메시지 입력...',
+                  hintText: hint,
                   filled: true,
                   fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
@@ -116,7 +138,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ),
             const SizedBox(width: 4),
             IconButton(
-              icon: const Icon(Icons.send, color: Colors.blueAccent),
+              icon: Icon(Icons.send, color: accent),
               onPressed: () => _send(chat, myId),
             ),
           ],

@@ -1,46 +1,16 @@
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 class ChatProvider with ChangeNotifier {
-  final _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// 대화방 ID 생성 (양쪽 UID를 정렬해서 항상 동일)
+  /// Creates a unique and predictable chat room id for two users.
   String _chatRoomId(String userA, String userB) {
     final ids = [userA, userB]..sort();
     return ids.join('_');
   }
 
-  /// 대화방 ID 생성 또는 가져오기
-  Future<String> createOrGetChatId(String userA, String userB) async {
-    return _chatRoomId(userA, userB);
-  }
-
-  /// 메시지 전송
-  Future<void> sendMessage({
-    required String senderId,
-    required String receiverId,
-    required String text,
-  }) async {
-    if (text.trim().isEmpty) return;
-    final roomId = _chatRoomId(senderId, receiverId);
-    final ref = _firestore.collection('chats').doc(roomId).collection('messages');
-
-    await ref.add({
-      'senderId': senderId,
-      'receiverId': receiverId,
-      'text': text.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    // 최근 메시지 캐시 (리스트용)
-    await _firestore.collection('chats').doc(roomId).set({
-      'lastMessage': text.trim(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'users': [senderId, receiverId],
-    });
-  }
-  /// 두 사용자의 채팅방을 생성하거나 기존 ID 반환
+  /// Creates the chat room document if it doesn't exist and returns the id.
   Future<String> createOrGetChatId(String userA, String userB) async {
     final roomId = _chatRoomId(userA, userB);
     final roomRef = _firestore.collection('chats').doc(roomId);
@@ -51,21 +21,56 @@ class ChatProvider with ChangeNotifier {
         'users': [userA, userB],
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        'lastMessage': '',
+      });
     }
 
     return roomId;
   }
 
-  /// 실시간 메시지 스트림
-  Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(
-      String userA, String userB) {
+  /// Sends a message between [senderId] and [receiverId].
+  Future<void> sendMessage({
+    required String senderId,
+    required String receiverId,
+    required String text,
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+
+    final roomId = await createOrGetChatId(senderId, receiverId);
+    final messageRef = _firestore.collection('chats').doc(roomId).collection('messages');
+
+    await messageRef.add({
+      'senderId': senderId,
+      'receiverId': receiverId,
+      'text': trimmed,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await _firestore.collection('chats').doc(roomId).set({
+      'lastMessage': trimmed,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'users': [senderId, receiverId],
+    }, SetOptions(merge: true));
+  }
+
+  /// Stream of messages for a conversation between [userA] and [userB].
+  Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(String userA, String userB) {
     final roomId = _chatRoomId(userA, userB);
     return _firestore
         .collection('chats')
         .doc(roomId)
         .collection('messages')
         .orderBy('createdAt', descending: false)
+        .snapshots();
+  }
+
+  /// Stream of all chat rooms the user is part of, ordered by the last update time.
+  Stream<QuerySnapshot<Map<String, dynamic>>> myChatRooms(String uid) {
+    return _firestore
+        .collection('chats')
+        .where('users', arrayContains: uid)
+        .orderBy('updatedAt', descending: true)
         .snapshots();
   }
 }

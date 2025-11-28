@@ -10,6 +10,7 @@ class AuthProvider extends ChangeNotifier {
 
   User? currentUser;
   bool isLoading = false;
+  String? lastError;
 
   AuthProvider() {
     currentUser = _auth.currentUser;
@@ -24,8 +25,9 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> signInAnonymously() async {
+  Future<bool> signInAnonymously() async {
     isLoading = true;
+    lastError = null;
     notifyListeners();
     try {
       final cred = await _auth.signInAnonymously();
@@ -35,16 +37,30 @@ class AuthProvider extends ChangeNotifier {
         final snapshot = await doc.get();
         if (!snapshot.exists) {
           await doc.set({
-            'displayName': 'User_${currentUser!.uid.substring(0, 6)}',
+            'displayName': 'Heart_${currentUser!.uid.substring(0, 6)}',
             'photoUrl': null,
+            'bio': '새로운 인연을 찾아요!',
+            'age': null,
+            'gender': null,
+            'interests': <String>[],
+            'likesSent': <String>[],
+            'likesReceived': <String>[],
+            'matches': <String>[],
+            'passes': <String>[],
             'email': currentUser!.email,
             'createdAt': FieldValue.serverTimestamp(),
             'lang': 'ko',
-            'friends': [],
             'searchId': currentUser!.uid.substring(0, 6),
           });
         }
       }
+      return true;
+    } on FirebaseAuthException catch (e) {
+      lastError = e.message ?? '로그인 중 문제가 발생했습니다. Firebase 구성을 확인해주세요.';
+      return false;
+    } catch (e) {
+      lastError = '로그인 중 문제가 발생했습니다. 인터넷 연결과 Firebase 구성을 확인해주세요.';
+      return false;
     } finally {
       isLoading = false;
       notifyListeners();
@@ -63,7 +79,16 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateProfile({String? displayName, String? photoUrl, String? searchId, String? lang}) async {
+  Future<void> updateProfile({
+    String? displayName,
+    String? photoUrl,
+    String? searchId,
+    String? lang,
+    String? bio,
+    int? age,
+    String? gender,
+    List<String>? interests,
+  }) async {
     final uid = currentUser?.uid;
     if (uid == null) return;
     final data = <String, dynamic>{};
@@ -77,6 +102,10 @@ class AuthProvider extends ChangeNotifier {
     }
     if (searchId != null) data['searchId'] = searchId;
     if (lang != null) data['lang'] = lang;
+    if (bio != null) data['bio'] = bio;
+    if (age != null) data['age'] = age;
+    if (gender != null) data['gender'] = gender;
+    if (interests != null) data['interests'] = interests;
     if (data.isNotEmpty) {
       await _db.collection('users').doc(uid).update(data);
       notifyListeners();
