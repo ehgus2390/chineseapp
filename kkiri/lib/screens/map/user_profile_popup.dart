@@ -26,12 +26,29 @@ class UserProfilePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final myUid = context.read<AuthProvider>().currentUser!.uid;
+    final myUid = context.read<AuthProvider>().currentUser?.uid;
+
+    if (myUid == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.lock_outline, size: 42, color: Colors.grey),
+            SizedBox(height: 12),
+            Text('로그인이 필요합니다.', textAlign: TextAlign.center),
+          ],
+        ),
+      );
+    }
 
     return FutureBuilder<Map<String, dynamic>?>(
       future: _fetchProfile(),
       builder: (context, snapshot) {
         final data = snapshot.data;
+        final photoUrl = data?['photoUrl'] as String?;
+        final bio = data?['bio'] as String?;
+        final display = data?['displayName'] as String? ?? displayName ?? '익명 사용자';
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -40,68 +57,66 @@ class UserProfilePopup extends StatelessWidget {
           ),
           child: snapshot.connectionState == ConnectionState.waiting
               ? const SizedBox(
-              height: 120,
-              child: Center(child: CircularProgressIndicator()))
+                  height: 120,
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 45,
-                backgroundImage: (data?['photoUrl'] != null &&
-                    data!['photoUrl'].toString().startsWith('http'))
-                    ? NetworkImage(data['photoUrl'])
-                    : const AssetImage('assets/images/logo.png')
-                as ImageProvider,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                data?['displayName'] ?? displayName ?? '익명 사용자',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (data?['bio'] != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  data!['bio'],
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
-              const SizedBox(height: 16),
-              if (uid != myUid)
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context); // 팝업 닫기
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatRoomScreen(
-                          peerId: uid,
-                          peerName:
-                          data?['displayName'] ?? 'Unknown User',
-                          peerPhoto: data?['photoUrl'],
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 45,
+                      backgroundImage: (photoUrl != null && photoUrl.startsWith('http'))
+                          ? NetworkImage(photoUrl)
+                          : const AssetImage('assets/images/logo.png') as ImageProvider,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      display,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (bio != null && bio.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        bio,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    if (uid != myUid)
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context); // 팝업 닫기
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChatRoomScreen(
+                                peerId: uid,
+                                peerName: display,
+                                peerPhoto: photoUrl,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.chat),
+                        label: const Text("대화 시작하기"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.chat),
-                  label: const Text("대화 시작하기"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("닫기"),
                     ),
-                  ),
+                  ],
                 ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("닫기"),
-              ),
-            ],
-          ),
         );
       },
     );
