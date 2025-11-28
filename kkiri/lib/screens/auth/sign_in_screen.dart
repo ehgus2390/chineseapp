@@ -50,7 +50,14 @@ class SignInScreen extends StatelessWidget {
                             icon: const Icon(Icons.chat_bubble_outline),
                             label: Text(l10n.signInCta),
                             onPressed: () async {
-                              await auth.signInAnonymously();
+                              final success = await auth.signInAnonymously();
+                              if (!success) {
+                                final message = auth.lastError ?? '로그인에 실패했습니다. Firebase 구성을 확인해주세요.';
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(content: Text(message)));
+                                }
+                              }
                             },
                           ),
                         ),

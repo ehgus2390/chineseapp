@@ -443,14 +443,14 @@ class _CardInfo extends StatelessWidget {
                     ? l10n.interestLabelText(interest)
                     : interest,
               ),
-              backgroundColor: Colors.white.withAlpha(217),
+              backgroundColor: Colors.white.withOpacity(0.85),
               side: BorderSide.none,
             ))
         .toList();
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.black.withAlpha(140),
+        color: Colors.black.withOpacity(0.55),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Padding(
