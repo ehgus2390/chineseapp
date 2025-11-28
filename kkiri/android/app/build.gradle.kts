@@ -1,8 +1,11 @@
+// android/app/build.gradle.kts
+
 import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
@@ -20,28 +23,40 @@ val activePropertiesFile = when {
 activePropertiesFile?.inputStream()?.use(signingProperties::load)
 
 android {
-    namespace = "com.example.kkiri"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.ant.company"
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.kkiri"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "com.ant.company"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+        multiDexEnabled = true
+    }
+
+    signingConfigs {
+        // 기본 debug signing
+        getByName("debug")
+
+        // 선택적 release signing
+        create("release") {
+            val propsFile = rootProject.file("key.properties")
+            if (propsFile.exists()) {
+                val props = Properties()
+                props.load(FileInputStream(propsFile))
+
+                storeFile = file(props["storeFile"] as String)
+                storePassword = props["storePassword"] as String?
+                keyAlias = props["keyAlias"] as String?
+                keyPassword = props["keyPassword"] as String?
+            } else {
+                // 🔥 Keystore 없으면 release도 debug 키로 서명하도록 fallback
+                println("⚠️ key.properties 없음 → release 빌드도 debug 키로 자동 fallback")
+                initWith(getByName("debug"))  // debug signing 재사용
+            }
+        }
     }
 
     signingConfigs {
@@ -63,7 +78,21 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
     }
 }
 
@@ -72,6 +101,7 @@ flutter {
 }
 
 dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
-    implementation("com.google.firebase:firebase-analytics")
+    implementation("androidx.multidex:multidex:2.0.1")
 }
+
+
