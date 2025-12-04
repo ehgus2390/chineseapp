@@ -1,50 +1,54 @@
+// android/app/build.gradle.kts
+
 import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
 
+/* -----------------------------------------------------
+   🔐 Signing Properties Load (release / dev fallback)
+----------------------------------------------------- */
 val signingProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-val devKeystorePropertiesFile = file("key.properties.dev")
 
-val activePropertiesFile = when {
-    keystorePropertiesFile.exists() -> keystorePropertiesFile
-    devKeystorePropertiesFile.exists() -> devKeystorePropertiesFile
+val releaseKeystore = rootProject.file("key.properties")
+val devKeystore = rootProject.file("key.properties.dev")
+
+val activeKeystore = when {
+    releaseKeystore.exists() -> releaseKeystore
+    devKeystore.exists() -> devKeystore
     else -> null
 }
 
-activePropertiesFile?.inputStream()?.use(signingProperties::load)
+activeKeystore?.inputStream()?.use(signingProperties::load)
 
 android {
-    namespace = "com.example.kkiri"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.ant.company"
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.kkiri"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "com.ant.company"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+        multiDexEnabled = true
     }
 
+    /* -----------------------------------------------------
+       🔐 signingConfigs — release는 여기서 딱 1번만 생성!
+    ----------------------------------------------------- */
     signingConfigs {
+
+        // 기본 debug
+        getByName("debug")
+
+        // release 생성 (중복 금지!)
         create("release") {
             if (signingProperties.isNotEmpty()) {
                 val storeFilePath = signingProperties.getProperty("storeFile")
@@ -55,15 +59,33 @@ android {
                 keyAlias = signingProperties.getProperty("keyAlias")
                 keyPassword = signingProperties.getProperty("keyPassword")
             } else {
+                println("⚠️ key.properties 없음 → release 빌드에 debug 서명 사용")
                 initWith(getByName("debug"))
             }
         }
     }
 
+    /* -----------------------------------------------------
+       🔨 buildTypes 설정
+    ----------------------------------------------------- */
     buildTypes {
-        release {
+        getByName("release") {
             signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
     }
 }
 
@@ -72,6 +94,5 @@ flutter {
 }
 
 dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
-    implementation("com.google.firebase:firebase-analytics")
+    implementation("androidx.multidex:multidex:2.0.1")
 }
