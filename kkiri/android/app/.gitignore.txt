@@ -1,0 +1,7 @@
+# 🔥 절대 올리면 안 되는 파일
+android/app/key.properties
+android/app/release-key.keystore
+
+# 🔥 dev용은 허용
+!android/app/key.properties.dev
+!android/app/dev-key.keystore
