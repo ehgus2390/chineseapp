@@ -1,8 +1,11 @@
+<<<<<<< HEAD
 // android/app/build.gradle.kts
 
 import java.util.Properties
 import java.io.FileInputStream
 
+=======
+>>>>>>> parent of ce61b44 (Require verified sign-in)
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -10,6 +13,7 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+<<<<<<< HEAD
 /* -----------------------------------------------------
    🔐 Signing Properties Load (release / dev fallback)
 ----------------------------------------------------- */
@@ -26,6 +30,8 @@ val activeKeystore = when {
 
 activeKeystore?.inputStream()?.use(signingProperties::load)
 
+=======
+>>>>>>> parent of ce61b44 (Require verified sign-in)
 android {
     namespace = "com.ant.company"
     compileSdk = 36
@@ -40,6 +46,7 @@ android {
         multiDexEnabled = true
     }
 
+<<<<<<< HEAD
     /* -----------------------------------------------------
        🔐 signingConfigs — release는 여기서 딱 1번만 생성!
     ----------------------------------------------------- */
@@ -73,6 +80,13 @@ android {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
+=======
+    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig = signingConfigs.getByName("debug")
+>>>>>>> parent of ce61b44 (Require verified sign-in)
         }
         getByName("debug") {
             signingConfig = signingConfigs.getByName("debug")

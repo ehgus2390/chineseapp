@@ -30,24 +30,7 @@ class UserModel {
   factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
     if (data == null) {
-      return UserModel(uid: doc.id);
-    }
-
-    List<String>? _stringList(dynamic value) {
-      if (value is Iterable) {
-        return value.map((e) => e.toString()).toList();
-      }
-      return null;
-    }
-
-    GeoPoint? _geoPoint(dynamic value) {
-      if (value is Map<String, dynamic>) {
-        final point = value['geopoint'];
-        if (point is GeoPoint) {
-          return point;
-        }
-      }
-      return null;
+      throw Exception("User data is null!");
     }
 
     return UserModel(
@@ -56,12 +39,12 @@ class UserModel {
       searchId: data['searchId'] as String?,
       photoUrl: data['photoUrl'] as String?,
       bio: data['bio'] as String?,
-      age: data['age'] is int ? data['age'] as int : null,
+      age: data['age'] as int?,
       gender: data['gender'] as String?,
-      interests: _stringList(data['interests']),
-      photos: _stringList(data['photos']),
-      position: _geoPoint(data['position']),
-      lastSeen: data['lastSeen'] is Timestamp ? data['lastSeen'] as Timestamp : null,
+      interests: (data['interests'] as List<dynamic>?)?.cast<String>(),
+      photos: (data['photos'] as List<dynamic>?)?.cast<String>(),
+      position: data['position']?['geopoint'] as GeoPoint?,
+      lastSeen: data['lastSeen'] as Timestamp?,
     );
   }
 

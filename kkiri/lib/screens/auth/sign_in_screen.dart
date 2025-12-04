@@ -1,54 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../l10n/l10n_extensions.dart';
 import '../../providers/auth_provider.dart';
 
-class SignInScreen extends StatefulWidget {
+class SignInScreen extends StatelessWidget {
   const SignInScreen({super.key});
-
-  @override
-  State<SignInScreen> createState() => _SignInScreenState();
-}
-
-class _SignInScreenState extends State<SignInScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleEmailSubmit(AuthProvider auth, {required bool isRegister}) async {
-    if (!_formKey.currentState!.validate()) return;
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    final success = isRegister
-        ? await auth.registerWithEmail(email: email, password: password)
-        : await auth.signInWithEmail(email: email, password: password);
-
-    if (!success && mounted) {
-      final message = auth.lastError ?? '이메일 인증에 실패했습니다. Firebase 구성을 확인해주세요.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-    }
-  }
-
-  Future<void> _handleLineSignIn(AuthProvider auth) async {
-    final success = await auth.signInWithLine();
-    if (!success && mounted) {
-      final message = auth.lastError ?? '라인 인증에 실패했습니다. Firebase 구성을 확인해주세요.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+<<<<<<< HEAD
     final l10n = context.l10n;
     return Scaffold(
       body: Container(
@@ -101,10 +61,20 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                         ),
                 ],
+=======
+    return Scaffold(
+      appBar: AppBar(title: const Text('로그인')),
+      body: Center(
+        child: auth.isLoading
+            ? const CircularProgressIndicator()
+            : ElevatedButton.icon(
+                icon: const Icon(Icons.person),
+                label: const Text('익명 로그인'),
+                onPressed: () async {
+                  await auth.signInAnonymously();
+                },
+>>>>>>> parent of ce61b44 (Require verified sign-in)
               ),
-            ),
-          ),
-        ),
       ),
     );
   }
