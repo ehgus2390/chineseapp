@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../l10n/l10n_extensions.dart';
+import '../providers/auth_provider.dart';
+import '../providers/location_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   final Widget child;
@@ -11,13 +16,25 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const _tabs = <String>[
-    '/home/profile',
-    '/home/friends',
     '/home/chat',
+    '/home/discover',
     '/home/map',
-    '/home/board',
-    '/home/settings',
+    '/home/matches',
+    '/home/profile',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = context.read<AuthProvider>();
+      final loc = context.read<LocationProvider>();
+      final uid = auth.currentUser?.uid;
+      if (uid != null) {
+        await loc.startAutoUpdate(uid);
+      }
+    });
+  }
 
   void _onTap(int index) {
     if (index < 0 || index >= _tabs.length) return;
@@ -34,28 +51,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = _locationToIndex(GoRouter.of(context).location);
+    final l10n = context.l10n;
+    final locationInfo = GoRouter.of(context).routeInformationProvider.value;
+    final currentPath = locationInfo.uri.toString();
+    final currentIndex = _locationToIndex(currentPath);
     return Scaffold(
       body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        onTap: _onTap,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: '친구'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: '채팅'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: '게시판'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: _onTap,
+        destinations: [
+          NavigationDestination(icon: const Icon(Icons.chat_bubble_outline), label: l10n.chatTab),
+          NavigationDestination(icon: const Icon(Icons.favorite_outline), label: l10n.discoverTab),
+          NavigationDestination(icon: const Icon(Icons.map_outlined), label: l10n.mapTab),
+          NavigationDestination(icon: const Icon(Icons.favorite), label: l10n.matchesTab),
+          NavigationDestination(icon: const Icon(Icons.person_outline), label: l10n.profileTab),
         ],
       ),
     );
   }
-}
-
-extension on GoRouter {
-  get location => null;
 }
