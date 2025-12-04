@@ -1,3 +1,4 @@
+// 🔥 google-services 플러그인을 사용하려면 반드시 필요
 buildscript {
     repositories {
         google()
@@ -15,21 +16,21 @@ allprojects {
     }
 }
 
-//val newBuildDir: Directory =
-    //rootProject.layout.buildDirectory
-        //.dir("../../build")
-        //.get()
+val newBuildDir: Directory =
+    rootProject.layout.buildDirectory
+        .dir("../../build")
+        .get()
 
-//rootProject.layout.buildDirectory.value(newBuildDir)
+rootProject.layout.buildDirectory.value(newBuildDir)
 
-//subprojects {
-//    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-//    project.layout.buildDirectory.value(newSubprojectBuildDir)
-//}
+subprojects {
+    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+    project.layout.buildDirectory.value(newSubprojectBuildDir)
+}
 
-//subprojects {
-//    project.evaluationDependsOn(":app")
-//}
+subprojects {
+    project.evaluationDependsOn(":app")
+}
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
