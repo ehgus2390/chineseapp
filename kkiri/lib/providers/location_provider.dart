@@ -100,16 +100,6 @@ class LocationProvider extends ChangeNotifier {
       errorMessage = "위치 갱신 실패";
       notifyListeners();
     }
-    try {
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      position = pos;
-      await _saveToFirestore(uid, pos);
-      errorMessage = null;
-      notifyListeners();
-    } catch (e) {
-      errorMessage = '위치를 갱신하지 못했습니다.';
-      notifyListeners();
-    }
   }
 
   // ───────────────────────── 주변 사용자 스트림 ─────────────────────────
