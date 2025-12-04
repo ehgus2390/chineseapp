@@ -51,6 +51,7 @@ class AuthProvider extends ChangeNotifier {
             'bio': '새로운 인연을 찾아요!',
             'age': null,
             'gender': null,
+            'country': null,
             'interests': <String>[],
             'likesSent': <String>[],
             'likesReceived': <String>[],
@@ -62,6 +63,8 @@ class AuthProvider extends ChangeNotifier {
 =======
             'displayName': 'User_${currentUser!.uid.substring(0, 6)}',
             'photoUrl': null,
+            'gender': null,
+            'country': null,
             'email': currentUser!.email,
             'createdAt': FieldValue.serverTimestamp(),
             'lang': 'ko',
@@ -99,7 +102,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateProfile({String? displayName, String? photoUrl, String? searchId, String? lang}) async {
+  Future<void> updateProfile({
+    String? displayName,
+    String? photoUrl,
+    String? searchId,
+    String? lang,
+    String? gender,
+    String? country,
+  }) async {
     final uid = currentUser?.uid;
     if (uid == null) return;
     final data = <String, dynamic>{};
@@ -113,6 +123,8 @@ class AuthProvider extends ChangeNotifier {
     }
     if (searchId != null) data['searchId'] = searchId;
     if (lang != null) data['lang'] = lang;
+    if (gender != null) data['gender'] = gender;
+    if (country != null) data['country'] = country;
     if (data.isNotEmpty) {
       await _db.collection('users').doc(uid).update(data);
       notifyListeners();

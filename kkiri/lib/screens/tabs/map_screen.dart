@@ -42,7 +42,9 @@ class _MapScreenState extends State<MapScreen> {
         for (final u in users) {
           if (u.id == uid) continue;
           final data = u.data() as Map<String, dynamic>;
-          final geoPoint = data['position'];
+          final posData = data['position'] as Map<String, dynamic>?;
+          final geoPoint = posData?['geopoint'];
+          if (geoPoint is! GeoPoint) continue;
           final LatLng pos = LatLng(geoPoint.latitude, geoPoint.longitude);
 
           markers.add(Marker(
