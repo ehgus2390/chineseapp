@@ -8,6 +8,7 @@ class UserModel {
   final String? bio;
   final int? age;
   final String? gender;
+  final String? country;
   final List<String>? interests;
   final List<String>? photos;
   final GeoPoint? position;
@@ -21,6 +22,7 @@ class UserModel {
     this.bio,
     this.age,
     this.gender,
+    this.country,
     this.interests,
     this.photos,
     this.position,
@@ -41,6 +43,7 @@ class UserModel {
       bio: data['bio'] as String?,
       age: data['age'] as int?,
       gender: data['gender'] as String?,
+      country: data['country'] as String?,
       interests: (data['interests'] as List<dynamic>?)?.cast<String>(),
       photos: (data['photos'] as List<dynamic>?)?.cast<String>(),
       position: data['position']?['geopoint'] as GeoPoint?,
@@ -56,6 +59,7 @@ class UserModel {
       if (bio != null) 'bio': bio,
       if (age != null) 'age': age,
       if (gender != null) 'gender': gender,
+      if (country != null) 'country': country,
       if (interests != null) 'interests': interests,
       if (photos != null) 'photos': photos,
       if (lastSeen != null) 'lastSeen': lastSeen,

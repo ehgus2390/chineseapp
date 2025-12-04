@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
+import '../utils/matching_rules.dart';
 
 class LocationProvider extends ChangeNotifier {
   final FirebaseFirestore db = FirebaseFirestore.instance;
@@ -153,6 +154,10 @@ class LocationProvider extends ChangeNotifier {
       final myData = snap.data();
       if (myData == null) return Stream.value([]);
 
+      final myGender = myData['gender'] as String?;
+      final myCountry = myData['country'] as String?;
+      if (myGender == null || myCountry == null) return Stream.value([]);
+
       final posData = myData["position"];
       if (posData is! Map<String, dynamic>) return Stream.value([]);
 
@@ -170,7 +175,13 @@ class LocationProvider extends ChangeNotifier {
         geopointFrom: (map) =>
         (map["position"] as Map<String, dynamic>)["geopoint"] as GeoPoint,
         strictMode: true,
-      );
+      ).map((docs) => docs.where((doc) {
+        if (doc.id == uid) return false;
+        final data = doc.data();
+        final otherGender = data?['gender'] as String?;
+        final otherCountry = data?['country'] as String?;
+        return isTargetMatch(myGender, myCountry, otherGender, otherCountry);
+      }).toList());
     });
   }
 
