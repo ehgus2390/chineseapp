@@ -4,8 +4,47 @@ import 'package:provider/provider.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../providers/auth_provider.dart';
 
-class SignInScreen extends StatelessWidget {
+class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
+
+  @override
+  State<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleEmailSubmit(AuthProvider auth, {required bool isRegister}) async {
+    if (!_formKey.currentState!.validate()) return;
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    final success = isRegister
+        ? await auth.registerWithEmail(email: email, password: password)
+        : await auth.signInWithEmail(email: email, password: password);
+
+    if (!success && mounted) {
+      final message = auth.lastError ?? '이메일 인증에 실패했습니다. Firebase 구성을 확인해주세요.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  Future<void> _handleLineSignIn(AuthProvider auth) async {
+    final success = await auth.signInWithLine();
+    if (!success && mounted) {
+      final message = auth.lastError ?? '라인 인증에 실패했습니다. Firebase 구성을 확인해주세요.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

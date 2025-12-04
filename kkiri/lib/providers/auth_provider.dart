@@ -30,7 +30,8 @@ class AuthProvider extends ChangeNotifier {
     lastError = null;
     notifyListeners();
     try {
-      final cred = await _auth.signInAnonymously();
+      final provider = OAuthProvider('oidc.line');
+      final cred = await _auth.signInWithProvider(provider);
       currentUser = cred.user;
       if (currentUser != null) {
         final doc = _db.collection('users').doc(currentUser!.uid);
