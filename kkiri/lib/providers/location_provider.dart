@@ -1,8 +1,11 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
+import '../utils/matching_rules.dart';
+
 import '../utils/matching_rules.dart';
 
 class LocationProvider extends ChangeNotifier {
@@ -35,6 +38,7 @@ class LocationProvider extends ChangeNotifier {
       return false;
     }
 
+    // 문제 없으면 에러 초기화
     errorMessage = null;
     return true;
   }
@@ -43,10 +47,13 @@ class LocationProvider extends ChangeNotifier {
   Future<void> _saveToFirestore(String uid, Position pos) async {
     final geoPoint = GeoFirePoint(GeoPoint(pos.latitude, pos.longitude));
 
-    await db.collection("users").doc(uid).set({
-      "position": geoPoint.data, // {"geopoint":, "geohash":}
-      "updatedAt": FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    await db.collection("users").doc(uid).set(
+      {
+        "position": geoPoint.data, // {"geopoint":, "geohash":}
+        "updatedAt": FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 
   // ───────────────────────── 자동 업데이트 ─────────────────────────
@@ -73,7 +80,9 @@ class LocationProvider extends ChangeNotifier {
       await _saveToFirestore(uid, current);
       notifyListeners();
 
+      // 이전 스트림 정리
       await _positionSub?.cancel();
+
       _positionSub = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -86,15 +95,9 @@ class LocationProvider extends ChangeNotifier {
       });
     } catch (e) {
       errorMessage = "위치 업데이트 실패: $e";
+      isUpdating = false;
       notifyListeners();
     }
-  }
-
-  Future<void> stopAutoUpdate() async {
-    await _positionSub?.cancel();
-    _positionSub = null;
-    isUpdating = false;
-    notifyListeners();
   }
 
   // ───────────────────────── 수동 갱신 (updateMyLocation) ─────────────────────────
@@ -110,7 +113,7 @@ class LocationProvider extends ChangeNotifier {
       await _saveToFirestore(uid, pos);
       notifyListeners();
     } catch (e) {
-      errorMessage = "위치 갱신 실패";
+      errorMessage = "위치 갱신 실패: $e";
       notifyListeners();
     }
   }
@@ -123,20 +126,15 @@ class LocationProvider extends ChangeNotifier {
     final usersRef = db.collection("users");
 
     return usersRef.doc(uid).snapshots().asyncExpand((snap) {
-
       final myData = snap.data();
       if (myData == null) return Stream.value([]);
 
       final myGender = myData['gender'] as String?;
       final myCountry = myData['country'] as String?;
-      final preferredCountries = Set<String>.from(myData['preferredCountries'] ?? []);
-      final shareLocation = myData['shareLocation'] != false;
-      if (!shareLocation) return Stream.value([]);
       if (myGender == null || myCountry == null) return Stream.value([]);
 
       final posData = myData["position"];
       if (posData is! Map<String, dynamic>) return Stream.value([]);
-
       if (posData["geopoint"] is! GeoPoint) return Stream.value([]);
 
       final centerGeo = posData["geopoint"] as GeoPoint;
@@ -151,17 +149,22 @@ class LocationProvider extends ChangeNotifier {
         geopointFrom: (map) =>
         (map["position"] as Map<String, dynamic>)["geopoint"] as GeoPoint,
         strictMode: true,
-      ).map((docs) => docs.where((doc) {
-        if (doc.id == uid) return false;
-        final data = doc.data();
-        if (data?['shareLocation'] == false) return false;
-        final otherGender = data?['gender'] as String?;
-        final otherCountry = data?['country'] as String?;
-        final matchesTarget = isTargetMatch(myGender, myCountry, otherGender, otherCountry);
-        final matchesPreference = preferredCountries.isEmpty ||
-            (otherCountry != null && preferredCountries.contains(otherCountry));
-        return matchesTarget && matchesPreference;
-      }).toList());
+      ).map((docs) {
+        return docs.where((doc) {
+          if (doc.id == uid) return false;
+
+          final data = doc.data();
+          final otherGender = data?['gender'] as String?;
+          final otherCountry = data?['country'] as String?;
+
+          return isTargetMatch(
+            myGender,
+            myCountry,
+            otherGender,
+            otherCountry,
+          );
+        }).toList();
+      });
     });
   }
 

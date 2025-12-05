@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -64,6 +65,8 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final l10n = context.l10n;
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -74,103 +77,54 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
         ),
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Card(
-              elevation: 6,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-              margin: const EdgeInsets.all(16),
-              child: Padding(
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '어서오세요! 새로운 인연을 만나보세요',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
+          child: Card(
+            elevation: 6,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            margin: const EdgeInsets.all(32),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.signInTitle,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n.signInSubtitle,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 32),
+
+                  auth.isLoading
+                      ? const CircularProgressIndicator()
+                      : SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: Text(l10n.signInCta),
+                      onPressed: () async {
+                        final success = await auth.signInAnonymously();
+                        if (!success) {
+                          final message = auth.lastError ??
+                              '로그인에 실패했습니다. Firebase 구성을 확인해주세요.';
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(message)),
+                            );
+                          }
+                        }
+                      },
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '간단히 로그인하고 주변 친구들과 대화를 시작하세요. 이메일 인증 후 이용 가능합니다.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: '이메일',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _passwordCtrl,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: '비밀번호',
-                        prefixIcon: Icon(Icons.lock_outline),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (auth.verificationEmailSent)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green.shade200),
-                        ),
-                        child: const Text(
-                          '인증 메일을 보냈습니다. 받은편지함에서 인증을 완료한 뒤 로그인하세요.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    if (auth.lastError != null && !auth.verificationEmailSent) ...[
-                      Text(
-                        auth.lastError!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    const SizedBox(height: 8),
-                    auth.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.verified_outlined),
-                                label: const Text('인증 메일 보내기'),
-                                onPressed: () => _handleSendVerification(auth),
-                              ),
-                              const SizedBox(height: 8),
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.login),
-                                label: const Text('인증 완료하고 로그인'),
-                                onPressed: () => _handleEmailSignIn(auth),
-                              ),
-                              const SizedBox(height: 12),
-                              TextButton.icon(
-                                icon: const Icon(Icons.explore_outlined),
-                                label: const Text('게스트로 둘러보기'),
-                                onPressed: () async {
-                                  final success = await auth.signInAnonymously();
-                                  if (!success && mounted) {
-                                    final message = auth.lastError ?? '로그인에 실패했습니다. Firebase 구성을 확인해주세요.';
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(SnackBar(content: Text(message)));
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
