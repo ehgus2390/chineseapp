@@ -46,7 +46,7 @@ class KkiriApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final router = GoRouter(
-      initialLocation: '/home/chat',
+      initialLocation: '/home/map',
       refreshListenable: auth,
       redirect: (context, state) {
         final isLoggedIn = auth.currentUser != null;

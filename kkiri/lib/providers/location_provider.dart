@@ -51,6 +51,14 @@ class LocationProvider extends ChangeNotifier {
 
   // ───────────────────────── 자동 업데이트 ─────────────────────────
   Future<void> startAutoUpdate(String uid) async {
+    final settingsSnap = await db.collection('users').doc(uid).get();
+    final shareLocation = settingsSnap.data()?['shareLocation'] != false;
+    if (!shareLocation) {
+      errorMessage = '위치 공유가 꺼져 있습니다. 설정에서 켜주세요.';
+      notifyListeners();
+      return;
+    }
+
     if (!await _ensurePermission()) return;
 
     try {
@@ -80,6 +88,13 @@ class LocationProvider extends ChangeNotifier {
       errorMessage = "위치 업데이트 실패: $e";
       notifyListeners();
     }
+  }
+
+  Future<void> stopAutoUpdate() async {
+    await _positionSub?.cancel();
+    _positionSub = null;
+    isUpdating = false;
+    notifyListeners();
   }
 
   // ───────────────────────── 수동 갱신 (updateMyLocation) ─────────────────────────
@@ -114,6 +129,9 @@ class LocationProvider extends ChangeNotifier {
 
       final myGender = myData['gender'] as String?;
       final myCountry = myData['country'] as String?;
+      final preferredCountries = Set<String>.from(myData['preferredCountries'] ?? []);
+      final shareLocation = myData['shareLocation'] != false;
+      if (!shareLocation) return Stream.value([]);
       if (myGender == null || myCountry == null) return Stream.value([]);
 
       final posData = myData["position"];
@@ -136,9 +154,13 @@ class LocationProvider extends ChangeNotifier {
       ).map((docs) => docs.where((doc) {
         if (doc.id == uid) return false;
         final data = doc.data();
+        if (data?['shareLocation'] == false) return false;
         final otherGender = data?['gender'] as String?;
         final otherCountry = data?['country'] as String?;
-        return isTargetMatch(myGender, myCountry, otherGender, otherCountry);
+        final matchesTarget = isTargetMatch(myGender, myCountry, otherGender, otherCountry);
+        final matchesPreference = preferredCountries.isEmpty ||
+            (otherCountry != null && preferredCountries.contains(otherCountry));
+        return matchesTarget && matchesPreference;
       }).toList());
     });
   }
