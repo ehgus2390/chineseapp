@@ -30,6 +30,16 @@ class AuthProvider extends ChangeNotifier {
     lastError = null;
     notifyListeners();
     try {
+<<<<<<< Updated upstream
+=======
+      final provider = OAuthProvider('oidc.line');
+      final cred = await _auth.signInWithProvider(provider);
+
+  Future<void> signInAnonymously() async {
+    isLoading = true;
+    notifyListeners();
+    try {
+>>>>>>> Stashed changes
       final cred = await _auth.signInAnonymously();
       currentUser = cred.user;
       if (currentUser != null) {
@@ -50,6 +60,18 @@ class AuthProvider extends ChangeNotifier {
             'email': currentUser!.email,
             'createdAt': FieldValue.serverTimestamp(),
             'lang': 'ko',
+<<<<<<< Updated upstream
+=======
+            'displayName': 'User_${currentUser!.uid.substring(0, 6)}',
+            'photoUrl': null,
+            'gender': null,
+            'country': null,
+            'email': currentUser!.email,
+            'createdAt': FieldValue.serverTimestamp(),
+            'lang': 'ko',
+            'friends': [],
+>>>>>>> parent of ce61b44 (Require verified sign-in)
+>>>>>>> Stashed changes
             'searchId': currentUser!.uid.substring(0, 6),
           });
         }
