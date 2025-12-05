@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import 'user_profile_popup.dart';
@@ -193,6 +194,37 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocationProvider>();
+    if (loc.errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('주변 사용자')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  loc.errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, color: Colors.redAccent),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '위치 공유를 허용하면 추천 친구를 지도에서 볼 수 있습니다.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => GoRouter.of(context).go('/home/settings'),
+                  icon: const Icon(Icons.settings),
+                  label: const Text('설정으로 이동'),
+                )
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     if (loc.position == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),

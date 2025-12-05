@@ -46,7 +46,7 @@ class KkiriApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final router = GoRouter(
-      initialLocation: '/home/chat',
+      initialLocation: '/home/map',
       refreshListenable: auth,
       redirect: (context, state) {
         final isLoggedIn = auth.currentUser != null;
@@ -83,7 +83,7 @@ class KkiriApp extends StatelessWidget {
     );
     return MaterialApp.router(
       title: 'Kkiri',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blueAccent),
+      theme: baseTheme,
       routerConfig: router,
     );
   }

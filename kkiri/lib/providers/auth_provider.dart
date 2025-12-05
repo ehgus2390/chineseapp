@@ -11,6 +11,8 @@ class AuthProvider extends ChangeNotifier {
 
   User? currentUser;
   bool isLoading = false;
+  String? lastError;
+  bool verificationEmailSent = false;
 
   AuthProvider() {
     currentUser = _auth.currentUser;

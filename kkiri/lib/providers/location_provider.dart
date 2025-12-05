@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
+import '../utils/matching_rules.dart';
 
 import '../utils/matching_rules.dart';
 
@@ -57,6 +58,14 @@ class LocationProvider extends ChangeNotifier {
 
   // ───────────────────────── 자동 업데이트 ─────────────────────────
   Future<void> startAutoUpdate(String uid) async {
+    final settingsSnap = await db.collection('users').doc(uid).get();
+    final shareLocation = settingsSnap.data()?['shareLocation'] != false;
+    if (!shareLocation) {
+      errorMessage = '위치 공유가 꺼져 있습니다. 설정에서 켜주세요.';
+      notifyListeners();
+      return;
+    }
+
     if (!await _ensurePermission()) return;
 
     try {
