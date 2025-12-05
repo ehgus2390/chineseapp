@@ -1,0 +1,6 @@
+# Copy this file to android/key.properties and replace the placeholder values
+# before building a signed Play Store release. Keep the actual file secret.
+storeFile=your-keystore.jks
+storePassword=changeit
+keyAlias=upload
+keyPassword=changeit

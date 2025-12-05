@@ -1,4 +1,4 @@
-package com.example.kkiri
+package com.linguacircle.app
 
 import io.flutter.embedding.android.FlutterActivity
 
