@@ -11,35 +11,6 @@ class ChatProvider with ChangeNotifier {
     return ids.join('_');
   }
 
-  /// 대화방 ID 생성 또는 가져오기
-  Future<String> createOrGetChatId(String userA, String userB) async {
-    return _chatRoomId(userA, userB);
-  }
-
-  /// 메시지 전송
-  Future<void> sendMessage({
-    required String senderId,
-    required String receiverId,
-    required String text,
-  }) async {
-    if (text.trim().isEmpty) return;
-    final roomId = _chatRoomId(senderId, receiverId);
-    final ref = _firestore.collection('chats').doc(roomId).collection('messages');
-
-    await ref.add({
-      'senderId': senderId,
-      'receiverId': receiverId,
-      'text': text.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    // 최근 메시지 캐시 (리스트용)
-    await _firestore.collection('chats').doc(roomId).set({
-      'lastMessage': text.trim(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'users': [senderId, receiverId],
-    });
-  }
   /// 두 사용자의 채팅방을 생성하거나 기존 ID 반환
   Future<String> createOrGetChatId(String userA, String userB) async {
     final roomId = _chatRoomId(userA, userB);
@@ -57,10 +28,40 @@ class ChatProvider with ChangeNotifier {
     return roomId;
   }
 
+  /// 메시지 전송
+  Future<void> sendMessage({
+    required String senderId,
+    required String receiverId,
+    required String text,
+  }) async {
+    if (text.trim().isEmpty) return;
+
+    final roomId = _chatRoomId(senderId, receiverId);
+    final ref = _firestore
+        .collection('chats')
+        .doc(roomId)
+        .collection('messages');
+
+    await ref.add({
+      'senderId': senderId,
+      'receiverId': receiverId,
+      'text': text.trim(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // 최근 메시지 업데이트
+    await _firestore.collection('chats').doc(roomId).set({
+      'lastMessage': text.trim(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'users': [senderId, receiverId],
+    }, SetOptions(merge: true));
+  }
+
   /// 실시간 메시지 스트림
   Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(
       String userA, String userB) {
     final roomId = _chatRoomId(userA, userB);
+
     return _firestore
         .collection('chats')
         .doc(roomId)

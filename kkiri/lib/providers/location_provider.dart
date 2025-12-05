@@ -1,15 +1,16 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
+
 import '../utils/matching_rules.dart';
 
 class LocationProvider extends ChangeNotifier {
   final FirebaseFirestore db = FirebaseFirestore.instance;
 
   Position? position;
-<<<<<<< HEAD
   String? errorMessage;
   bool isUpdating = false;
 
@@ -21,13 +22,6 @@ class LocationProvider extends ChangeNotifier {
     if (!enabled) {
       errorMessage = '위치 서비스가 꺼져 있습니다.';
       notifyListeners();
-=======
-  StreamSubscription<Position>? _positionSub;
-
-  Future<bool> _ensureServiceAndPermission() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
->>>>>>> parent of ce61b44 (Require verified sign-in)
       return false;
     }
 
@@ -35,7 +29,6 @@ class LocationProvider extends ChangeNotifier {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-<<<<<<< HEAD
 
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
@@ -44,13 +37,8 @@ class LocationProvider extends ChangeNotifier {
       return false;
     }
 
+    // 문제 없으면 에러 초기화
     errorMessage = null;
-=======
-    if (permission == LocationPermission.deniedForever ||
-        permission == LocationPermission.denied) {
-      return false;
-    }
->>>>>>> parent of ce61b44 (Require verified sign-in)
     return true;
   }
 
@@ -58,17 +46,19 @@ class LocationProvider extends ChangeNotifier {
   Future<void> _saveToFirestore(String uid, Position pos) async {
     final geoPoint = GeoFirePoint(GeoPoint(pos.latitude, pos.longitude));
 
-    await db.collection("users").doc(uid).set({
-      "position": geoPoint.data, // {"geopoint":, "geohash":}
-      "updatedAt": FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    await db.collection("users").doc(uid).set(
+      {
+        "position": geoPoint.data, // {"geopoint":, "geohash":}
+        "updatedAt": FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 
   // ───────────────────────── 자동 업데이트 ─────────────────────────
   Future<void> startAutoUpdate(String uid) async {
     if (!await _ensurePermission()) return;
 
-<<<<<<< HEAD
     try {
       isUpdating = true;
       notifyListeners();
@@ -81,7 +71,9 @@ class LocationProvider extends ChangeNotifier {
       await _saveToFirestore(uid, current);
       notifyListeners();
 
+      // 이전 스트림 정리
       await _positionSub?.cancel();
+
       _positionSub = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -94,29 +86,13 @@ class LocationProvider extends ChangeNotifier {
       });
     } catch (e) {
       errorMessage = "위치 업데이트 실패: $e";
-=======
-    final current = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    position = current;
-    await _saveToFirestore(uid, current);
-    notifyListeners();
-
-    await _positionSub?.cancel();
-    _positionSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 30,
-      ),
-    ).listen((pos) async {
-      position = pos;
->>>>>>> parent of ce61b44 (Require verified sign-in)
+      isUpdating = false;
       notifyListeners();
-      await _saveToFirestore(uid, pos);
-    });
+    }
   }
 
   // ───────────────────────── 수동 갱신 (updateMyLocation) ─────────────────────────
   Future<void> updateMyLocation(String uid) async {
-<<<<<<< HEAD
     if (!await _ensurePermission()) return;
 
     try {
@@ -128,18 +104,9 @@ class LocationProvider extends ChangeNotifier {
       await _saveToFirestore(uid, pos);
       notifyListeners();
     } catch (e) {
-      errorMessage = "위치 갱신 실패";
+      errorMessage = "위치 갱신 실패: $e";
       notifyListeners();
     }
-=======
-    if (!await _ensureServiceAndPermission()) {
-      return;
-    }
-    final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    position = pos;
-    await _saveToFirestore(uid, pos);
-    notifyListeners();
->>>>>>> parent of ce61b44 (Require verified sign-in)
   }
 
   // ───────────────────────── 주변 사용자 스트림 ─────────────────────────
@@ -150,7 +117,6 @@ class LocationProvider extends ChangeNotifier {
     final usersRef = db.collection("users");
 
     return usersRef.doc(uid).snapshots().asyncExpand((snap) {
-
       final myData = snap.data();
       if (myData == null) return Stream.value([]);
 
@@ -160,7 +126,6 @@ class LocationProvider extends ChangeNotifier {
 
       final posData = myData["position"];
       if (posData is! Map<String, dynamic>) return Stream.value([]);
-
       if (posData["geopoint"] is! GeoPoint) return Stream.value([]);
 
       final centerGeo = posData["geopoint"] as GeoPoint;
@@ -175,13 +140,22 @@ class LocationProvider extends ChangeNotifier {
         geopointFrom: (map) =>
         (map["position"] as Map<String, dynamic>)["geopoint"] as GeoPoint,
         strictMode: true,
-      ).map((docs) => docs.where((doc) {
-        if (doc.id == uid) return false;
-        final data = doc.data();
-        final otherGender = data?['gender'] as String?;
-        final otherCountry = data?['country'] as String?;
-        return isTargetMatch(myGender, myCountry, otherGender, otherCountry);
-      }).toList());
+      ).map((docs) {
+        return docs.where((doc) {
+          if (doc.id == uid) return false;
+
+          final data = doc.data();
+          final otherGender = data?['gender'] as String?;
+          final otherCountry = data?['country'] as String?;
+
+          return isTargetMatch(
+            myGender,
+            myCountry,
+            otherGender,
+            otherCountry,
+          );
+        }).toList();
+      });
     });
   }
 
