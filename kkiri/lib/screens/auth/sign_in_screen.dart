@@ -8,8 +8,6 @@ class SignInScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-<<<<<<< HEAD
-    final l10n = context.l10n;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -30,13 +28,13 @@ class SignInScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    l10n.signInTitle,
+                    '어서오세요! 새로운 인연을 만나보세요',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    l10n.signInSubtitle,
+                    '간단히 로그인하고 주변 친구들과 대화를 시작하세요.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
@@ -47,7 +45,7 @@ class SignInScreen extends StatelessWidget {
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             icon: const Icon(Icons.chat_bubble_outline),
-                            label: Text(l10n.signInCta),
+                            label: const Text('로그인하고 시작하기'),
                             onPressed: () async {
                               final success = await auth.signInAnonymously();
                               if (!success) {
@@ -61,20 +59,10 @@ class SignInScreen extends StatelessWidget {
                           ),
                         ),
                 ],
-=======
-    return Scaffold(
-      appBar: AppBar(title: const Text('로그인')),
-      body: Center(
-        child: auth.isLoading
-            ? const CircularProgressIndicator()
-            : ElevatedButton.icon(
-                icon: const Icon(Icons.person),
-                label: const Text('익명 로그인'),
-                onPressed: () async {
-                  await auth.signInAnonymously();
-                },
->>>>>>> parent of ce61b44 (Require verified sign-in)
               ),
+            ),
+          ),
+        ),
       ),
     );
   }
