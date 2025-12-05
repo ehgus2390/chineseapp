@@ -11,21 +11,12 @@ dependencies:
     sdk: flutter
   provider: ^6.1.2
 
-<<<<<<< HEAD
   # Firebase (compatible versions)
   firebase_core: ^4.2.1
   firebase_auth: ^6.1.2
   cloud_firestore: ^6.1.0
   firebase_storage: ^13.0.4
   google_sign_in: ^7.2.0
-=======
-  # Firebase (Core 3.x 세대)
-  firebase_core: ^4.2.0
-  firebase_auth: ^6.1.1
-  cloud_firestore: ^6.0.3
-  firebase_storage: ^13.0.3
-  google_sign_in: ^6.2.1
->>>>>>> parent of ce61b44 (Require verified sign-in)
 
   # 지도/위치
   google_maps_flutter: ^2.7.0

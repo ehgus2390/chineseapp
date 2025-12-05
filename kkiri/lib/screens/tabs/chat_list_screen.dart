@@ -27,9 +27,14 @@ class ChatListScreen extends StatelessWidget {
           itemCount: docs.length,
           itemBuilder: (_, i) {
             final d = docs[i].data();
+            final users = (d['users'] as List?)?.cast<String>() ?? const <String>[];
+            final counterpartId = users.firstWhere(
+              (id) => id != uid,
+              orElse: () => users.isNotEmpty ? users.first : '알 수 없는 사용자',
+            );
             return ListTile(
-              title: Text(d['lastMessage'] ?? '(대화 시작해보세요)'),
-              subtitle: Text((d['members'] as List).join(', ')),
+              title: Text((d['lastMessage'] as String?) ?? '(대화 시작해보세요)'),
+              subtitle: Text(users.isEmpty ? '참여자 정보 없음' : counterpartId),
               onTap: () {
                 Navigator.push(
                   context,

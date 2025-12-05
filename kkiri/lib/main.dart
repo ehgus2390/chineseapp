@@ -46,7 +46,7 @@ class KkiriApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final router = GoRouter(
-      initialLocation: '/home/chat',
+      initialLocation: '/home/map',
       refreshListenable: auth,
       redirect: (context, state) {
         final isLoggedIn = auth.currentUser != null;
@@ -75,19 +75,15 @@ class KkiriApp extends StatelessWidget {
       ],
     );
 
-<<<<<<< HEAD
     final baseTheme = ThemeData(
       useMaterial3: true,
       colorSchemeSeed: Colors.teal,
       scaffoldBackgroundColor: const Color(0xFFF6F7FB),
       textTheme: ThemeData().textTheme,
     );
-
-=======
->>>>>>> parent of ce61b44 (Require verified sign-in)
     return MaterialApp.router(
       title: 'Kkiri',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blueAccent),
+      theme: baseTheme,
       routerConfig: router,
     );
   }
