@@ -9,7 +9,8 @@ import '../utils/matching_rules.dart';
 import '../utils/matching_rules.dart';
 
 class LocationProvider extends ChangeNotifier {
-  final FirebaseFirestore db = FirebaseFirestore.instance;
+  final GeoFlutterFirePlus geo = GeoFlutterFirePlus();
+  final db = FirebaseFirestore.instance;
 
   Position? position;
   String? errorMessage;
@@ -118,53 +119,18 @@ class LocationProvider extends ChangeNotifier {
     }
   }
 
-  // ───────────────────────── 주변 사용자 스트림 ─────────────────────────
-  Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(
-      String uid,
-      double radiusKm,
-      ) {
-    final usersRef = db.collection("users");
-
-    return usersRef.doc(uid).snapshots().asyncExpand((snap) {
-      final myData = snap.data();
-      if (myData == null) return Stream.value([]);
-
-      final myGender = myData['gender'] as String?;
-      final myCountry = myData['country'] as String?;
-      if (myGender == null || myCountry == null) return Stream.value([]);
-
-      final posData = myData["position"];
-      if (posData is! Map<String, dynamic>) return Stream.value([]);
-      if (posData["geopoint"] is! GeoPoint) return Stream.value([]);
-
-      final centerGeo = posData["geopoint"] as GeoPoint;
-      final center = GeoFirePoint(centerGeo);
-
-      final geoRef = GeoCollectionReference<Map<String, dynamic>>(usersRef);
-
-      return geoRef.subscribeWithin(
-        center: center,
-        radiusInKm: radiusKm,
-        field: "position",
-        geopointFrom: (map) =>
-        (map["position"] as Map<String, dynamic>)["geopoint"] as GeoPoint,
-        strictMode: true,
-      ).map((docs) {
-        return docs.where((doc) {
-          if (doc.id == uid) return false;
-
-          final data = doc.data();
-          final otherGender = data?['gender'] as String?;
-          final otherCountry = data?['country'] as String?;
-
-          return isTargetMatch(
-            myGender,
-            myCountry,
-            otherGender,
-            otherCountry,
-          );
-        }).toList();
-      });
+  Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(String uid, double radiusKm) {
+    return db.collection('users').doc(uid).snapshots().asyncExpand((snap) {
+      final data = snap.data();
+      if (data == null || data['position'] == null) {
+        return Stream<List<DocumentSnapshot<Map<String, dynamic>>>>.empty();
+      }
+      final point = data['position'] as GeoPoint;
+      final center = geo.point(latitude: point.latitude, longitude: point.longitude);
+      final collectionRef = db.collection('users');
+      return geo
+          .collection(collectionRef: collectionRef)
+          .within(center: center, radiusInKm: radiusKm, field: 'position');
     });
   }
 

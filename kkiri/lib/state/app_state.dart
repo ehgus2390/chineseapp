@@ -1,43 +1,64 @@
+// lib/state/app_state.dart
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../services/firebase_auth_service.dart';
+
+import '../services/auth_service.dart';
 
 class AppState extends ChangeNotifier {
-  final AuthService _auth = AuthService();
-  User? user;
-  bool isLoading = true;
-
-  AppState() {
-    _init();
-  }
-
-  Future<void> _init() async {
-    _auth.onAuthChanged().listen((u) {
-      user = u;
+  AppState({AuthService? authService})
+      : _authService = authService ?? AuthService() {
+    _subscription = _authService.onAuthChanged().listen((authUser) {
+      user = authUser;
       isLoading = false;
       notifyListeners();
     });
   }
 
+  final AuthService _authService;
+  StreamSubscription<User?>? _subscription;
+
+  User? user;
+  bool isLoading = true;
+
   Future<void> signInWithEmail(String email, String password) async {
     isLoading = true;
     notifyListeners();
-    await _auth.signInWithEmail(email, password);
-    isLoading = false;
-    notifyListeners();
+    try {
+      user = await _authService.signInWithEmail(email, password);
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> registerWithEmail(String email, String password) async {
     isLoading = true;
     notifyListeners();
-    await _auth.registerWithEmail(email, password);
-    isLoading = false;
-    notifyListeners();
+    try {
+      user = await _authService.registerWithEmail(email, password);
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> signOut() async {
-    await _auth.signOut();
+    isLoading = true;
+    notifyListeners();
+    try {
+      await _authService.signOut();
+      user = null;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
-  bool get isLoggedIn => user != null;
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
 }

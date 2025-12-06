@@ -1,14 +1,33 @@
-import 'package:flutter/material.dart';
+// lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+
+import 'firebase_options.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/main_screen.dart';
+import 'services/post_service.dart';
 import 'state/app_state.dart';
-import 'screens/auth/sign_in_screen.dart';
-import 'screens/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // firebase_options.dart 쓰고 있으면 옵션 넣어줘도 됨
-  runApp(const KkiriApp());
+  final options = DefaultFirebaseOptions.currentPlatform;
+  if (options != null) {
+    await Firebase.initializeApp(options: options);
+  } else {
+    await Firebase.initializeApp();
+  }
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppState()),
+        Provider<PostService>(create: (_) => PostService()),
+      ],
+      child: const KkiriApp(),
+    ),
+  );
 }
 
 class KkiriApp extends StatelessWidget {
@@ -16,22 +35,26 @@ class KkiriApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppState(),
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Kkiri',
-        theme: ThemeData(
-          primarySwatch: Colors.indigo,
-          scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-        ),
-        home: const RootScreen(),
+    return MaterialApp(
+      title: 'Kkiri',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        useMaterial3: true,
       ),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('ko'),
+      ],
+      home: const RootScreen(),
     );
   }
 }
 
-/// 로그인 여부에 따라 LoginScreen 또는 MainScreen 띄우는 루트
 class RootScreen extends StatelessWidget {
   const RootScreen({super.key});
 
@@ -44,11 +67,12 @@ class RootScreen extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
+
         if (appState.user == null) {
           return const LoginScreen();
-        } else {
-          return const MainScreen();
         }
+
+        return const MainScreen();
       },
     );
   }
