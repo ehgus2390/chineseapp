@@ -1,115 +1,107 @@
-diff --git a/kkiri/lib/screens/map/nearby_map_screen.dart b/kkiri/lib/screens/map/nearby_map_screen.dart
-index afe9d9c91b193cadb23bc4be74d5b167de184046..4d2126a96d853c51ffee10e714f2cef08bfb5024 100644
---- a/kkiri/lib/screens/map/nearby_map_screen.dart
-+++ b/kkiri/lib/screens/map/nearby_map_screen.dart
-@@ -17,51 +17,55 @@ class NearbyMapScreen extends StatefulWidget {
+diff --git a/kkiri/lib/providers/auth_provider.dart b/kkiri/lib/providers/auth_provider.dart
+index 3db83e67b5f2cb290e8695a3ce0cc5f8bc891337..92ebcc65bce11f0ea861f1eb3090a3f8f63133d9 100644
+--- a/kkiri/lib/providers/auth_provider.dart
++++ b/kkiri/lib/providers/auth_provider.dart
+@@ -13,79 +13,99 @@ class AuthProvider extends ChangeNotifier {
  
-   @override
-   State<NearbyMapScreen> createState() => _NearbyMapScreenState();
- }
+   AuthProvider() {
+     currentUser = _auth.currentUser;
+     _listenAuthState();
+   }
  
- class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProviderStateMixin {
-   final geo = GeoFlutterFirePlus();
-   GoogleMapController? _mapController;
-   double _radiusKm = 5;
-   final Map<MarkerId, Marker> _markers = {};
-   StreamSubscription<List<DocumentSnapshot<Map<String, dynamic>>>>? _nearbySub;
- 
-   // 🔵 내 위치 펄스 애니메이션
-   late final AnimationController _pulseCtrl = AnimationController(
-     vsync: this,
-     duration: const Duration(seconds: 2),
-   )..repeat(reverse: true);
-   late final Animation<double> _pulse = Tween<double>(begin: 120, end: 300).animate(_pulseCtrl);
- 
-   @override
-   void initState() {
-     super.initState();
-     WidgetsBinding.instance.addPostFrameCallback((_) async {
-       final auth = context.read<AuthProvider>();
-       final loc = context.read<LocationProvider>();
--      await loc.startAutoUpdate(auth.currentUser!.uid);
-+      final uid = auth.currentUser?.uid;
-+      if (uid == null) {
-+        return;
-+      }
-+      await loc.startAutoUpdate(uid);
-       _subscribeNearby();
+   void _listenAuthState() {
+     _authSub?.cancel();
+     _authSub = _auth.authStateChanges().listen((user) {
+       currentUser = user;
+       notifyListeners();
      });
+   }
+ 
+   Future<void> signInAnonymously() async {
+     isLoading = true;
+     notifyListeners();
+     try {
+       final cred = await _auth.signInAnonymously();
+       currentUser = cred.user;
+       if (currentUser != null) {
+         final doc = _db.collection('users').doc(currentUser!.uid);
+         final snapshot = await doc.get();
+         if (!snapshot.exists) {
+           await doc.set({
+-            'displayName': 'User_${currentUser!.uid.substring(0, 6)}',
++            'displayName': 'Heart_${currentUser!.uid.substring(0, 6)}',
+             'photoUrl': null,
++            'bio': '새로운 인연을 찾아요!',
++            'age': null,
++            'gender': null,
++            'interests': <String>[],
++            'likesSent': <String>[],
++            'likesReceived': <String>[],
++            'matches': <String>[],
++            'passes': <String>[],
+             'email': currentUser!.email,
+             'createdAt': FieldValue.serverTimestamp(),
+             'lang': 'ko',
+-            'friends': [],
+             'searchId': currentUser!.uid.substring(0, 6),
+           });
+         }
+       }
+     } finally {
+       isLoading = false;
+       notifyListeners();
+     }
+   }
+ 
+   Future<void> signOut() async {
+     await _auth.signOut();
+   }
+ 
+   Future<void> updateProfilePhoto(String photoUrl) async {
+     final uid = currentUser?.uid;
+     if (uid == null) return;
+     await currentUser?.updatePhotoURL(photoUrl);
+     await _db.collection('users').doc(uid).update({'photoUrl': photoUrl});
+     notifyListeners();
+   }
+ 
+-  Future<void> updateProfile({String? displayName, String? photoUrl, String? searchId, String? lang}) async {
++  Future<void> updateProfile({
++    String? displayName,
++    String? photoUrl,
++    String? searchId,
++    String? lang,
++    String? bio,
++    int? age,
++    String? gender,
++    List<String>? interests,
++  }) async {
+     final uid = currentUser?.uid;
+     if (uid == null) return;
+     final data = <String, dynamic>{};
+     if (displayName != null) {
+       data['displayName'] = displayName;
+       await currentUser?.updateDisplayName(displayName);
+     }
+     if (photoUrl != null) {
+       data['photoUrl'] = photoUrl;
+       await currentUser?.updatePhotoURL(photoUrl);
+     }
+     if (searchId != null) data['searchId'] = searchId;
+     if (lang != null) data['lang'] = lang;
++    if (bio != null) data['bio'] = bio;
++    if (age != null) data['age'] = age;
++    if (gender != null) data['gender'] = gender;
++    if (interests != null) data['interests'] = interests;
+     if (data.isNotEmpty) {
+       await _db.collection('users').doc(uid).update(data);
+       notifyListeners();
+     }
    }
  
    @override
    void dispose() {
-     _nearbySub?.cancel();
-     _pulseCtrl.dispose();
+     _authSub?.cancel();
      super.dispose();
    }
- 
-   /// 주변 사용자 구독
-   void _subscribeNearby() {
-     _nearbySub?.cancel();
-     final loc = context.read<LocationProvider>();
-     if (loc.position == null) return;
- 
-     final center = GeoFirePoint(GeoPoint(loc.position!.latitude, loc.position!.longitude));
-     final col = FirebaseFirestore.instance.collection('users');
- 
-     _nearbySub = geo
-         .collection(collectionRef: col)
-         .within(center: center, radiusInKm: _radiusKm, field: 'position')
-         .listen((docs) => _buildMarkers(docs));
-   }
-@@ -86,51 +90,52 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
-       // 원형 마스크
-       canvas.drawCircle(center, radius, paint);
-       paint.blendMode = BlendMode.srcIn;
- 
-       // 원형 마스크 적용하여 이미지 그리기
-       canvas.drawImageRect(
-         image,
-         Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-         Rect.fromCircle(center: center, radius: radius),
-         paint,
-       );
- 
-       final img = await pictureRecorder
-           .endRecording()
-           .toImage(radius.toInt() * 2, radius.toInt() * 2);
-       final data = await img.toByteData(format: ui.ImageByteFormat.png);
-       return BitmapDescriptor.fromBytes(Uint8List.view(data!.buffer));
-     } catch (_) {
-       return BitmapDescriptor.defaultMarker; // 실패 시 기본 마커
-     }
-   }
- 
-   /// 🗺️ Firestore → 마커 렌더링
-   Future<void> _buildMarkers(List<DocumentSnapshot<Map<String, dynamic>>> docs) async {
-     final auth = context.read<AuthProvider>();
--    final myId = auth.currentUser!.uid;
-+    final myId = auth.currentUser?.uid;
-+    if (myId == null) return;
-     final Map<MarkerId, Marker> m = {};
- 
-     for (final d in docs) {
-       final data = d.data();
-       if (data == null || data['position'] == null) continue;
- 
-       final GeoPoint p = data['position'];
-       final id = MarkerId(d.id);
- 
-       // 프로필 이미지 마커 적용
-       BitmapDescriptor icon;
-       if (data['photoUrl'] != null && data['photoUrl'].toString().startsWith('http')) {
-         icon = await _createProfileMarker(data['photoUrl']);
-       } else {
-         icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
-       }
- 
-       m[id] = Marker(
-         markerId: id,
-         position: LatLng(p.latitude, p.longitude),
-         icon: icon,
-         infoWindow: InfoWindow(
-           title: data['displayName'] ?? 'User',
-           snippet: '@${data['searchId'] ?? ''}',
-           onTap: () {
+ }
