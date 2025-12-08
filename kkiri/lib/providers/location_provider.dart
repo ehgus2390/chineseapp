@@ -1,11 +1,8 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
-import '../utils/matching_rules.dart';
-
 import '../utils/matching_rules.dart';
 
 class LocationProvider extends ChangeNotifier {
@@ -117,6 +114,13 @@ class LocationProvider extends ChangeNotifier {
       errorMessage = "위치 갱신 실패: $e";
       notifyListeners();
     }
+  }
+
+  Future<void> stopAutoUpdate() async {
+    await _positionSub?.cancel();
+    _positionSub = null;
+    isUpdating = false;
+    notifyListeners();
   }
 
   Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(String uid, double radiusKm) {

@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import 'user_profile_popup.dart';
@@ -60,17 +61,17 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
   /// 주변 사용자 구독
   void _subscribeNearby() {
     _nearbySub?.cancel();
+
     final loc = context.read<LocationProvider>();
+    final auth = context.read<AuthProvider>();
+    final uid = auth.currentUser?.uid;
+
+    if (uid == null) return;
     if (loc.position == null) return;
 
-    final center = geo.point(
-      latitude: loc.position!.latitude,
-      longitude: loc.position!.longitude,
-    );
-    final col = FirebaseFirestore.instance.collection('users');
-
-    _nearbySub = loc.nearbyUsersStream(uid, _radiusKm).listen((docs) => _buildMarkers(docs));
+    _nearbySub = loc.nearbyUsersStream(uid, _radiusKm).listen(_buildMarkers);
   }
+
 
   /// 🔹 썸네일 원형 이미지 생성 (NetworkImage → BitmapDescriptor)
   Future<BitmapDescriptor> _createProfileMarker(String imageUrl) async {
@@ -264,7 +265,10 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
                     divisions: 19,
                     label: '\${_radiusKm.toInt()} km',
                     onChanged: (v) => setState(() => _radiusKm = v),
-                    onChangeEnd: (_) => _subscribeNearby(),
+                    onChangeEnd: (_) => _subscribeNearby(
+                    // final auth = context.read<AuthProvider>();
+                    // final uid = auth.currentUser?.uid;
+                  ),
                   ),
                 ),
                 IconButton(
