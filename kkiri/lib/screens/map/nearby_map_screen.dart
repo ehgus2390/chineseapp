@@ -2,10 +2,11 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import 'user_profile_popup.dart';
@@ -60,8 +61,10 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
   /// 주변 사용자 구독
   void _subscribeNearby() {
     _nearbySub?.cancel();
+
     final loc = context.read<LocationProvider>();
-    if (loc.position == null) return;
+    final auth = context.read<AuthProvider>();
+    final uid = auth.currentUser?.uid;
 
     final center = geo.point(
       latitude: loc.position!.latitude,
@@ -69,11 +72,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
     );
     final col = FirebaseFirestore.instance.collection('users');
 
-    _nearbySub = geo
-        .collection(collectionRef: col)
-        .within(center: center, radiusInKm: _radiusKm, field: 'position')
-        .listen((docs) => _buildMarkers(docs));
+    _nearbySub = loc.nearbyUsersStream(uid, _radiusKm).listen(_buildMarkers);
   }
+
 
   /// 🔹 썸네일 원형 이미지 생성 (NetworkImage → BitmapDescriptor)
   Future<BitmapDescriptor> _createProfileMarker(String imageUrl) async {
@@ -123,16 +124,26 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
     if (myId == null) return;
     final Map<MarkerId, Marker> m = {};
 
+    final myDoc = await FirebaseFirestore.instance.collection('users').doc(myId).get();
+    final myData = myDoc.data();
+    if (myData == null) return;
+    final myInterests = Set<String>.from(myData['interests'] ?? []);
+
     for (final d in docs) {
       final data = d.data();
       if (data == null || data['position'] == null) continue;
 
-      final GeoPoint p = data['position'];
+      final GeoPoint p = data['position']['geopoint'];
       final id = MarkerId(d.id);
+
+      final userInterests = Set<String>.from(data['interests'] ?? []);
+      final hasCommonInterests = myInterests.intersection(userInterests).isNotEmpty;
 
       // 프로필 이미지 마커 적용
       BitmapDescriptor icon;
-      if (data['photoUrl'] != null &&
+      if (hasCommonInterests) {
+        icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow);
+      } else if (data['photoUrl'] != null &&
           data['photoUrl'].toString().startsWith('http')) {
         icon = await _createProfileMarker(data['photoUrl']);
       } else {
@@ -146,18 +157,18 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
         infoWindow: InfoWindow(
           title: data['displayName'] ?? 'User',
           snippet: '@${data['searchId'] ?? ''}',
-          onTap: () {
-            showModalBottomSheet(
-              context: context,
-              builder: (_) =>
-                  UserProfilePopup(
-                    uid: d.id,
-                    displayName: data['displayName'],
-                    photoUrl: data['photoUrl'],
-                  ),
-            );
-          },
         ),
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            builder: (_) =>
+                UserProfilePopup(
+                  uid: d.id,
+                  displayName: data['displayName'],
+                  photoUrl: data['photoUrl'],
+                ),
+          );
+        },
       );
     }
 
@@ -192,6 +203,37 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocationProvider>();
+    if (loc.errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('주변 사용자')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  loc.errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, color: Colors.redAccent),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '위치 공유를 허용하면 추천 친구를 지도에서 볼 수 있습니다.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => GoRouter.of(context).go('/home/settings'),
+                  icon: const Icon(Icons.settings),
+                  label: const Text('설정으로 이동'),
+                )
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     if (loc.position == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -224,9 +266,12 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProv
                     min: 1,
                     max: 20,
                     divisions: 19,
-                    label: '${_radiusKm.toInt()} km',
+                    label: '\${_radiusKm.toInt()} km',
                     onChanged: (v) => setState(() => _radiusKm = v),
-                    onChangeEnd: (_) => _subscribeNearby(),
+                    onChangeEnd: (_) => _subscribeNearby(
+                    // final auth = context.read<AuthProvider>();
+                    // final uid = auth.currentUser?.uid;
+                  ),
                   ),
                 ),
                 IconButton(

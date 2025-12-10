@@ -6,10 +6,13 @@ import 'package:flutter/foundation.dart';
 class AuthProvider extends ChangeNotifier {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
+
   StreamSubscription<User?>? _authSub;
 
   User? currentUser;
   bool isLoading = false;
+  String? lastError;
+  bool verificationEmailSent = false;
 
   AuthProvider() {
     currentUser = _auth.currentUser;
@@ -24,19 +27,25 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
+  // ───────────────────────── 익명 로그인 ─────────────────────────
   Future<void> signInAnonymously() async {
     isLoading = true;
     notifyListeners();
+
     try {
       final cred = await _auth.signInAnonymously();
       currentUser = cred.user;
+
       if (currentUser != null) {
         final doc = _db.collection('users').doc(currentUser!.uid);
         final snapshot = await doc.get();
+
         if (!snapshot.exists) {
           await doc.set({
             'displayName': 'User_${currentUser!.uid.substring(0, 6)}',
             'photoUrl': null,
+            'gender': null,
+            'country': null,
             'email': currentUser!.email,
             'createdAt': FieldValue.serverTimestamp(),
             'lang': 'ko',
@@ -51,22 +60,35 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // ───────────────────────── 로그아웃 ─────────────────────────
   Future<void> signOut() async {
     await _auth.signOut();
   }
 
+  // ───────────────────────── 프로필 사진 업데이트 ─────────────────────────
   Future<void> updateProfilePhoto(String photoUrl) async {
     final uid = currentUser?.uid;
     if (uid == null) return;
+
     await currentUser?.updatePhotoURL(photoUrl);
     await _db.collection('users').doc(uid).update({'photoUrl': photoUrl});
     notifyListeners();
   }
 
-  Future<void> updateProfile({String? displayName, String? photoUrl, String? searchId, String? lang}) async {
+  // ───────────────────────── 프로필 업데이트 ─────────────────────────
+  Future<void> updateProfile({
+    String? displayName,
+    String? photoUrl,
+    String? searchId,
+    String? lang,
+    String? gender,
+    String? country,
+  }) async {
     final uid = currentUser?.uid;
     if (uid == null) return;
+
     final data = <String, dynamic>{};
+
     if (displayName != null) {
       data['displayName'] = displayName;
       await currentUser?.updateDisplayName(displayName);
@@ -77,6 +99,9 @@ class AuthProvider extends ChangeNotifier {
     }
     if (searchId != null) data['searchId'] = searchId;
     if (lang != null) data['lang'] = lang;
+    if (gender != null) data['gender'] = gender;
+    if (country != null) data['country'] = country;
+
     if (data.isNotEmpty) {
       await _db.collection('users').doc(uid).update(data);
       notifyListeners();

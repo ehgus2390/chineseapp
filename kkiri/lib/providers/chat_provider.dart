@@ -46,8 +46,12 @@ class ChatProvider with ChangeNotifier {
     required String text,
   }) async {
     if (text.trim().isEmpty) return;
+
     final roomId = _chatRoomId(senderId, receiverId);
-    final ref = _firestore.collection('chats').doc(roomId).collection('messages');
+    final ref = _firestore
+        .collection('chats')
+        .doc(roomId)
+        .collection('messages');
 
     await ref.add({
       'senderId': senderId,
@@ -56,7 +60,7 @@ class ChatProvider with ChangeNotifier {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // 최근 메시지 캐시 (리스트용)
+    // 최근 메시지 업데이트
     await _firestore.collection('chats').doc(roomId).set({
       'lastMessage': text.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -68,6 +72,7 @@ class ChatProvider with ChangeNotifier {
   Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(
       String userA, String userB) {
     final roomId = _chatRoomId(userA, userB);
+
     return _firestore
         .collection('chats')
         .doc(roomId)
