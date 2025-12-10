@@ -56,6 +56,15 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> sendVerificationEmail() async {
+    await _authService.sendEmailVerification();
+  }
+
+  Future<void> refreshUser() async {
+    user = await _authService.reloadUser();
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _subscription?.cancel();

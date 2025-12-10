@@ -9,6 +9,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/post_service.dart';
 import 'state/app_state.dart';
+import 'providers/chat_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
         Provider<PostService>(create: (_) => PostService()),
       ],
       child: const KkiriApp(),
