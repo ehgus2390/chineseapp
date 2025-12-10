@@ -21,7 +21,7 @@ class NearbyMapScreen extends StatefulWidget {
 }
 
 class _NearbyMapScreenState extends State<NearbyMapScreen> with SingleTickerProviderStateMixin {
-  final GeoFlutterFirePlus geo = GeoFlutterFirePlus();
+  final geo = GeoFlutterFirePlus();
   GoogleMapController? _mapController;
   double _radiusKm = 5;
   final Map<MarkerId, Marker> _markers = {};
