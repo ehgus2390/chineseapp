@@ -92,7 +92,7 @@ class PostTile extends StatelessWidget {
               children: [
                 StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                   stream: currentUser == null
-                      ? const Stream.empty()
+                      ? const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty()
                       : FirebaseFirestore.instance
                           .collection('posts')
                           .doc(postId)
