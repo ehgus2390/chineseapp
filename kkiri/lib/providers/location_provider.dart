@@ -5,7 +5,7 @@ import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 
 class LocationProvider extends ChangeNotifier {
-  final geo = GeoFlutterFirePlus();
+  final GeoFlutterFirePlus geo = GeoFlutterFirePlus();
   final db = FirebaseFirestore.instance;
 
   Position? position;
@@ -85,7 +85,7 @@ class LocationProvider extends ChangeNotifier {
       final collectionRef = db.collection('users');
       return geo
           .collection(collectionRef: collectionRef)
-          .within(center: center, radius: radiusKm, field: 'position');
+          .within(center: center, radiusInKm: radiusKm, field: 'position');
     });
   }
 
@@ -94,6 +94,4 @@ class LocationProvider extends ChangeNotifier {
     _positionSub?.cancel();
     super.dispose();
   }
-
-  static GeoFlutterFirePlus() {}
 }
