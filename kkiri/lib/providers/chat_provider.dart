@@ -185,7 +185,7 @@ class ChatProvider with ChangeNotifier {
   Stream<DocumentSnapshot<Map<String, dynamic>>> currentRoomSnapshot() {
     final roomId = _currentRoomId;
     if (roomId == null) {
-      return const Stream.empty();
+      return const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty();
     }
     return _firestore.collection('openChatRooms').doc(roomId).snapshots();
   }
@@ -193,7 +193,7 @@ class ChatProvider with ChangeNotifier {
   Stream<QuerySnapshot<Map<String, dynamic>>> currentRoomMessagesStream() {
     final roomId = _currentRoomId;
     if (roomId == null) {
-      return const Stream.empty();
+      return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
     }
     return _firestore
         .collection('openChatRooms')

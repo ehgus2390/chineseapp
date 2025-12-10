@@ -50,9 +50,9 @@ class _ChatPageState extends State<ChatPage> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Verify email to view profiles'),
-          content: const Text(
-            'Chats stay anonymous. To open someone\'s profile, verify your email first. You can request a verification link below.',
-          ),
+            content: const Text(
+              "Chats stay anonymous. To open someone's profile, verify your email first. You can request a verification link below.",
+            ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
