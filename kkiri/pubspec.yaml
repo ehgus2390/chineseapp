@@ -35,6 +35,8 @@ dependencies:
   geoflutterfire_plus: ^0.0.33
 
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
   flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
 
