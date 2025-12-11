@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 
@@ -37,10 +38,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ];
 
   Future<void> _togglePreferredCountry(
-    AuthProvider auth,
-    List<String> current,
-    String code,
-  ) async {
+      AuthProvider auth,
+      List<String> current,
+      String code,
+      ) async {
     final updated = List<String>.from(current);
     if (updated.contains(code)) {
       updated.remove(code);
@@ -55,21 +56,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final auth = context.watch<AuthProvider>();
     final uid = auth.currentUser?.uid;
     if (uid == null) {
-      return const Scaffold(body: Center(child: Text('로그인이 필요합니다.')));
+      return const Scaffold(
+        body: Center(child: Text('로그인이 필요합니다.')),
+      );
     }
 
-    final userDocStream = FirebaseFirestore.instance.collection('users').doc(uid).snapshots();
+    final userDocStream =
+    FirebaseFirestore.instance.collection('users').doc(uid).snapshots();
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: userDocStream,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
         final data = snapshot.data!.data() ?? {};
         final lang = (data['lang'] as String?) ?? 'ko';
         final shareLocation = data['shareLocation'] != false;
-        final preferredCountries = List<String>.from(data['preferredCountries'] ?? []);
+        final preferredCountries =
+        List<String>.from(data['preferredCountries'] ?? []);
 
         return Scaffold(
           appBar: AppBar(title: const Text('설정')),
@@ -83,12 +90,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: lang,
-                decoration: const InputDecoration(border: OutlineInputBorder()),
+                decoration:
+                const InputDecoration(border: OutlineInputBorder()),
                 items: languageOptions
-                    .map((lang) => DropdownMenuItem(
-                          value: lang['code']!,
-                          child: Text(lang['label']!),
-                        ))
+                    .map(
+                      (lang) => DropdownMenuItem(
+                    value: lang['code']!,
+                    child: Text(lang['label']!),
+                  ),
+                )
                     .toList(),
                 onChanged: (value) {
                   if (value != null) {
@@ -109,7 +119,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   for (final option in nationalityOptions)
                     FilterChip(
                       label: Text(option['label']!),
-                      selected: preferredCountries.contains(option['code']!),
+                      selected:
+                      preferredCountries.contains(option['code']!),
                       onSelected: (_) => _togglePreferredCountry(
                         auth,
                         preferredCountries,
@@ -121,7 +132,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
               SwitchListTile(
                 title: const Text('위치 공유 허용'),
-                subtitle: const Text('지도를 통한 추천 친구 표시를 위해 사용됩니다.'),
+                subtitle:
+                const Text('지도를 통한 추천 친구 표시를 위해 사용됩니다.'),
                 value: shareLocation,
                 onChanged: (value) async {
                   await auth.updateProfile(shareLocation: value);

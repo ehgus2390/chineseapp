@@ -39,7 +39,8 @@ class ChatListScreen extends StatelessWidget {
 
             final lastMsg = data['lastMessage'] ?? '(대화를 시작해보세요)';
             final users = List<String>.from(data['users'] ?? []);
-            final otherUser = users.firstWhere((u) => u != uid, orElse: () => '익명');
+            final otherUser =
+            users.firstWhere((u) => u != uid, orElse: () => '익명');
 
             return ListTile(
               leading: const CircleAvatar(child: Icon(Icons.person)),
@@ -50,7 +51,11 @@ class ChatListScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ChatRoomScreen(chatId: roomDoc.id),
+                    builder: (_) => ChatRoomScreen(
+                      peerId: otherUser,
+                      peerName: otherUser, // 나중에 displayName으로 바꿔도 됨
+                      peerPhoto: null,
+                    ),
                   ),
                 );
               },

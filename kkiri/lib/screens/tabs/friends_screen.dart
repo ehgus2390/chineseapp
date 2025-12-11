@@ -32,7 +32,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance.collection('users').doc(myUid).snapshots(),
       builder: (_, mySnap) {
-        if (!mySnap.hasData) return const Center(child: CircularProgressIndicator());
+        if (!mySnap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
         final myData = mySnap.data?.data() ?? {};
         final myGender = myData['gender'] as String?;
@@ -73,10 +75,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       final otherGender = user['gender'] as String?;
                       final otherCountry = user['country'] as String?;
 
-                      if (!isTargetMatch(myGender, myCountry, otherGender, otherCountry)) {
+                      if (!isTargetMatch(
+                        myGender,
+                        myCountry,
+                        otherGender,
+                        otherCountry,
+                      )) {
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('상대방의 성별/국적이 조건에 맞지 않습니다.')),
+                          const SnackBar(
+                            content: Text('상대방의 성별/국적이 조건에 맞지 않습니다.'),
+                          ),
                         );
                         return;
                       }
@@ -84,7 +93,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       await friendsProv.addFriendBoth(myUid, user['uid']);
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${user['displayName'] ?? '사용자'} 추가됨')),
+                        SnackBar(
+                          content:
+                          Text('${user['displayName'] ?? '사용자'} 추가됨'),
+                        ),
                       );
                     },
                     child: const Text('추가'),
@@ -96,7 +108,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
             if (myGender == null || myCountry == null)
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text('성별과 국적을 프로필에서 설정하면 친구를 추가할 수 있습니다.'),
+                child:
+                Text('성별과 국적을 프로필에서 설정하면 친구를 추가할 수 있습니다.'),
               ),
 
             // ───────────────── 친구 목록 스트림 ─────────────────
@@ -104,7 +117,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
               child: StreamBuilder<List<Map<String, dynamic>>>(
                 stream: friendsProv.myFriendsStream(myUid),
                 builder: (_, snap) {
-                  if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+                  if (!snap.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
                   final friends = snap.data!;
                   if (friends.isEmpty) {
@@ -115,28 +130,30 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     itemCount: friends.length,
                     itemBuilder: (_, i) {
                       final f = friends[i];
+                      final peerId = f['uid'] as String;
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: f['photoUrl'] != null ? NetworkImage(f['photoUrl']) : null,
-                          child: f['photoUrl'] == null ? const Icon(Icons.person) : null,
+                          backgroundImage: f['photoUrl'] != null
+                              ? NetworkImage(f['photoUrl'])
+                              : null,
+                          child: f['photoUrl'] == null
+                              ? const Icon(Icons.person)
+                              : null,
                         ),
-                        title: Text(f['displayName'] ?? f['uid']),
+                        title: Text(f['displayName'] ?? peerId),
                         subtitle: Text('@${f['searchId'] ?? ''}'),
                         trailing: IconButton(
                           icon: const Icon(Icons.chat_bubble_outline),
                           onPressed: () async {
-                            final peerId = f['uid'];
-                            final chatId = await chatProv.createOrGetChatId(myUid, peerId);
-
+                            await chatProv.createOrGetChatId(myUid, peerId);
                             if (!mounted) return;
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => ChatRoomScreen(
-                                  chatId: chatId,
                                   peerId: peerId,
-                                  peerName: f['displayName'],
-                                  peerPhoto: f['photoUrl'],
+                                  peerName: f['displayName'] ?? peerId,
+                                  peerPhoto: f['photoUrl'] as String?,
                                 ),
                               ),
                             );

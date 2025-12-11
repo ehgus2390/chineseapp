@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../widgets/chat_bubble.dart';
@@ -41,8 +42,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               backgroundImage: (widget.peerPhoto != null &&
                   widget.peerPhoto!.startsWith('http'))
                   ? NetworkImage(widget.peerPhoto!)
-                  : const AssetImage('assets/images/logo.png')
-              as ImageProvider,
+                  : const AssetImage('assets/images/logo.png') as ImageProvider,
             ),
             const SizedBox(width: 8),
             Text(widget.peerName),
@@ -76,7 +76,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     return ChatBubble(
                       text: msg['text'] ?? '',
                       isMe: isMe,
-                      photoUrl: isMe ? auth.currentUser?.photoURL : widget.peerPhoto,
+                      photoUrl:
+                      isMe ? auth.currentUser?.photoURL : widget.peerPhoto,
                       time: time,
                     );
                   },
@@ -108,8 +109,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     borderRadius: BorderRadius.circular(20),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                 ),
                 onSubmitted: (_) => _send(chat, myId),
               ),
@@ -125,16 +128,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
-  void _send(ChatProvider chat, String myId) async {
+  Future<void> _send(ChatProvider chat, String myId) async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+
     await chat.sendMessage(
       senderId: myId,
       receiverId: widget.peerId,
       text: text,
     );
     _controller.clear();
+
     await Future.delayed(const Duration(milliseconds: 100));
+    if (!_scrollCtrl.hasClients) return;
     _scrollCtrl.animateTo(
       _scrollCtrl.position.maxScrollExtent + 80,
       duration: const Duration(milliseconds: 300),

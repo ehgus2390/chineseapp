@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -28,8 +29,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ───────────────────────── 익명 로그인 ─────────────────────────
-  Future<void> signInAnonymously() async {
+  Future<bool> signInAnonymously() async {
     isLoading = true;
+    lastError = null;
     notifyListeners();
 
     try {
@@ -49,11 +51,22 @@ class AuthProvider extends ChangeNotifier {
             'email': currentUser!.email,
             'createdAt': FieldValue.serverTimestamp(),
             'lang': 'ko',
-            'friends': [],
+            'friends': <String>[],
             'searchId': currentUser!.uid.substring(0, 6),
+            'shareLocation': true,
+            'preferredCountries': <String>[],
           });
         }
       }
+      return true;
+    } on FirebaseAuthException catch (e) {
+      lastError =
+          e.message ?? '로그인 중 문제가 발생했습니다. Firebase 구성을 확인해주세요.';
+      return false;
+    } catch (e) {
+      lastError =
+      '로그인 중 문제가 발생했습니다. 인터넷 연결과 Firebase 구성을 확인해주세요.';
+      return false;
     } finally {
       isLoading = false;
       notifyListeners();
@@ -83,6 +96,8 @@ class AuthProvider extends ChangeNotifier {
     String? lang,
     String? gender,
     String? country,
+    List<String>? preferredCountries,
+    bool? shareLocation,
   }) async {
     final uid = currentUser?.uid;
     if (uid == null) return;
@@ -101,6 +116,12 @@ class AuthProvider extends ChangeNotifier {
     if (lang != null) data['lang'] = lang;
     if (gender != null) data['gender'] = gender;
     if (country != null) data['country'] = country;
+    if (preferredCountries != null) {
+      data['preferredCountries'] = preferredCountries;
+    }
+    if (shareLocation != null) {
+      data['shareLocation'] = shareLocation;
+    }
 
     if (data.isNotEmpty) {
       await _db.collection('users').doc(uid).update(data);
