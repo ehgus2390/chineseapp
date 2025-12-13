@@ -46,8 +46,10 @@ class ChatProvider with ChangeNotifier {
     required String text,
   }) async {
     if (text.trim().isEmpty) return;
+
     final roomId = _chatRoomId(senderId, receiverId);
-    final ref = _firestore.collection('chats').doc(roomId).collection('messages');
+    final ref =
+    _firestore.collection('chats').doc(roomId).collection('messages');
 
     await ref.add({
       'senderId': senderId,

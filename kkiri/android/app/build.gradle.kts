@@ -1,44 +1,93 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
-    id('com.google.gms.google-services')
+    id("com.google.gms.google-services")
 }
 
+/* -----------------------------------------------------
+   🔐 Signing: release → key.properties / key.properties.dev
+----------------------------------------------------- */
+val signingProps = Properties()
+
+val releaseKey = rootProject.file("key.properties")
+val devKey = rootProject.file("key.properties.dev")
+
+val activeKeyFile = when {
+    releaseKey.exists() -> releaseKey
+    devKey.exists() -> devKey
+    else -> null
+}
+
+activeKeyFile?.inputStream()?.use(signingProps::load)
+
 android {
-    namespace = "com.example.kkiri"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.ant.company"
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
+    defaultConfig {
+        applicationId = "com.ant.company"
+        minSdk = flutter.minSdkVersion
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+        multiDexEnabled = true
+    }
+
+    /* -----------------------------------------------------
+       🔐 signingConfigs — release는 여기에서 1번만 생성
+    ----------------------------------------------------- */
+    signingConfigs {
+        getByName("debug")
+
+        create("release") {
+            if (signingProps.isNotEmpty()) {
+                val store = signingProps.getProperty("storeFile")
+                if (!store.isNullOrBlank()) {
+                    storeFile = file(store)
+                }
+                storePassword = signingProps.getProperty("storePassword")
+                keyAlias = signingProps.getProperty("keyAlias")
+                keyPassword = signingProps.getProperty("keyPassword")
+            } else {
+                println("⚠️ key.properties 없음 → release도 debug 키로 서명됩니다.")
+                initWith(getByName("debug"))
+            }
+        }
+    }
+
+    /* -----------------------------------------------------
+       🔨 buildTypes (중복 없이 단 하나만)
+    ----------------------------------------------------- */
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-
-    defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.kkiri"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-    }
-
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
-        }
+        jvmTarget = "17"
     }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("androidx.multidex:multidex:2.0.1")
 }

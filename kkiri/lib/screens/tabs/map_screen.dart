@@ -14,7 +14,6 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  GoogleMapController? _mapController;
   final double radiusKm = 5.0;
 
   @override
@@ -43,7 +42,9 @@ class _MapScreenState extends State<MapScreen> {
         for (final u in users) {
           if (u.id == uid) continue;
           final data = u.data() as Map<String, dynamic>;
-          final geoPoint = data['position'];
+          final posData = data['position'] as Map<String, dynamic>?;
+          final geoPoint = posData?['geopoint'];
+          if (geoPoint is! GeoPoint) continue;
           final LatLng pos = LatLng(geoPoint.latitude, geoPoint.longitude);
 
           markers.add(Marker(
@@ -60,6 +61,7 @@ class _MapScreenState extends State<MapScreen> {
                     final chatId = await chatProv.createOrGetChatId(uid, u.id);
                     if (!mounted) return;
                     Navigator.pop(context);
+                    if (!mounted) return;
                     Navigator.pushNamed(context, '/chatroom', arguments: chatId);
                   },
                 ),
@@ -69,7 +71,6 @@ class _MapScreenState extends State<MapScreen> {
         }
 
         return GoogleMap(
-          onMapCreated: (c) => _mapController = c,
           myLocationEnabled: true,
           initialCameraPosition: const CameraPosition(target: LatLng(37.5665, 126.9780), zoom: 13),
           markers: markers,

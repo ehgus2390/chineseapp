@@ -91,17 +91,17 @@ class PostTile extends StatelessWidget {
               children: [
                 StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                   stream: currentUser == null
-                      ? const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty()
+                      ? null
                       : FirebaseFirestore.instance
-                          .collection('posts')
-                          .doc(postId)
-                          .collection('likes')
-                          .doc(currentUser.uid)
-                          .snapshots(),
+                      .collection('posts')
+                      .doc(postId)
+                      .collection('likes')
+                      .doc(currentUser.uid)
+                      .snapshots(),
                   builder: (context, snapshot) {
                     final isLiked = snapshot.data?.exists ?? false;
                     return TextButton.icon(
-                      onPressed: _toggleLike,
+                      onPressed: () => _toggleLike(context),
                       icon: Icon(
                         isLiked ? Icons.favorite : Icons.favorite_border,
                         color: isLiked ? Colors.red : null,
@@ -112,7 +112,7 @@ class PostTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 TextButton.icon(
-                  onPressed: _addComment,
+                  onPressed: () => _addComment(context),
                   icon: const Icon(Icons.mode_comment_outlined),
                   label: const Text('Comment'),
                 ),
