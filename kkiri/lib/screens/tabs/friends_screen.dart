@@ -111,56 +111,45 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 child:
                 Text('성별과 국적을 프로필에서 설정하면 친구를 추가할 수 있습니다.'),
               ),
-
-            // ───────────────── 친구 목록 스트림 ─────────────────
-            Expanded(
-              child: StreamBuilder<List<Map<String, dynamic>>>(
-                stream: friendsProv.myFriendsStream(myUid),
-                builder: (_, snap) {
-                  if (!snap.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final friends = snap.data!;
-                  if (friends.isEmpty) {
-                    return const Center(child: Text('친구가 없습니다.'));
-                  }
-
-                  return ListView.builder(
-                    itemCount: friends.length,
-                    itemBuilder: (_, i) {
-                      final f = friends[i];
-                      final peerId = f['uid'] as String;
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: f['photoUrl'] != null
-                              ? NetworkImage(f['photoUrl'])
-                              : null,
-                          child: f['photoUrl'] == null
-                              ? const Icon(Icons.person)
-                              : null,
-                        ),
-                        title: Text(f['displayName'] ?? peerId),
-                        subtitle: Text('@${f['searchId'] ?? ''}'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.chat_bubble_outline),
-                          onPressed: () async {
-                            await chatProv.createOrGetChatId(myUid, peerId);
-                            if (!mounted) return;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ChatRoomScreen(
-                                  peerId: peerId,
-                                  peerName: f['displayName'] ?? peerId,
-                                  peerPhoto: f['photoUrl'] as String?,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
+            ],
+          ),
+        ),
+        Expanded(
+          child: StreamBuilder(
+            stream: friendsProv.myFriendsStream(myUid),
+            builder: (_, snap) {
+              if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+              final friends = snap.data!;
+              if (friends.isEmpty) return const Center(child: Text('친구가 없습니다.'));
+              return ListView.builder(
+                itemCount: friends.length,
+                itemBuilder: (_, i) {
+                  final f = friends[i];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: f['photoUrl'] != null ? NetworkImage(f['photoUrl']) : null,
+                      child: f['photoUrl'] == null ? const Icon(Icons.person) : null,
+                    ),
+                    title: Text(f['displayName'] ?? f['uid']),
+                    subtitle: Text('@${f['searchId'] ?? ''}'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      onPressed: () async {
+                        final peerId = f['uid'] as String;
+                        await chatProv.createOrGetChatId(myUid, peerId);
+                        if (!mounted) return;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatRoomScreen(
+                              peerId: peerId,
+                              peerName: f['displayName'] ?? peerId,
+                              peerPhoto: f['photoUrl'] as String?,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               ),

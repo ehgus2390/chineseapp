@@ -23,33 +23,20 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 1:1 채팅방 ID (양쪽 UID를 정렬해서 항상 동일)
+  /// 대화방 ID 생성 (양쪽 UID를 정렬해서 항상 동일)
   String _chatRoomId(String userA, String userB) {
     final ids = [userA, userB]..sort();
     return ids.join('_');
   }
 
-  /// 1:1 채팅방 생성 또는 가져오기
   Future<String> createOrGetChatId(String userA, String userB) async {
     final roomId = _chatRoomId(userA, userB);
     final ref = _firestore.collection('chats').doc(roomId);
-    await ref.set(
-      {
-        'users': [userA, userB],
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await ref.set({
+      'users': [userA, userB],
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
     return roomId;
-  }
-
-  /// 내 채팅방 목록
-  Stream<QuerySnapshot<Map<String, dynamic>>> myChatRooms(String uid) {
-    return _firestore
-        .collection('chats')
-        .where('users', arrayContains: uid)
-        .orderBy('updatedAt', descending: true)
-        .snapshots();
   }
 
   /// 1:1 메시지 전송
@@ -71,18 +58,15 @@ class ChatProvider with ChangeNotifier {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // 최근 메시지 업데이트
-    await _firestore.collection('chats').doc(roomId).set(
-      {
-        'lastMessage': text.trim(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'users': [senderId, receiverId],
-      },
-      SetOptions(merge: true),
-    );
+    // 최근 메시지 캐시 (리스트용)
+    await _firestore.collection('chats').doc(roomId).set({
+      'lastMessage': text.trim(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'users': [senderId, receiverId],
+    }, SetOptions(merge: true));
   }
 
-  /// 1:1 메시지 스트림
+  /// 실시간 메시지 스트림 (1:1)
   Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(
       String userA, String userB) {
     final roomId = _chatRoomId(userA, userB);
@@ -94,15 +78,13 @@ class ChatProvider with ChangeNotifier {
         .snapshots();
   }
 
-  // ───────────────── 오픈채팅 로직 (그대로 유지) ─────────────────
-
+  /// 익명 오픈채팅 방 랜덤 입장
   Future<void> joinRandomRoom(String uid) async {
     _isJoining = true;
     notifyListeners();
 
     try {
-      final roomId =
-          await _attachToExistingRoom(uid) ?? await _createRoom(uid);
+      final roomId = await _attachToExistingRoom(uid) ?? await _createRoom(uid);
       _currentRoomId = roomId;
     } finally {
       _isJoining = false;
@@ -128,10 +110,10 @@ class ChatProvider with ChangeNotifier {
   }
 
   Future<String?> _tryJoinRoom(
-      DocumentSnapshot<Map<String, dynamic>> doc,
-      String uid,
-      ) async {
-    return _firestore.runTransaction<String?>((txn) async {
+    DocumentSnapshot<Map<String, dynamic>> doc,
+    String uid,
+  ) async {
+    return _firestore.runTransaction((txn) async {
       final fresh = await txn.get(doc.reference);
       if (!fresh.exists) return null;
       final data = fresh.data() ?? {};

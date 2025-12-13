@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -12,10 +13,10 @@ import 'providers/chat_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/friends_provider.dart';
 import 'providers/location_provider.dart';
-// import 'screens/auth/login_screen.dart';
-// import 'screens/main_screen.dart';
-// import 'services/post_service.dart';
-// import 'state/app_state.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/main_screen.dart';
+import 'services/post_service.dart';
+import 'state/app_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

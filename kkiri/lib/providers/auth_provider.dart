@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class AuthProvider extends ChangeNotifier {
   final _auth = FirebaseAuth.instance;
@@ -53,8 +54,15 @@ class AuthProvider extends ChangeNotifier {
             'lang': 'ko',
             'friends': <String>[],
             'searchId': currentUser!.uid.substring(0, 6),
-            'shareLocation': true,
+            'age': null,
+            'gender': null,
+            'bio': null,
+            'interests': <String>[],
             'preferredCountries': <String>[],
+            'preferredLanguages': <String>[],
+            'notifyChat': true,
+            'notifyComment': true,
+            'notifyLike': true,
           });
         }
       }
@@ -73,7 +81,40 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ───────────────────────── 로그아웃 ─────────────────────────
+  bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
+
+  Future<bool> upgradeToEmailAccount(String email, String password) async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
+      final linked = await user.linkWithCredential(credential);
+      currentUser = linked.user;
+      notifyListeners();
+      return true;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'credential-already-in-use') {
+        await _auth.signInWithCredential(
+          EmailAuthProvider.credential(email: email, password: password),
+        );
+        currentUser = _auth.currentUser;
+        notifyListeners();
+        return true;
+      }
+      rethrow;
+    }
+  }
+
+  Future<bool> sendEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    await user.sendEmailVerification();
+    return true;
+  }
+
   Future<void> signOut() async {
     await _auth.signOut();
   }
@@ -88,16 +129,20 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ───────────────────────── 프로필 업데이트 ─────────────────────────
   Future<void> updateProfile({
     String? displayName,
     String? photoUrl,
     String? searchId,
     String? lang,
+    int? age,
     String? gender,
-    String? country,
+    String? bio,
+    List<String>? interests,
     List<String>? preferredCountries,
-    bool? shareLocation,
+    List<String>? preferredLanguages,
+    bool? notifyChat,
+    bool? notifyComment,
+    bool? notifyLike,
   }) async {
     final uid = currentUser?.uid;
     if (uid == null) return;
@@ -114,19 +159,32 @@ class AuthProvider extends ChangeNotifier {
     }
     if (searchId != null) data['searchId'] = searchId;
     if (lang != null) data['lang'] = lang;
+    if (age != null) data['age'] = age;
     if (gender != null) data['gender'] = gender;
-    if (country != null) data['country'] = country;
-    if (preferredCountries != null) {
-      data['preferredCountries'] = preferredCountries;
-    }
-    if (shareLocation != null) {
-      data['shareLocation'] = shareLocation;
-    }
-
+    if (bio != null) data['bio'] = bio;
+    if (interests != null) data['interests'] = interests;
+    if (preferredCountries != null) data['preferredCountries'] = preferredCountries;
+    if (preferredLanguages != null) data['preferredLanguages'] = preferredLanguages;
+    if (notifyChat != null) data['notifyChat'] = notifyChat;
+    if (notifyComment != null) data['notifyComment'] = notifyComment;
+    if (notifyLike != null) data['notifyLike'] = notifyLike;
     if (data.isNotEmpty) {
       await _db.collection('users').doc(uid).update(data);
       notifyListeners();
     }
+  }
+
+  bool ensureEmailVerified(BuildContext context, {String? message}) {
+    if (isEmailVerified) return true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message ??
+              '이 기능을 사용하려면 이메일 인증이 필요합니다. 프로필에서 이메일 인증을 완료해주세요.',
+        ),
+      ),
+    );
+    return false;
   }
 
   @override

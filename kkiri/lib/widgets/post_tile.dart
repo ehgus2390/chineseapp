@@ -1,7 +1,9 @@
+// lib/widgets/post_tile.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/auth_provider.dart';
 import '../services/post_service.dart';
 import '../state/app_state.dart';
 
@@ -19,10 +21,9 @@ class PostTile extends StatelessWidget {
 
   Future<void> _toggleLike(BuildContext context) async {
     final user = context.read<AppState>().user;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to like posts.')),
-      );
+    final auth = context.read<AuthProvider>();
+    if (user == null || !auth.isEmailVerified) {
+      auth.ensureEmailVerified(context);
       return;
     }
 
@@ -31,10 +32,9 @@ class PostTile extends StatelessWidget {
 
   Future<void> _addComment(BuildContext context) async {
     final user = context.read<AppState>().user;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to comment.')),
-      );
+    final auth = context.read<AuthProvider>();
+    if (user == null || !auth.isEmailVerified) {
+      auth.ensureEmailVerified(context);
       return;
     }
 
@@ -137,7 +137,6 @@ class _CommentsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final postService = context.read<PostService>();
-
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: postService.listenComments(postId),
       builder: (context, snapshot) {

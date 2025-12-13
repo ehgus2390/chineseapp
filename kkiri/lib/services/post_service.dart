@@ -13,9 +13,7 @@ class PostService {
       _firestore.collection('posts');
 
   Stream<QuerySnapshot<Map<String, dynamic>>> listenPosts() {
-    return _postsCollection
-        .orderBy('createdAt', descending: true)
-        .snapshots();
+    return _postsCollection.orderBy('createdAt', descending: true).snapshots();
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> listenPopularPosts() {
@@ -23,6 +21,34 @@ class PostService {
         .orderBy('likesCount', descending: true)
         .limit(10)
         .snapshots();
+  }
+
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> listenHotPosts() {
+    final cutoff = Timestamp.fromDate(
+      DateTime.now().subtract(const Duration(hours: 24)),
+    );
+    return _postsCollection
+        .where('createdAt', isGreaterThan: cutoff)
+        .orderBy('createdAt', descending: true)
+        .orderBy('likesCount', descending: true)
+        .limit(20)
+        .snapshots()
+        .map((snap) => snap.docs);
+  }
+
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> listenLatestPosts({
+    String? school,
+    String? region,
+  }) {
+    Query<Map<String, dynamic>> query =
+        _postsCollection.orderBy('createdAt', descending: true).limit(50);
+    if (school != null && school.isNotEmpty) {
+      query = query.where('school', isEqualTo: school);
+    }
+    if (region != null && region.isNotEmpty) {
+      query = query.where('region', isEqualTo: region);
+    }
+    return query.snapshots().map((snap) => snap.docs);
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> listenComments(String postId) {
@@ -33,12 +59,19 @@ class PostService {
         .snapshots();
   }
 
-  Future<void> createPost(String uid, String content) async {
+  Future<void> createPost(
+    String uid,
+    String content, {
+    String? school,
+    String? region,
+  }) async {
     await _postsCollection.add({
       'authorId': uid,
       'content': content,
       'createdAt': FieldValue.serverTimestamp(),
       'likesCount': 0,
+      'school': school,
+      'region': region,
     });
   }
 

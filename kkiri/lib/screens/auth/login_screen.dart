@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../state/app_state.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -69,11 +70,43 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                _isLoginMode ? 'Welcome back to Kkiri' : 'Create your Kkiri account',
+                'Kkiri에 오신 것을 환영합니다',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _isSubmitting
+                    ? null
+                    : () async {
+                        setState(() => _isSubmitting = true);
+                        try {
+                          await context.read<AuthProvider>().signInAnonymously();
+                        } finally {
+                          if (mounted) setState(() => _isSubmitting = false);
+                        }
+                      },
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text('익명으로 시작하기'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '나중에 프로필에서 이메일 인증을 완료하면 1:1 채팅을 이용할 수 있습니다.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Divider(color: Colors.grey.shade400),
+              const SizedBox(height: 16),
+              Text(
+                _isLoginMode
+                    ? '이메일로 로그인'
+                    : '이메일로 계정 만들기 (업그레이드)',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
