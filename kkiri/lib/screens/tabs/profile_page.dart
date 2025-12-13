@@ -1,4 +1,3 @@
-// lib/screens/tabs/profile_page.dart
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -22,6 +21,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final _bioController = TextEditingController();
   final _upgradeEmailController = TextEditingController();
   final _upgradePasswordController = TextEditingController();
+
   final List<String> _interestOptions = const [
     'K-pop',
     'Travel',
@@ -30,11 +30,14 @@ class _ProfilePageState extends State<ProfilePage> {
     'Gaming',
     'Study buddy',
   ];
+
   String? _gender;
   List<String> _interests = [];
   bool _initialised = false;
+
   File? _pickedImage;
   bool _saving = false;
+
   final _picker = ImagePicker();
 
   @override
@@ -49,9 +52,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _pickImage() async {
     final file = await _picker.pickImage(source: ImageSource.gallery);
-    if (file != null) {
-      setState(() => _pickedImage = File(file.path));
-    }
+    if (file != null) setState(() => _pickedImage = File(file.path));
   }
 
   Future<String?> _uploadPhoto(String uid) async {
@@ -60,14 +61,10 @@ class _ProfilePageState extends State<ProfilePage> {
     return storage.uploadProfileImage(uid: uid, file: _pickedImage!);
   }
 
-  Future<void> _saveProfile(
-    AuthProvider auth,
-    String uid,
-    Map<String, dynamic>? data,
-  ) async {
+  Future<void> _saveProfile(AuthProvider auth, String uid, Map<String, dynamic>? data) async {
     setState(() => _saving = true);
     try {
-      final url = await _uploadPhoto(uid) ?? data?['photoUrl'] as String?;
+      final url = await _uploadPhoto(uid) ?? (data?['photoUrl'] as String?);
       await auth.updateProfile(
         displayName: _displayNameController.text.trim().isEmpty
             ? null
@@ -75,11 +72,10 @@ class _ProfilePageState extends State<ProfilePage> {
         photoUrl: url,
         age: int.tryParse(_ageController.text.trim()),
         gender: _gender,
-        bio: _bioController.text.trim().isEmpty
-            ? null
-            : _bioController.text.trim(),
+        bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
         interests: _interests,
       );
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('프로필이 저장되었습니다.')),
@@ -93,22 +89,23 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final uid = auth.currentUser?.uid;
+
     if (uid == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
       builder: (context, snapshot) {
         final data = snapshot.data?.data();
+
         if (!_initialised && data != null) {
           _initialised = true;
-          _displayNameController.text =
-              data['displayName'] as String? ?? auth.currentUser?.displayName ?? '';
+          _displayNameController.text = (data['displayName'] as String?) ?? '';
           final age = data['age'];
           if (age != null) _ageController.text = age.toString();
           _gender = data['gender'] as String?;
-          _bioController.text = data['bio'] as String? ?? '';
+          _bioController.text = (data['bio'] as String?) ?? '';
           _interests = List<String>.from(data['interests'] ?? []);
         }
 
@@ -121,9 +118,22 @@ class _ProfilePageState extends State<ProfilePage> {
             title: const Text('내 프로필'),
             actions: [
               IconButton(
-                onPressed: () => auth.sendEmailVerification(),
+                onPressed: () async {
+                  await auth.sendEmailVerification(); // ✅ 이제 AuthProvider에 존재
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('인증 메일을 보냈습니다. 메일함을 확인하세요.')),
+                  );
+                },
                 icon: const Icon(Icons.mark_email_unread_outlined),
                 tooltip: '인증 메일 보내기',
+              ),
+              IconButton(
+                onPressed: () async {
+                  await auth.reloadUser();
+                },
+                icon: const Icon(Icons.refresh),
+                tooltip: '인증 상태 새로고침',
               ),
             ],
           ),
@@ -140,9 +150,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         backgroundImage: _pickedImage != null
                             ? FileImage(_pickedImage!)
                             : (photoUrl != null
-                                ? NetworkImage(photoUrl)
-                                : const AssetImage('assets/images/logo.png')
-                                    as ImageProvider),
+                            ? NetworkImage(photoUrl)
+                            : const AssetImage('assets/images/logo.png')
+                        as ImageProvider),
                       ),
                       TextButton.icon(
                         onPressed: _pickImage,
@@ -223,18 +233,15 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: _saving ? null : () => _saveProfile(auth, uid, data),
                   icon: _saving
                       ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                       : const Icon(Icons.save),
                   label: const Text('저장'),
                 ),
                 const Divider(height: 32),
-                Text(
-                  '이메일 계정 업그레이드',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('이메일 계정 업그레이드', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _upgradeEmailController,
@@ -253,11 +260,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     final email = _upgradeEmailController.text.trim();
                     final password = _upgradePasswordController.text.trim();
                     if (email.isEmpty || password.isEmpty) return;
+
                     try {
                       await auth.upgradeToEmailAccount(email, password);
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('이메일 계정으로 업그레이드되었습니다. 인증 메일을 확인하세요.')),
+                        const SnackBar(
+                          content: Text('업그레이드 완료! 인증 메일을 확인하세요.'),
+                        ),
                       );
                     } catch (e) {
                       if (!mounted) return;

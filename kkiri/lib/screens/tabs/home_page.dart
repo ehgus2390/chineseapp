@@ -1,4 +1,3 @@
-// lib/screens/tabs/home_page.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,7 +13,7 @@ class HomePage extends StatelessWidget {
     final postService = context.read<PostService>();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: postService.listenPopularPosts(),
+      stream: postService.listenPopularPosts(), // ✅ 이제 존재함
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

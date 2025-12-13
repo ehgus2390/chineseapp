@@ -1,11 +1,9 @@
-// lib/screens/tabs/community_page.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../services/post_service.dart';
-import '../../state/app_state.dart';
 import '../../widgets/post_tile.dart';
 
 class CommunityPage extends StatelessWidget {
@@ -13,19 +11,11 @@ class CommunityPage extends StatelessWidget {
 
   Future<void> _showCreatePostDialog(BuildContext context) async {
     final controller = TextEditingController();
-    final appState = context.read<AppState>();
     final postService = context.read<PostService>();
-    final user = appState.user;
     final auth = context.read<AuthProvider>();
+    final uid = auth.currentUser?.uid;
 
-    if (user == null || !auth.isEmailVerified) {
-      auth.ensureEmailVerified(
-        context,
-        message:
-            '이 기능을 사용하려면 이메일 인증이 필요합니다. 프로필에서 이메일 인증을 완료해주세요.',
-      );
-      return;
-    }
+    if (uid == null) return;
 
     final content = await showDialog<String?>(
       context: context,
@@ -36,15 +26,14 @@ class CommunityPage extends StatelessWidget {
             controller: controller,
             decoration: const InputDecoration(hintText: 'Share something...'),
             maxLines: 4,
-            autofocus: true,
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
+              onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
               child: const Text('Post'),
             ),
           ],
@@ -53,7 +42,8 @@ class CommunityPage extends StatelessWidget {
     );
 
     if (content != null && content.isNotEmpty) {
-      await postService.createPost(user.uid, content);
+      // ✅ 익명도 글쓰기 가능
+      await postService.createPost(uid, content);
     }
   }
 
@@ -63,7 +53,7 @@ class CommunityPage extends StatelessWidget {
 
     return Scaffold(
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: postService.listenPosts(),
+        stream: postService.listenPosts(), // ✅ 이제 존재함
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

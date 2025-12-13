@@ -21,7 +21,7 @@ class ChatListScreen extends StatelessWidget {
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: chatProv.myChatRooms(uid),
-      builder: (context, snapshot) {
+      builder: (_, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -33,27 +33,27 @@ class ChatListScreen extends StatelessWidget {
 
         return ListView.builder(
           itemCount: rooms.length,
-          itemBuilder: (context, index) {
-            final roomDoc = rooms[index];
-            final data = roomDoc.data();
-
-            final lastMsg = data['lastMessage'] ?? '(대화를 시작해보세요)';
+          itemBuilder: (_, i) {
+            final data = rooms[i].data();
             final users = List<String>.from(data['users'] ?? []);
-            final otherUser =
-            users.firstWhere((u) => u != uid, orElse: () => '익명');
+            if (users.isEmpty) return const SizedBox.shrink();
+
+            final peerId = users.firstWhere((u) => u != uid, orElse: () => '');
 
             return ListTile(
               leading: const CircleAvatar(child: Icon(Icons.person)),
-              title: Text(otherUser),
-              subtitle: Text(lastMsg),
+              title: Text(peerId.isEmpty ? 'Unknown' : peerId),
+              subtitle: Text((data['lastMessage'] as String?) ?? ''),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
+                if (!auth.requireVerified(context, '1:1 채팅')) return;
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => ChatRoomScreen(
-                      peerId: otherUser,
-                      peerName: otherUser, // 나중에 displayName으로 바꿔도 됨
+                      peerId: peerId,
+                      peerName: peerId,
                       peerPhoto: null,
                     ),
                   ),

@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -23,7 +21,6 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 대화방 ID 생성 (양쪽 UID를 정렬해서 항상 동일)
   String _chatRoomId(String userA, String userB) {
     final ids = [userA, userB]..sort();
     return ids.join('_');
@@ -32,14 +29,25 @@ class ChatProvider with ChangeNotifier {
   Future<String> createOrGetChatId(String userA, String userB) async {
     final roomId = _chatRoomId(userA, userB);
     final ref = _firestore.collection('chats').doc(roomId);
-    await ref.set({
-      'users': [userA, userB],
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    await ref.set(
+      {
+        'users': [userA, userB],
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
     return roomId;
   }
 
-  /// 1:1 메시지 전송
+  // ✅ ChatListScreen이 쓰는 메서드 (누락되어 에러났던 부분)
+  Stream<QuerySnapshot<Map<String, dynamic>>> myChatRooms(String uid) {
+    return _firestore
+        .collection('chats')
+        .where('users', arrayContains: uid)
+        .orderBy('updatedAt', descending: true)
+        .snapshots();
+  }
+
   Future<void> sendMessage({
     required String senderId,
     required String receiverId,
@@ -48,8 +56,7 @@ class ChatProvider with ChangeNotifier {
     if (text.trim().isEmpty) return;
 
     final roomId = _chatRoomId(senderId, receiverId);
-    final ref =
-    _firestore.collection('chats').doc(roomId).collection('messages');
+    final ref = _firestore.collection('chats').doc(roomId).collection('messages');
 
     await ref.add({
       'senderId': senderId,
@@ -58,17 +65,17 @@ class ChatProvider with ChangeNotifier {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // 최근 메시지 캐시 (리스트용)
-    await _firestore.collection('chats').doc(roomId).set({
-      'lastMessage': text.trim(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'users': [senderId, receiverId],
-    }, SetOptions(merge: true));
+    await _firestore.collection('chats').doc(roomId).set(
+      {
+        'lastMessage': text.trim(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'users': [senderId, receiverId],
+      },
+      SetOptions(merge: true),
+    );
   }
 
-  /// 실시간 메시지 스트림 (1:1)
-  Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(
-      String userA, String userB) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(String userA, String userB) {
     final roomId = _chatRoomId(userA, userB);
     return _firestore
         .collection('chats')
@@ -78,7 +85,8 @@ class ChatProvider with ChangeNotifier {
         .snapshots();
   }
 
-  /// 익명 오픈채팅 방 랜덤 입장
+  // ───────────────── 오픈채팅 ─────────────────
+
   Future<void> joinRandomRoom(String uid) async {
     _isJoining = true;
     notifyListeners();
@@ -109,13 +117,11 @@ class ChatProvider with ChangeNotifier {
     return null;
   }
 
-  Future<String?> _tryJoinRoom(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-    String uid,
-  ) async {
-    return _firestore.runTransaction((txn) async {
+  Future<String?> _tryJoinRoom(DocumentSnapshot<Map<String, dynamic>> doc, String uid) async {
+    return _firestore.runTransaction<String?>((txn) async {
       final fresh = await txn.get(doc.reference);
       if (!fresh.exists) return null;
+
       final data = fresh.data() ?? {};
       final members = Map<String, dynamic>.from(data['members'] ?? {});
       final memberCount = (data['memberCount'] as int?) ?? members.length;
@@ -124,9 +130,7 @@ class ChatProvider with ChangeNotifier {
       if (!isOpen || memberCount >= _maxMembers) return null;
 
       if (members.containsKey(uid)) {
-        txn.update(doc.reference, {
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        txn.update(doc.reference, {'updatedAt': FieldValue.serverTimestamp()});
         return doc.id;
       }
 
@@ -155,14 +159,17 @@ class ChatProvider with ChangeNotifier {
   Future<void> leaveRoom(String uid) async {
     final roomId = _currentRoomId;
     if (roomId == null) return;
+
     final ref = _firestore.collection('openChatRooms').doc(roomId);
 
     await _firestore.runTransaction((txn) async {
       final snap = await txn.get(ref);
       if (!snap.exists) return;
+
       final data = snap.data() ?? {};
       final members = Map<String, dynamic>.from(data['members'] ?? {});
       if (!members.containsKey(uid)) return;
+
       members.remove(uid);
       final currentCount = (data['memberCount'] as int?) ?? 1;
       final updatedCount = currentCount - 1;
@@ -208,18 +215,23 @@ class ChatProvider with ChangeNotifier {
   }) async {
     final roomId = _currentRoomId;
     if (roomId == null || text.trim().isEmpty) return;
-    final message = {
+
+    final roomRef = _firestore.collection('openChatRooms').doc(roomId);
+
+    await roomRef.collection('messages').add({
       'userId': userId,
       'text': text.trim(),
       'displayName': displayName,
       'profileAllowed': profileAllowed,
       'createdAt': FieldValue.serverTimestamp(),
-    };
-    final roomRef = _firestore.collection('openChatRooms').doc(roomId);
-    await roomRef.collection('messages').add(message);
-    await roomRef.update({
-      'lastMessage': text.trim(),
-      'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    await roomRef.set(
+      {
+        'lastMessage': text.trim(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 }

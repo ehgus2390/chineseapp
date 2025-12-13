@@ -1,8 +1,10 @@
 import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
 import '../../services/storage_service.dart';
 
@@ -16,6 +18,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   File? _image;
   final _picker = ImagePicker();
+
   String? _selectedGender;
   String? _selectedCountry;
 
@@ -25,12 +28,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _upload() async {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final auth = context.read<AuthProvider>();
+    final uid = auth.currentUser?.uid;
     if (uid == null) return;
-    final storage = StorageService();
+
     if (_image == null) return;
+
+    final storage = StorageService();
     final url = await storage.uploadProfileImage(uid: uid, file: _image!);
-    await context.read<AuthProvider>().updateProfilePhoto(url);
+
+    // ✅ updateProfilePhoto 존재하도록 AuthProvider에 추가해둠
+    await auth.updateProfilePhoto(url);
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('프로필 사진이 변경되었습니다.')),
     );
@@ -78,6 +88,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _selectedGender ??= data['gender'] as String?;
           _selectedCountry ??= data['country'] as String?;
 
+          final photoUrl = data['photoUrl'] as String?;
+
           return Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -89,10 +101,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundImage: (user.photoURL != null)
-                            ? NetworkImage(user.photoURL!)
-                            : const AssetImage('assets/images/logo.png')
-                        as ImageProvider,
+                        backgroundImage: _image != null
+                            ? FileImage(_image!)
+                            : (photoUrl != null
+                            ? NetworkImage(photoUrl)
+                            : const AssetImage('assets/images/logo.png') as ImageProvider),
                       ),
                       Positioned(
                         bottom: 4,
@@ -108,35 +121,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                Center(
-                  child: Text(user.displayName ?? '익명 사용자',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 if (_image != null)
-                  Column(
-                    children: [
-                      Image.file(_image!, width: 100, height: 100, fit: BoxFit.cover),
-                      ElevatedButton.icon(
-                        onPressed: _upload,
-                        icon: const Icon(Icons.upload),
-                        label: const Text('프로필 업로드'),
-                      ),
-                    ],
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: _upload,
+                      icon: const Icon(Icons.upload),
+                      label: const Text('프로필 업로드'),
+                    ),
                   ),
                 const SizedBox(height: 16),
-                const Text(
-                  '일본 여성(JP)과 한국 남성(KR)만 서로를 볼 수 있도록 성별과 국적을 선택해주세요.',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _selectedGender,
                   decoration: const InputDecoration(labelText: '성별'),
                   items: const [
                     DropdownMenuItem(value: 'female', child: Text('여성')),
                     DropdownMenuItem(value: 'male', child: Text('남성')),
+                    DropdownMenuItem(value: 'other', child: Text('기타')),
                   ],
                   onChanged: (value) => setState(() => _selectedGender = value),
                 ),
@@ -147,6 +148,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   items: const [
                     DropdownMenuItem(value: 'JP', child: Text('일본')),
                     DropdownMenuItem(value: 'KR', child: Text('대한민국')),
+                    DropdownMenuItem(value: 'US', child: Text('미국/영어권')),
+                    DropdownMenuItem(value: 'CN', child: Text('중국')),
                   ],
                   onChanged: (value) => setState(() => _selectedCountry = value),
                 ),
@@ -166,9 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         onPressed: () => auth.signOut(),
                         icon: const Icon(Icons.logout),
                         label: const Text('로그아웃'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
                       ),
                     ),
                   ],
