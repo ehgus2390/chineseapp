@@ -75,14 +75,14 @@ index 1c06e3d9c1edde1c923249236df7c5f6a2a2366a..296df2376d37dd343620bc71b3fc4089
          ShellRoute(
            builder: (context, state, child) => HomeScreen(child: child),
            routes: [
--            GoRoute(path: '/home/profile', builder: (_, __) => const ProfileScreen()),
+-            GoRoute(path: '/home/profile', builder: (_, __) => const ProfilePage()),
 -            GoRoute(path: '/home/friends', builder: (_, __) => const FriendsScreen()),
 +            GoRoute(path: '/home/discover', builder: (_, __) => const DiscoverScreen()),
 +            GoRoute(path: '/home/matches', builder: (_, __) => const MatchesScreen()),
              GoRoute(path: '/home/chat', builder: (_, __) => const ChatListScreen()),
              GoRoute(path: '/home/map', builder: (_, __) => const NearbyMapScreen()),
 -            GoRoute(path: '/home/board', builder: (_, __) => const BoardScreen()),
-+            GoRoute(path: '/home/profile', builder: (_, __) => const ProfileScreen()),
++
              GoRoute(path: '/home/settings', builder: (_, __) => const SettingsScreen()),
            ],
          ),

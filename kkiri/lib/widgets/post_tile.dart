@@ -32,7 +32,7 @@ class PostTile extends StatelessWidget {
     if (uid == null) return;
 
     // ❗댓글은 이메일 인증 필요(현재 정책 유지)
-    if (!auth.requireVerified(context, '댓글')) return;
+    //if (!auth.requireVerified(context, '댓글')) return;
 
     final controller = TextEditingController();
     final text = await showDialog<String?>(
