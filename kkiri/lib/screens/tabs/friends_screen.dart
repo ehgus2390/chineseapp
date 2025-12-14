@@ -65,23 +65,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: () async {
-                        final peerId = f['uid'] as String;
-                        await chatProv.createOrGetChatId(myUid, peerId);
-                        if (!mounted) return;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChatRoomScreen(
-                              peerId: peerId,
-                              peerName: f['displayName'] ?? peerId,
-                              peerPhoto: f['photoUrl'] as String?,
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: null, // 친구 추가 로직은 다음 단계에서 복구
                       child: const Text('추가'),
                     ),
+
                   ],
                 ),
               ),

@@ -24,7 +24,6 @@ class PostTile extends StatelessWidget {
       await context.read<AuthProvider>().signInAnonymously();
       return;
     }
-
     await context.read<PostService>().toggleLike(postId, user.uid);
   }
 
@@ -38,27 +37,24 @@ class PostTile extends StatelessWidget {
     final controller = TextEditingController();
     final text = await showDialog<String?>(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Add comment'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(hintText: 'Write your comment'),
-            maxLines: 4,
-            autofocus: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('댓글 작성'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: '댓글을 입력하세요'),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-              child: const Text('Post'),
-            ),
-          ],
-        );
-      },
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('등록'),
+          ),
+        ],
+      ),
     );
 
     if (text != null && text.isNotEmpty) {
@@ -69,9 +65,8 @@ class PostTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = data['content'] as String? ?? '';
-    final likesCount = (data['likesCount'] as int?) ?? 0;
-    final appState = context.watch<AppState>();
-    final currentUser = appState.user;
+    final likesCount = data['likesCount'] ?? 0;
+    final currentUser = context.watch<AppState>().user;
 
     return Card(
       child: Padding(
@@ -79,94 +74,40 @@ class PostTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              content,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 8),
+            Text(content),
             Row(
               children: [
                 StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                   stream: currentUser == null
-                      ? const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty()
+                      ? const Stream.empty()
                       : FirebaseFirestore.instance
-                          .collection('posts')
-                          .doc(postId)
-                          .collection('likes')
-                          .doc(currentUser.uid)
-                          .snapshots(),
-                  builder: (context, snapshot) {
-                    final isLiked = snapshot.data?.exists ?? false;
+                      .collection('posts')
+                      .doc(postId)
+                      .collection('likes')
+                      .doc(currentUser.uid)
+                      .snapshots(),
+                  builder: (_, snap) {
+                    final liked = snap.data?.exists ?? false;
                     return TextButton.icon(
-                      onPressed: _toggleLike,
+                      onPressed: () => _toggleLike(context),
                       icon: Icon(
-                        isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: isLiked ? Colors.red : null,
+                        liked ? Icons.favorite : Icons.favorite_border,
+                        color: liked ? Colors.red : null,
                       ),
                       label: Text('Like ($likesCount)'),
                     );
                   },
                 ),
-                const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: () => _addComment(context),
-                  icon: const Icon(Icons.mode_comment_outlined),
+                  icon: const Icon(Icons.comment),
                   label: const Text('Comment'),
                 ),
               ],
             ),
-            if (showComments) ...[
-              const SizedBox(height: 8),
-              _CommentsList(postId: postId),
-            ],
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CommentsList extends StatelessWidget {
-  const _CommentsList({required this.postId});
-
-  final String postId;
-
-  @override
-  Widget build(BuildContext context) {
-    final postService = context.read<PostService>();
-
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: postService.listenComments(postId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final comments = snapshot.data?.docs ?? [];
-        if (comments.isEmpty) {
-          return const Text('No comments yet.');
-        }
-
-        return SizedBox(
-          height: 150,
-          child: ListView.builder(
-            itemCount: comments.length,
-            itemBuilder: (context, index) {
-              final comment = comments[index].data();
-              final text = comment['text'] as String? ?? '';
-              final author = comment['authorId'] as String? ?? 'Unknown';
-              return ListTile(
-                dense: true,
-                title: Text(text),
-                subtitle: Text('by $author'),
-              );
-            },
-          ),
-        );
-      },
     );
   }
 }
