@@ -79,9 +79,19 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     trailing: IconButton(
                       icon: const Icon(Icons.chat_bubble_outline),
                       onPressed: () async {
-                        final chatId = await chatProv.createOrGetChatId(myUid, f['uid']);
+                        final peerId = f['uid'] as String;
+                        await chatProv.createOrGetChatId(myUid, peerId);
                         if (!mounted) return;
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => ChatRoomScreen(peerId: peerId)));
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatRoomScreen(
+                              peerId: peerId,
+                              peerName: f['displayName'] ?? peerId,
+                              peerPhoto: f['photoUrl'] as String?,
+                            ),
+                          ),
+                        );
                       },
                     ),
                   );

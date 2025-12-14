@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/chat_provider.dart';
 import '../chat/chat_room_screen.dart';
 
 class ChatListScreen extends StatelessWidget {
@@ -16,7 +17,13 @@ class ChatListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final myId = auth.currentUser!.uid;
+    final myId = auth.currentUser?.uid;
+
+    if (myId == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -24,11 +31,7 @@ class ChatListScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('chats')
-            .where('users', arrayContains: myId)
-            .orderBy('updatedAt', descending: true)
-            .snapshots(),
+        stream: context.read<ChatProvider>().myChatRooms(myId),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -88,16 +91,26 @@ class ChatListScreen extends StatelessWidget {
                       time,
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatRoomScreen(
-                          peerId: peerId,
-                          peerName: name,
-                          peerPhoto: photo,
+                    onTap: () {
+                      if (!auth.isEmailVerified) {
+                        auth.ensureEmailVerified(
+                          context,
+                          message:
+                              '이 기능을 사용하려면 이메일 인증이 필요합니다. 프로필에서 이메일 인증을 완료해주세요.',
+                        );
+                        return;
+                      }
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatRoomScreen(
+                            peerId: peerId,
+                            peerName: name,
+                            peerPhoto: photo,
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   );
                 },
               );
