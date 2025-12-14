@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
+import '../../providers/locale_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,27 +15,27 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const languageOptions = [
-    {'code': 'ko', 'label': 'Korean'},
+    {'code': 'ko', 'label': '한국어'},
     {'code': 'fil', 'label': 'Filipino'},
-    {'code': 'vi', 'label': 'Vietnamese'},
-    {'code': 'th', 'label': 'Thai'},
-    {'code': 'bn', 'label': 'Bangladeshi'},
-    {'code': 'hi', 'label': 'Indian'},
-    {'code': 'zh', 'label': 'Chinese'},
-    {'code': 'ja', 'label': 'Japanese'},
+    {'code': 'vi', 'label': 'Tiếng Việt'},
+    {'code': 'th', 'label': 'ภาษาไทย'},
+    {'code': 'bn', 'label': 'বাংলা'},
+    {'code': 'hi', 'label': 'हिन्दी'},
+    {'code': 'zh', 'label': '中文'},
+    {'code': 'ja', 'label': '日本語'},
     {'code': 'en', 'label': 'English'},
   ];
 
   static const nationalityOptions = [
-    {'code': 'KR', 'label': 'Korea'},
-    {'code': 'PH', 'label': 'Philippines'},
-    {'code': 'VN', 'label': 'Vietnam'},
-    {'code': 'TH', 'label': 'Thailand'},
-    {'code': 'BD', 'label': 'Bangladesh'},
-    {'code': 'IN', 'label': 'India'},
-    {'code': 'CN', 'label': 'China'},
-    {'code': 'JP', 'label': 'Japan'},
-    {'code': 'US', 'label': 'English-speaking'},
+    {'code': 'KR', 'label': '한국'},
+    {'code': 'PH', 'label': '필리핀'},
+    {'code': 'VN', 'label': '베트남'},
+    {'code': 'TH', 'label': '태국'},
+    {'code': 'BD', 'label': '방글라데시'},
+    {'code': 'IN', 'label': '인도'},
+    {'code': 'CN', 'label': '중국'},
+    {'code': 'JP', 'label': '일본'},
+    {'code': 'US', 'label': '미국'},
   ];
 
   Future<void> _togglePreferredCountry(
@@ -54,6 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final localeProvider = context.watch<LocaleProvider>();
     final uid = auth.currentUser?.uid;
     if (uid == null) {
       return const Scaffold(
@@ -73,7 +75,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           );
         }
         final data = snapshot.data!.data() ?? {};
-        final lang = (data['lang'] as String?) ?? 'ko';
         final shareLocation = data['shareLocation'] != false;
         final preferredCountries =
         List<String>.from(data['preferredCountries'] ?? []);
@@ -83,33 +84,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              const Text(
+              Text(
                 '언어 설정',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: lang,
+              DropdownButtonFormField<Locale>(
+                value: localeProvider.locale,
                 decoration:
                 const InputDecoration(border: OutlineInputBorder()),
                 items: languageOptions
                     .map(
                       (lang) => DropdownMenuItem(
-                    value: lang['code']!,
+                    value: Locale(lang['code']!),
                     child: Text(lang['label']!),
                   ),
                 )
                     .toList(),
                 onChanged: (value) {
                   if (value != null) {
-                    auth.updateProfile(lang: value);
+                    localeProvider.setLocale(value);
+                    auth.updateProfile(lang: value.languageCode);
                   }
                 },
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 '원하는 국적의 친구',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
               Wrap(

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -118,6 +119,11 @@ class _ProfilePageState extends State<ProfilePage> {
           appBar: AppBar(
             title: const Text('내 프로필'),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.settings),
+                onPressed: () => GoRouter.of(context).go('/home/settings'),
+                tooltip: '설정',
+              ),
               IconButton(
                 icon: Icon(
                   auth.isEmailVerified ? Icons.verified : Icons.mark_email_unread_outlined,
