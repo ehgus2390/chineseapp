@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../services/post_service.dart';
+import '../../state/app_state.dart';
 import '../../widgets/post_tile.dart';
 
 class CommunityPage extends StatelessWidget {
@@ -11,11 +12,14 @@ class CommunityPage extends StatelessWidget {
 
   Future<void> _showCreatePostDialog(BuildContext context) async {
     final controller = TextEditingController();
+    final appState = context.read<AppState>();
     final postService = context.read<PostService>();
-    final auth = context.read<AuthProvider>();
-    final uid = auth.currentUser?.uid;
+    final user = appState.user;
 
-    if (uid == null) return;
+    if (user == null) {
+      await context.read<AuthProvider>().signInAnonymously();
+      return;
+    }
 
     final content = await showDialog<String?>(
       context: context,
@@ -26,14 +30,15 @@ class CommunityPage extends StatelessWidget {
             controller: controller,
             decoration: const InputDecoration(hintText: 'Share something...'),
             maxLines: 4,
+            autofocus: true,
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
               child: const Text('Post'),
             ),
           ],
@@ -42,8 +47,7 @@ class CommunityPage extends StatelessWidget {
     );
 
     if (content != null && content.isNotEmpty) {
-      // ✅ 익명도 글쓰기 가능
-      await postService.createPost(uid, content);
+      await postService.createPost(user.uid, content);
     }
   }
 
@@ -53,7 +57,7 @@ class CommunityPage extends StatelessWidget {
 
     return Scaffold(
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: postService.listenPosts(), // ✅ 이제 존재함
+        stream: postService.listenPosts(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

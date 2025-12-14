@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../services/post_service.dart';
+import '../state/app_state.dart';
 
 class PostTile extends StatelessWidget {
   const PostTile({
@@ -18,21 +19,21 @@ class PostTile extends StatelessWidget {
   final bool showComments;
 
   Future<void> _toggleLike(BuildContext context) async {
-    final auth = context.read<AuthProvider>();
-    final uid = auth.currentUser?.uid;
-    if (uid == null) return; // 로그인 자체가 안 된 상태(거의 없음)
+    final user = context.read<AppState>().user;
+    if (user == null) {
+      await context.read<AuthProvider>().signInAnonymously();
+      return;
+    }
 
-    // ✅ 좋아요는 익명도 허용
-    await context.read<PostService>().toggleLike(postId, uid);
+    await context.read<PostService>().toggleLike(postId, user.uid);
   }
 
   Future<void> _addComment(BuildContext context) async {
-    final auth = context.read<AuthProvider>();
-    final uid = auth.currentUser?.uid;
-    if (uid == null) return;
-
-    // ❗댓글은 이메일 인증 필요(현재 정책 유지)
-    //if (!auth.requireVerified(context, '댓글')) return;
+    final user = context.read<AppState>().user;
+    if (user == null) {
+      await context.read<AuthProvider>().signInAnonymously();
+      return;
+    }
 
     final controller = TextEditingController();
     final text = await showDialog<String?>(
@@ -61,7 +62,7 @@ class PostTile extends StatelessWidget {
     );
 
     if (text != null && text.isNotEmpty) {
-      await context.read<PostService>().addComment(postId, uid, text);
+      await context.read<PostService>().addComment(postId, user.uid, text);
     }
   }
 
@@ -69,9 +70,8 @@ class PostTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = data['content'] as String? ?? '';
     final likesCount = (data['likesCount'] as int?) ?? 0;
-
-    final auth = context.watch<AuthProvider>();
-    final uid = auth.currentUser?.uid;
+    final appState = context.watch<AppState>();
+    final currentUser = appState.user;
 
     return Card(
       child: Padding(
@@ -79,24 +79,26 @@ class PostTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(content, style: Theme.of(context).textTheme.bodyLarge),
+            Text(
+              content,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
                 StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                  // ✅ uid가 null이면 null 스트림 → 좋아요 상태 체크 불가 (버튼은 동작 가능)
-                  stream: uid == null
-                      ? null
+                  stream: currentUser == null
+                      ? const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty()
                       : FirebaseFirestore.instance
-                      .collection('posts')
-                      .doc(postId)
-                      .collection('likes')
-                      .doc(uid)
-                      .snapshots(),
+                          .collection('posts')
+                          .doc(postId)
+                          .collection('likes')
+                          .doc(currentUser.uid)
+                          .snapshots(),
                   builder: (context, snapshot) {
                     final isLiked = snapshot.data?.exists ?? false;
                     return TextButton.icon(
-                      onPressed: () => _toggleLike(context),
+                      onPressed: _toggleLike,
                       icon: Icon(
                         isLiked ? Icons.favorite : Icons.favorite_border,
                         color: isLiked ? Colors.red : null,

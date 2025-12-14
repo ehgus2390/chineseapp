@@ -66,44 +66,18 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     const SizedBox(width: 8),
                     ElevatedButton(
                       onPressed: () async {
-                        // ✅ 친구추가 인증 필요
-                        if (!auth.requireVerified(context, '친구 추가')) return;
-
-                        if (myGender == null || myCountry == null) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('성별/국적을 먼저 프로필에서 설정해주세요.')),
-                          );
-                          return;
-                        }
-
-                        final keyword = idCtrl.text.trim();
-                        if (keyword.isEmpty) return;
-
-                        final user = await friendsProv.findUserBySearchId(keyword);
-                        if (user == null || user['uid'] == myUid) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('사용자를 찾을 수 없습니다.')),
-                          );
-                          return;
-                        }
-
-                        final otherGender = user['gender'] as String?;
-                        final otherCountry = user['country'] as String?;
-
-                        if (!isTargetMatch(myGender, myCountry, otherGender, otherCountry)) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('상대방의 성별/국적이 조건에 맞지 않습니다.')),
-                          );
-                          return;
-                        }
-
-                        await friendsProv.addFriendBoth(myUid, user['uid']);
+                        final peerId = f['uid'] as String;
+                        await chatProv.createOrGetChatId(myUid, peerId);
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('${user['displayName'] ?? '사용자'} 추가됨')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatRoomScreen(
+                              peerId: peerId,
+                              peerName: f['displayName'] ?? peerId,
+                              peerPhoto: f['photoUrl'] as String?,
+                            ),
+                          ),
                         );
                       },
                       child: const Text('추가'),

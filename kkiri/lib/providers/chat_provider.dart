@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -21,6 +23,7 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// 대화방 ID 생성 (양쪽 UID를 정렬해서 항상 동일)
   String _chatRoomId(String userA, String userB) {
     final ids = [userA, userB]..sort();
     return ids.join('_');
