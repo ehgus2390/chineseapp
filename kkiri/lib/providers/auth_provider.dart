@@ -135,6 +135,7 @@ class AuthProvider extends ChangeNotifier {
     bool? notifyChat,
     bool? notifyComment,
     bool? notifyLike,
+    bool? shareLocation,
   }) async {
     final uid = currentUser?.uid;
     if (uid == null) return;

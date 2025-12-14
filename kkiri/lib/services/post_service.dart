@@ -1,109 +1,66 @@
 // lib/services/post_service.dart
-import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PostService {
-  PostService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  final _db = FirebaseFirestore.instance;
 
-  final FirebaseFirestore _firestore;
+  Stream<QuerySnapshot<Map<String, dynamic>>> listenHotPosts() {
+    final since =
+    Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 24)));
 
-  CollectionReference<Map<String, dynamic>> get _postsCollection =>
-      _firestore.collection('posts');
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> listenPosts() {
-    return _postsCollection.orderBy('createdAt', descending: true).snapshots();
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> listenPopularPosts() {
-    return _postsCollection
+    return _db
+        .collection('posts')
+        .where('createdAt', isGreaterThan: since)
+        .orderBy('createdAt', descending: true)
         .orderBy('likesCount', descending: true)
         .limit(10)
         .snapshots();
   }
 
-  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> listenHotPosts() {
-    final cutoff = Timestamp.fromDate(
-      DateTime.now().subtract(const Duration(hours: 24)),
-    );
-    return _postsCollection
-        .where('createdAt', isGreaterThan: cutoff)
+  Stream<QuerySnapshot<Map<String, dynamic>>> listenLatestPosts() {
+    return _db
+        .collection('posts')
         .orderBy('createdAt', descending: true)
-        .orderBy('likesCount', descending: true)
-        .limit(20)
-        .snapshots()
-        .map((snap) => snap.docs);
-  }
-
-  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> listenLatestPosts({
-    String? school,
-    String? region,
-  }) {
-    Query<Map<String, dynamic>> query =
-        _postsCollection.orderBy('createdAt', descending: true).limit(50);
-    if (school != null && school.isNotEmpty) {
-      query = query.where('school', isEqualTo: school);
-    }
-    if (region != null && region.isNotEmpty) {
-      query = query.where('region', isEqualTo: region);
-    }
-    return query.snapshots().map((snap) => snap.docs);
+        .snapshots();
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> listenComments(String postId) {
-    return _postsCollection
+    return _db
+        .collection('posts')
         .doc(postId)
         .collection('comments')
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
-  Future<void> createPost(
-    String uid,
-    String content, {
-    String? school,
-    String? region,
-  }) async {
-    await _postsCollection.add({
-      'authorId': uid,
-      'content': content,
-      'createdAt': FieldValue.serverTimestamp(),
-      'likesCount': 0,
-      'school': school,
-      'region': region,
+  Future<void> toggleLike(String postId, String uid) async {
+    final ref = _db.collection('posts').doc(postId);
+    final likeRef = ref.collection('likes').doc(uid);
+
+    await _db.runTransaction((txn) async {
+      final liked = await txn.get(likeRef);
+      final post = await txn.get(ref);
+      final count = (post['likesCount'] ?? 0) as int;
+
+      if (liked.exists) {
+        txn.delete(likeRef);
+        txn.update(ref, {'likesCount': count - 1});
+      } else {
+        txn.set(likeRef, {'createdAt': FieldValue.serverTimestamp()});
+        txn.update(ref, {'likesCount': count + 1});
+      }
     });
   }
 
   Future<void> addComment(String postId, String uid, String text) async {
-    final commentsRef = _postsCollection.doc(postId).collection('comments');
-    await commentsRef.add({
+    await _db
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .add({
       'authorId': uid,
       'text': text,
       'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> toggleLike(String postId, String uid) async {
-    final postRef = _postsCollection.doc(postId);
-    final likeRef = postRef.collection('likes').doc(uid);
-
-    await _firestore.runTransaction((transaction) async {
-      final postSnapshot = await transaction.get(postRef);
-      if (!postSnapshot.exists) {
-        throw StateError('Post no longer exists');
-      }
-
-      final likeSnapshot = await transaction.get(likeRef);
-      final currentLikes = (postSnapshot.data()?['likesCount'] as int?) ?? 0;
-
-      if (likeSnapshot.exists) {
-        transaction.delete(likeRef);
-        transaction.update(postRef, {'likesCount': max(0, currentLikes - 1)});
-      } else {
-        transaction.set(likeRef, {'liked': true});
-        transaction.update(postRef, {'likesCount': currentLikes + 1});
-      }
     });
   }
 }

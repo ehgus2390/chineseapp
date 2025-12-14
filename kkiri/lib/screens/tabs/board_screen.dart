@@ -21,7 +21,7 @@ class BoardScreen extends StatelessWidget {
           const Text('🔥 인기 게시글', style: TextStyle(fontSize: 18)),
           const SizedBox(height: 12),
 
-          /// 🔥 HOT POSTS
+          /// HOT POSTS
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: postService.listenHotPosts(),
             builder: (context, snapshot) {
@@ -51,7 +51,7 @@ class BoardScreen extends StatelessWidget {
           const Text('🆕 최신 게시글', style: TextStyle(fontSize: 18)),
           const SizedBox(height: 12),
 
-          /// 🆕 LATEST POSTS
+          /// LATEST POSTS
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: postService.listenLatestPosts(),
             builder: (context, snapshot) {
