@@ -41,4 +41,14 @@ class FriendsProvider extends ChangeNotifier {
       return results;
     });
   }
+
+  Future<void> sendLike(String myUid, String targetUid) async {
+    final myRef = _db.collection('users').doc(myUid);
+    final targetRef = _db.collection('users').doc(targetUid);
+
+    await _db.runTransaction((tx) async {
+      tx.update(myRef, {'likesSent': FieldValue.arrayUnion([targetUid])});
+      tx.update(targetRef, {'likesReceived': FieldValue.arrayUnion([myUid])});
+    });
+  }
 }

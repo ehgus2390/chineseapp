@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
@@ -14,7 +16,7 @@ import 'screens/main_screen.dart';
 import 'services/post_service.dart';
 import 'state/app_state.dart';
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final options = DefaultFirebaseOptions.currentPlatform;
   if (options != null) {
@@ -36,10 +38,11 @@ Future<void> main() async {
       child: const KkiriApp(),
     ),
   );
+  runApp(const MyApp());
 }
 
-class KkiriApp extends StatelessWidget {
-  const KkiriApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {

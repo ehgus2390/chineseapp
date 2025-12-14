@@ -1,4 +1,3 @@
-// lib/widgets/post_tile.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -110,7 +109,7 @@ class PostTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 TextButton.icon(
-                  onPressed: _addComment,
+                  onPressed: () => _addComment(context),
                   icon: const Icon(Icons.mode_comment_outlined),
                   label: const Text('Comment'),
                 ),
@@ -135,11 +134,15 @@ class _CommentsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final postService = context.read<PostService>();
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: postService.listenComments(postId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
 
         final comments = snapshot.data?.docs ?? [];
