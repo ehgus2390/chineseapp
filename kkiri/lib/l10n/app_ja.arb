@@ -1,0 +1,19 @@
+{
+  "@@locale": "ja",
+
+  "appName": "キリ",
+  "welcome": "Kkiriへようこそ",
+  "startAnonymous": "匿名で始める",
+  "emailLogin": "メールでログイン",
+  "profile": "プロフィール",
+  "settings": "設定",
+  "report": "通報する",
+  "block": "ブロック",
+  "post": "投稿",
+  "comment": "コメント",
+  "like": "いいね",
+  "anonymous": "匿名",
+  "save": "保存",
+  "logout": "ログアウト",
+  "language": "言語"
+}
