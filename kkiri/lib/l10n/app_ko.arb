@@ -15,8 +15,7 @@
   "anonymous": "익명",
   "save": "저장",
   "logout": "로그아웃",
-  "language": "언어"
-  "settings": "설정",
+  "language": "언어",
   "shareLocation": "위치 공유 허용",
   "shareLocationDesc": "근처 친구 추천에 사용됩니다"
 }

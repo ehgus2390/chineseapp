@@ -15,8 +15,7 @@
   "anonymous": "Anonymous",
   "save": "Save",
   "logout": "Logout",
-  "language": "Language"
-  "settings": "Settings",
+  "language": "Language",
   "shareLocation": "Share location",
   "shareLocationDesc": "Used for nearby friend recommendations"
 }
