@@ -52,4 +52,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get language => '言語';
+  @override
+  String get shareLocation => '...';
+
+  @override
+  String get shareLocationDesc => '...';
 }

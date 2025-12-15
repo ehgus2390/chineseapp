@@ -52,4 +52,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get language => '언어';
+  @override
+  String get shareLocation => '...';
+
+  @override
+  String get shareLocationDesc => '...';
 }

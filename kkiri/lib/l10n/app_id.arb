@@ -1,5 +1,5 @@
 {
-  "@@locale": "id",
+  "@@locale": "en",
 
   "appName": "Kkiri",
   "welcome": "Welcome to Kkiri",
@@ -16,4 +16,7 @@
   "save": "Save",
   "logout": "Logout",
   "language": "Language"
+  "settings": "Settings",
+  "shareLocation": "Share location",
+  "shareLocationDesc": "Used for nearby friend recommendations"
 }

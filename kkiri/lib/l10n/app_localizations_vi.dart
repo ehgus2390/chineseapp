@@ -52,4 +52,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get language => 'Language';
+  @override
+  String get shareLocation => '...';
+
+  @override
+  String get shareLocationDesc => '...';
 }

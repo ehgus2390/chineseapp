@@ -16,4 +16,7 @@
   "save": "Save",
   "logout": "Logout",
   "language": "Language"
+  "settings": "Settings",
+  "shareLocation": "Share location",
+  "shareLocationDesc": "Used for nearby friend recommendations"
 }

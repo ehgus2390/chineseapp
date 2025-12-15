@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../l10n/app_localizations.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
@@ -25,6 +26,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final localeProvider = context.watch<LocaleProvider>();
+    final t = AppLocalizations.of(context)!;
     final uid = auth.currentUser?.uid;
 
     if (uid == null) {
@@ -50,15 +52,19 @@ class SettingsScreen extends StatelessWidget {
             : true;
 
         return Scaffold(
-          appBar: AppBar(title: const Text('설정')),
+          appBar: AppBar(title: Text(t.settings)),
+          // appBar: AppBar(title: const Text('설정')),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
               /// 🌍 Language
-              Text(
-                '언어 설정',
+              Text(t.language,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              // Text(
+              //   '언어 설정',
+              //   style: Theme.of(context).textTheme.titleLarge,
+              // ),
               const SizedBox(height: 8),
 
               DropdownButtonFormField<Locale>(
@@ -87,8 +93,10 @@ class SettingsScreen extends StatelessWidget {
 
               /// 📍 Location
               SwitchListTile(
-                title: const Text('위치 공유 허용'),
-                subtitle: const Text('근처 친구 추천에 사용됩니다'),
+                title: Text(t.shareLocation),
+                subtitle: Text(t.shareLocationDesc),
+                // title: const Text('위치 공유 허용'),
+                // subtitle: const Text('근처 친구 추천에 사용됩니다'),
                 value: shareLocation,
                 onChanged: (value) async {
                   // ✅ AuthProvider.updateProfile에 shareLocation 파라미터가 있어야 함
