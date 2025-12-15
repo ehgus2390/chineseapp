@@ -135,7 +135,7 @@ class AuthProvider extends ChangeNotifier {
     bool? notifyChat,
     bool? notifyComment,
     bool? notifyLike,
-    bool? shareLocation,
+    bool? shareLocation, // ✅ 추가
   }) async {
     final uid = currentUser?.uid;
     if (uid == null) return;
@@ -149,24 +149,22 @@ class AuthProvider extends ChangeNotifier {
     if (gender != null) data['gender'] = gender;
     if (bio != null) data['bio'] = bio;
     if (interests != null) data['interests'] = interests;
-    if (preferredCountries != null) {
-      data['preferredCountries'] = preferredCountries;
-    }
-    if (preferredLanguages != null) {
-      data['preferredLanguages'] = preferredLanguages;
-    }
+    if (preferredCountries != null) data['preferredCountries'] = preferredCountries;
+    if (preferredLanguages != null) data['preferredLanguages'] = preferredLanguages;
     if (notifyChat != null) data['notifyChat'] = notifyChat;
     if (notifyComment != null) data['notifyComment'] = notifyComment;
     if (notifyLike != null) data['notifyLike'] = notifyLike;
+    if (shareLocation != null) data['shareLocation'] = shareLocation;
 
     if (data.isNotEmpty) {
-      await _db.collection('users').doc(uid).set(
-        data,
-        SetOptions(merge: true),
-      );
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set(data, SetOptions(merge: true));
       notifyListeners();
     }
   }
+
 
   Future<void> updateProfilePhoto(String photoUrl) async {
     final uid = currentUser?.uid;

@@ -1,3 +1,4 @@
+// lib/screens/tabs/home_page.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,13 +14,13 @@ class HomePage extends StatelessWidget {
     final postService = context.read<PostService>();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: postService.listenPopularPosts(), // ✅ 이제 존재함
+      stream: postService.listenHotPosts(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final docs = snapshot.data?.docs ?? [];
+        final docs = snapshot.data!.docs;
         if (docs.isEmpty) {
           return const Center(
             child: Text('No popular posts yet. Share something to get started!'),

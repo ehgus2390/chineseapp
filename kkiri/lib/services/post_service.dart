@@ -1,6 +1,5 @@
 // lib/services/post_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 class PostService {
   final _db = FirebaseFirestore.instance;
 

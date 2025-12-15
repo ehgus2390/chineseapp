@@ -1,0 +1,19 @@
+{
+  "@@locale": "zh",
+
+  "appName": "Kkiri",
+  "welcome": "Welcome to Kkiri",
+  "startAnonymous": "Start anonymously",
+  "emailLogin": "Login with email",
+  "profile": "Profile",
+  "settings": "Settings",
+  "report": "Report",
+  "block": "Block",
+  "post": "Post",
+  "comment": "Comment",
+  "like": "Like",
+  "anonymous": "Anonymous",
+  "save": "Save",
+  "logout": "Logout",
+  "language": "Language"
+}
