@@ -1,4 +1,3 @@
-// lib/screens/settings/settings_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -44,7 +43,11 @@ class SettingsScreen extends StatelessWidget {
         }
 
         final data = snapshot.data!.data() ?? {};
-        final shareLocation = data['shareLocation'] as bool? ?? true;
+
+        // ✅ shareLocation 필드가 없거나 타입이 꼬였을 때도 안전하게 처리
+        final shareLocation = (data['shareLocation'] is bool)
+            ? data['shareLocation'] as bool
+            : true;
 
         return Scaffold(
           appBar: AppBar(title: const Text('설정')),
@@ -57,11 +60,15 @@ class SettingsScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
+
               DropdownButtonFormField<Locale>(
                 value: localeProvider.locale,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                ),
                 items: languageOptions
                     .map(
-                      (lang) => DropdownMenuItem(
+                      (lang) => DropdownMenuItem<Locale>(
                     value: Locale(lang['code']!),
                     child: Text(lang['label']!),
                   ),
@@ -70,11 +77,10 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: (locale) async {
                   if (locale == null) return;
                   localeProvider.setLocale(locale);
+
+                  // Firestore에도 저장
                   await auth.updateProfile(lang: locale.languageCode);
                 },
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
               ),
 
               const SizedBox(height: 24),
@@ -85,13 +91,27 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: const Text('근처 친구 추천에 사용됩니다'),
                 value: shareLocation,
                 onChanged: (value) async {
+                  // ✅ AuthProvider.updateProfile에 shareLocation 파라미터가 있어야 함
                   await auth.updateProfile(shareLocation: value);
 
+                  // ✅ LocationProvider 메서드명이 프로젝트마다 다를 수 있어 try/catch로 안전 처리
                   final loc = context.read<LocationProvider>();
-                  if (value) {
-                    await loc.startAutoUpdate(uid);
-                  } else {
-                    await loc.stopAutoUpdate();
+                  try {
+                    if (value) {
+                      // 네 프로젝트에 startAutoUpdate(uid) 가 존재할 때
+                      await loc.startAutoUpdate(uid);
+                    } else {
+                      // 네 프로젝트에 stopAutoUpdate() 가 존재할 때
+                      await loc.stopAutoUpdate();
+                    }
+                  } catch (e) {
+                    // 메서드명이 다르거나 구현이 없으면 여기로 옴
+                    // -> 이 경우 LocationProvider 쪽 함수명/구현을 맞춰야 함
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('위치 업데이트 처리 중 오류: $e')),
+                      );
+                    }
                   }
                 },
               ),

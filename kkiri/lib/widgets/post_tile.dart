@@ -1,3 +1,4 @@
+// lib/widgets/post_tile.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -20,94 +21,198 @@ class PostTile extends StatelessWidget {
 
   Future<void> _toggleLike(BuildContext context) async {
     final user = context.read<AppState>().user;
+
     if (user == null) {
       await context.read<AuthProvider>().signInAnonymously();
       return;
     }
+
     await context.read<PostService>().toggleLike(postId, user.uid);
   }
 
   Future<void> _addComment(BuildContext context) async {
     final user = context.read<AppState>().user;
+
     if (user == null) {
       await context.read<AuthProvider>().signInAnonymously();
       return;
     }
 
     final controller = TextEditingController();
+
     final text = await showDialog<String?>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('댓글 작성'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: '댓글을 입력하세요'),
-          maxLines: 3,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소'),
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('댓글 작성'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: '댓글을 입력하세요'),
+            maxLines: 4,
+            autofocus: true,
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('등록'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () =>
+                  Navigator.of(ctx).pop(controller.text.trim()),
+              child: const Text('등록'),
+            ),
+          ],
+        );
+      },
     );
 
     if (text != null && text.isNotEmpty) {
-      await context.read<PostService>().addComment(postId, user.uid, text);
+      await context.read<PostService>().addComment(
+        postId,
+        user.uid,
+        text,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final content = data['content'] as String? ?? '';
-    final likesCount = data['likesCount'] ?? 0;
-    final currentUser = context.watch<AppState>().user;
+    final appState = context.watch<AppState>();
+    final currentUser = appState.user;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(content),
-            Row(
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('posts')
+          .doc(postId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final post = snapshot.data!.data();
+        if (post == null) return const SizedBox.shrink();
+
+        final content = post['content'] as String? ?? '';
+        final likesCount = (post['likesCount'] as int?) ?? 0;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                  stream: currentUser == null
-                      ? const Stream.empty()
-                      : FirebaseFirestore.instance
-                      .collection('posts')
-                      .doc(postId)
-                      .collection('likes')
-                      .doc(currentUser.uid)
-                      .snapshots(),
-                  builder: (_, snap) {
-                    final liked = snap.data?.exists ?? false;
-                    return TextButton.icon(
-                      onPressed: () => _toggleLike(context),
-                      icon: Icon(
-                        liked ? Icons.favorite : Icons.favorite_border,
-                        color: liked ? Colors.red : null,
-                      ),
-                      label: Text('Like ($likesCount)'),
-                    );
-                  },
+                // 🔥 익명 표시
+                const Text(
+                  '익명',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                TextButton.icon(
-                  onPressed: () => _addComment(context),
-                  icon: const Icon(Icons.comment),
-                  label: const Text('Comment'),
+                const SizedBox(height: 4),
+
+                Text(
+                  content,
+                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
+                const SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                      stream: currentUser == null
+                          ? const Stream.empty()
+                          : FirebaseFirestore.instance
+                          .collection('posts')
+                          .doc(postId)
+                          .collection('likes')
+                          .doc(currentUser.uid)
+                          .snapshots(),
+                      builder: (context, likeSnap) {
+                        final isLiked =
+                            likeSnap.data?.exists ?? false;
+
+                        return TextButton.icon(
+                          onPressed: () => _toggleLike(context),
+                          icon: Icon(
+                            isLiked
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: isLiked ? Colors.red : null,
+                          ),
+                          label: Text('좋아요 ($likesCount)'),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: () => _addComment(context),
+                      icon:
+                      const Icon(Icons.mode_comment_outlined),
+                      label: const Text('댓글'),
+                    ),
+                  ],
+                ),
+
+                if (showComments) ...[
+                  const SizedBox(height: 8),
+                  _CommentsList(postId: postId),
+                ],
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CommentsList extends StatelessWidget {
+  const _CommentsList({required this.postId});
+
+  final String postId;
+
+  @override
+  Widget build(BuildContext context) {
+    final postService = context.read<PostService>();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: postService.listenComments(postId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final comments = snapshot.data?.docs ?? [];
+        if (comments.isEmpty) {
+          return const Text('아직 댓글이 없습니다.');
+        }
+
+        return SizedBox(
+          height: 150,
+          child: ListView.builder(
+            itemCount: comments.length,
+            itemBuilder: (context, index) {
+              final comment = comments[index].data();
+              final text = comment['text'] as String? ?? '';
+
+              return ListTile(
+                dense: true,
+                title: Text(text),
+                subtitle: const Text(
+                  '익명',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
