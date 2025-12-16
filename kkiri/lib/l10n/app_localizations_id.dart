@@ -52,10 +52,10 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get language => 'Language';
-  @override
-  String get shareLocation => '...';
 
   @override
-  String get shareLocationDesc => '...';
+  String get shareLocation => 'Share location';
+
+  @override
+  String get shareLocationDesc => 'Used for nearby friend recommendations';
 }
-

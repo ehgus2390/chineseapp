@@ -51,10 +51,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get logout => 'ログアウト';
 
   @override
-  String get language => '言語';
-  @override
-  String get shareLocation => '...';
+  String get language => 'Language';
 
   @override
-  String get shareLocationDesc => '...';
+  String get shareLocation => '위치 공유 허용';
+
+  @override
+  String get shareLocationDesc => '근처 친구 추천에 사용됩니다';
 }

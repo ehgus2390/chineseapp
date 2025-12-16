@@ -52,9 +52,10 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get language => '언어';
-  @override
-  String get shareLocation => '...';
 
   @override
-  String get shareLocationDesc => '...';
+  String get shareLocation => '위치 공유 허용';
+
+  @override
+  String get shareLocationDesc => '근처 친구 추천에 사용됩니다';
 }
