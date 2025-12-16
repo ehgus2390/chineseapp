@@ -1,4 +1,3 @@
-// lib/screens/tabs/profile_page.dart
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -95,31 +94,51 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // ───────────────────────── ⚙️ 설정 메뉴 ─────────────────────────
-  void _openProfileActions(BuildContext context, String targetUid) {
+  void _openProfileActions(BuildContext context, String myUid) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
+      builder: (_) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.report, color: Colors.red),
+                leading: const Icon(Icons.report),
                 title: const Text('신고하기'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  _openReportDialog(context, targetUid);
+                  await FirebaseFirestore.instance.collection('reports').add({
+                    'type': 'profile',
+                    'reporterUid': myUid,
+                    'targetUid': myUid, // ⚠️ 자기 프로필 신고 방지하려면 UI에서 막아도 됨
+                    'reason': '부적절한 프로필',
+                    'createdAt': FieldValue.serverTimestamp(),
+                  });
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('신고가 접수되었습니다')),
+                    );
+                  }
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.block),
                 title: const Text('차단하기'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  _confirmBlock(context, targetUid);
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(myUid)
+                      .collection('blocked')
+                      .doc(myUid)
+                      .set({
+                    'createdAt': FieldValue.serverTimestamp(),
+                  });
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('차단되었습니다')),
+                    );
+                  }
                 },
               ),
             ],
@@ -128,6 +147,7 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
   }
+
 
   // ───────────────────────── 신고 다이얼로그 ─────────────────────────
   void _openReportDialog(BuildContext context, String targetUid) {
