@@ -151,7 +151,7 @@ class _ProfilePageState extends State<ProfilePage> {
       localeProvider.setLocale(Locale(code));
 
       // 2) Firestore 저장 (users/{uid}.lang)
-      await auth.updateProfile(lang: code);
+      await auth.updateProfile(languages: [code], mainLanguage: code);
 
       if (context.mounted) {
         Navigator.pop(context);

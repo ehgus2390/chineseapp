@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
+import 'language_setting_screen.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
@@ -84,12 +85,25 @@ class SettingsScreen extends StatelessWidget {
                   if (locale == null) return;
                   localeProvider.setLocale(locale);
 
-                  // Firestore에도 저장
-                  await auth.updateProfile(lang: locale.languageCode);
+
                 },
               ),
 
               const SizedBox(height: 24),
+
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: const Text('프로필 언어'),
+                subtitle: const Text('사용 언어 / 대표 언어 설정'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const LanguageSettingScreen(),
+                    ),
+                  );
+                },
+              ),
 
               /// 📍 Location
               SwitchListTile(

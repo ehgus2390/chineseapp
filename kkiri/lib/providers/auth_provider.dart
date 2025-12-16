@@ -16,24 +16,59 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProvider() {
     currentUser = _auth.currentUser;
-    _authSub = _auth.authStateChanges().listen((u) {
+    _authSub = _auth.authStateChanges().listen((u) async {
       currentUser = u;
+      if (u != null) {
+        await _migrateLanguageFields(u.uid);
+      }
       notifyListeners();
     });
   }
 
-  /// ✅ 기존 코드 호환: bool 유지
+  /// ───────── 언어 필드 마이그레이션 (1회성) ─────────
+  Future<void> _migrateLanguageFields(String uid) async {
+    final ref = _db.collection('users').doc(uid);
+    final snap = await ref.get();
+    if (!snap.exists) return;
+
+    final data = snap.data() ?? {};
+
+    // 이미 새 구조면 스킵
+    if (data.containsKey('languages') && data.containsKey('mainLanguage')) {
+      return;
+    }
+
+    final List<String> languages = [];
+
+    final preferred = data['preferredLanguages'];
+    final lang = data['lang'];
+
+    if (preferred is List && preferred.isNotEmpty) {
+      languages.addAll(preferred.cast<String>());
+    } else if (lang is String && lang.isNotEmpty) {
+      languages.add(lang);
+    } else {
+      languages.add('ko'); // 기본값
+    }
+
+    final mainLanguage = languages.first;
+
+    await ref.set({
+      'languages': languages.toSet().toList(),
+      'mainLanguage': mainLanguage,
+    }, SetOptions(merge: true));
+  }
+
+  /// 기존 코드 호환
   Future<bool> signInAnonymously() async {
     final u = await signInAnonymouslyUser();
     return u != null;
   }
 
-  /// ✅ 새로 추가: board_screen처럼 uid가 필요한 곳에서 사용
   Future<fb.User?> signInAnonymouslyUser() async {
     try {
       final cred = await _auth.signInAnonymously();
       currentUser = cred.user;
-
       if (currentUser == null) return null;
 
       final ref = _db.collection('users').doc(currentUser!.uid);
@@ -43,7 +78,8 @@ class AuthProvider extends ChangeNotifier {
         await ref.set({
           'displayName': 'User_${currentUser!.uid.substring(0, 6)}',
           'photoUrl': null,
-          'lang': 'ko',
+          'languages': ['ko'],
+          'mainLanguage': 'ko',
           'createdAt': FieldValue.serverTimestamp(),
           'friends': [],
           'searchId': currentUser!.uid.substring(0, 6),
@@ -52,11 +88,12 @@ class AuthProvider extends ChangeNotifier {
           'bio': null,
           'interests': [],
           'preferredCountries': [],
-          'preferredLanguages': [],
           'notifyChat': true,
           'notifyComment': true,
           'notifyLike': true,
         }, SetOptions(merge: true));
+      } else {
+        await _migrateLanguageFields(currentUser!.uid);
       }
 
       notifyListeners();
@@ -69,32 +106,8 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
 
-  Future<bool> upgradeToEmailAccount(String email, String password) async {
-    final user = _auth.currentUser;
-    if (user == null) return false;
-
-    final credential =
-    fb.EmailAuthProvider.credential(email: email, password: password);
-
-    try {
-      await user.linkWithCredential(credential);
-      await user.sendEmailVerification();
-      return true;
-    } on fb.FirebaseAuthException catch (e) {
-      if (e.code == 'credential-already-in-use') {
-        await _auth.signInWithCredential(credential);
-        currentUser = _auth.currentUser;
-        notifyListeners();
-        return true;
-      }
-      rethrow;
-    }
-  }
-
-  // ───────── 인증 필요 기능 가드 (기존 화면들 호환용) ─────────
   bool requireVerified(BuildContext context, String featureName) {
     if (isEmailVerified) return true;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -105,23 +118,16 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
-  Future<bool> sendEmailVerification() async {
-    final user = _auth.currentUser;
-    if (user == null || user.email == null) return false;
-    await user.sendEmailVerification();
-    return true;
-  }
-
   Future<void> updateProfile({
     String? displayName,
     String? photoUrl,
-    String? lang,
+    List<String>? languages,
+    String? mainLanguage,
     int? age,
     String? gender,
     String? bio,
     List<String>? interests,
     List<String>? preferredCountries,
-    List<String>? preferredLanguages,
     bool? notifyChat,
     bool? notifyComment,
     bool? notifyLike,
@@ -131,15 +137,16 @@ class AuthProvider extends ChangeNotifier {
     if (uid == null) return;
 
     final data = <String, dynamic>{};
+
     if (displayName != null) data['displayName'] = displayName;
     if (photoUrl != null) data['photoUrl'] = photoUrl;
-    if (lang != null) data['lang'] = lang;
+    if (languages != null) data['languages'] = languages;
+    if (mainLanguage != null) data['mainLanguage'] = mainLanguage;
     if (age != null) data['age'] = age;
     if (gender != null) data['gender'] = gender;
     if (bio != null) data['bio'] = bio;
     if (interests != null) data['interests'] = interests;
     if (preferredCountries != null) data['preferredCountries'] = preferredCountries;
-    if (preferredLanguages != null) data['preferredLanguages'] = preferredLanguages;
     if (notifyChat != null) data['notifyChat'] = notifyChat;
     if (notifyComment != null) data['notifyComment'] = notifyComment;
     if (notifyLike != null) data['notifyLike'] = notifyLike;
