@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../services/storage_service.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -20,7 +22,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final _ageController = TextEditingController();
   final _bioController = TextEditingController();
 
-  final List<String> _interestOptions = const [
+  final _interestOptions = const [
     'K-pop',
     'Travel',
     'Food',
@@ -31,9 +33,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String? _gender;
   List<String> _interests = [];
-  bool _initialised = false;
+  bool _initialized = false;
   File? _pickedImage;
   bool _saving = false;
+
   final _picker = ImagePicker();
 
   @override
@@ -62,16 +65,16 @@ class _ProfilePageState extends State<ProfilePage> {
       Map<String, dynamic>? data,
       ) async {
     setState(() => _saving = true);
-
     try {
-      final url = await _uploadPhoto(uid) ?? data?['photoUrl'];
+      final photoUrl = await _uploadPhoto(uid) ?? data?['photoUrl'];
+
       await auth.updateProfile(
         displayName: _displayNameController.text.trim(),
-        photoUrl: url,
-        age: int.tryParse(_ageController.text),
+        age: int.tryParse(_ageController.text.trim()),
         gender: _gender,
-        bio: _bioController.text,
+        bio: _bioController.text.trim(),
         interests: _interests,
+        photoUrl: photoUrl,
       );
 
       if (!mounted) return;
@@ -82,8 +85,11 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // ⚙️ 신고 / 차단
-  void _openProfileActions(String myUid) {
+  // ───────────────── ⚙️ 설정 메뉴 ─────────────────
+  void _openSettingsSheet(BuildContext context, String myUid) {
+    final t = AppLocalizations.of(context)!;
+    final localeProvider = context.read<LocaleProvider>();
+
     showModalBottomSheet(
       context: context,
       builder: (_) {
@@ -93,21 +99,20 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               ListTile(
                 leading: const Icon(Icons.report),
-                title: const Text('신고하기'),
+                title: Text(t.report),
                 onTap: () async {
                   Navigator.pop(context);
                   await FirebaseFirestore.instance.collection('reports').add({
                     'type': 'profile',
                     'reporterUid': myUid,
                     'targetUid': myUid,
-                    'reason': '부적절한 프로필',
                     'createdAt': FieldValue.serverTimestamp(),
                   });
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.block),
-                title: const Text('차단하기'),
+                title: Text(t.block),
                 onTap: () async {
                   Navigator.pop(context);
                   await FirebaseFirestore.instance
@@ -118,6 +123,37 @@ class _ProfilePageState extends State<ProfilePage> {
                       .set({'createdAt': FieldValue.serverTimestamp()});
                 },
               ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: Text(t.language),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openLanguageSheet(context, localeProvider);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ───────────── 🌍 언어 설정 ─────────────
+  void _openLanguageSheet(
+      BuildContext context, LocaleProvider localeProvider) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: const [
+              _LangItem('ko', '한국어'),
+              _LangItem('en', 'English'),
+              _LangItem('ja', '日本語'),
+              _LangItem('zh', '中文'),
+              _LangItem('vi', 'Tiếng Việt'),
             ],
           ),
         );
@@ -128,17 +164,20 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final t = AppLocalizations.of(context)!;
     final uid = auth.currentUser?.uid;
-    if (uid == null) return const SizedBox.shrink();
+
+    if (uid == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream:
-      FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
-      builder: (_, snapshot) {
+      stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+      builder: (context, snapshot) {
         final data = snapshot.data?.data();
 
-        if (!_initialised && data != null) {
-          _initialised = true;
+        if (!_initialized && data != null) {
+          _initialized = true;
           _displayNameController.text = data['displayName'] ?? '';
           _ageController.text = data['age']?.toString() ?? '';
           _gender = data['gender'];
@@ -150,11 +189,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('내 프로필'),
+            title: Text(t.profile),
             actions: [
               IconButton(
                 icon: const Icon(Icons.settings),
-                onPressed: () => _openProfileActions(uid),
+                onPressed: () => _openSettingsSheet(context, uid),
               ),
             ],
           ),
@@ -166,9 +205,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   radius: 56,
                   backgroundImage: _pickedImage != null
                       ? FileImage(_pickedImage!)
-                      : photoUrl != null
+                      : (photoUrl != null
                       ? NetworkImage(photoUrl)
-                      : const AssetImage('assets/images/logo.png')
+                      : const AssetImage('assets/images/logo.png'))
                   as ImageProvider,
                 ),
                 TextButton.icon(
@@ -197,9 +236,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 TextField(
                   controller: _bioController,
-                  decoration: const InputDecoration(labelText: '내 소개'),
                   maxLines: 3,
+                  decoration: const InputDecoration(labelText: '내 소개'),
                 ),
+                const SizedBox(height: 16),
                 Wrap(
                   spacing: 8,
                   children: _interestOptions.map((e) {
@@ -215,17 +255,39 @@ class _ProfilePageState extends State<ProfilePage> {
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
                   onPressed: _saving
                       ? null
                       : () => _saveProfile(auth, uid, data),
-                  child: const Text('저장'),
+                  icon: _saving
+                      ? const CircularProgressIndicator()
+                      : const Icon(Icons.save),
+                  label: Text(t.save),
                 ),
               ],
             ),
           ),
         );
+      },
+    );
+  }
+}
+
+class _LangItem extends StatelessWidget {
+  final String code;
+  final String label;
+  const _LangItem(this.code, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    final localeProvider = context.read<LocaleProvider>();
+
+    return ListTile(
+      title: Text(label),
+      onTap: () {
+        localeProvider.setLocale(Locale(code));
+        Navigator.pop(context);
       },
     );
   }
