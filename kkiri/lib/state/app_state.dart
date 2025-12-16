@@ -1,15 +1,15 @@
 // lib/state/app_state.dart
 import 'dart:async';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 import '../services/auth_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState({AuthService? authService})
       : _authService = authService ?? AuthService() {
-    _subscription = _authService.onAuthChanged().listen((authUser) {
+    _subscription = _authService.onAuthChanged().listen((fb.User? authUser) {
       user = authUser;
       isLoading = false;
       notifyListeners();
@@ -17,10 +17,16 @@ class AppState extends ChangeNotifier {
   }
 
   final AuthService _authService;
-  StreamSubscription<User?>? _subscription;
+  StreamSubscription<fb.User?>? _subscription;
 
-  User? user;
+  fb.User? user;
   bool isLoading = true;
+
+  // 필요하면 외부에서 직접 user를 세팅할 때 사용
+  void setUser(fb.User? newUser) {
+    user = newUser;
+    notifyListeners();
+  }
 
   Future<void> signInWithEmail(String email, String password) async {
     isLoading = true;

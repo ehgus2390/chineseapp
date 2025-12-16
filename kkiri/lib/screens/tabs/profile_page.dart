@@ -69,26 +69,28 @@ class _ProfilePageState extends State<ProfilePage> {
       final photoUrl = await _uploadPhoto(uid) ?? data?['photoUrl'];
 
       await auth.updateProfile(
-        displayName: _displayNameController.text.trim(),
+        displayName: _displayNameController.text.trim().isEmpty
+            ? null
+            : _displayNameController.text.trim(),
         age: int.tryParse(_ageController.text.trim()),
         gender: _gender,
-        bio: _bioController.text.trim(),
+        bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
         interests: _interests,
         photoUrl: photoUrl,
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('프로필이 저장되었습니다')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('프로필이 저장되었습니다')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  // ───────────────── ⚙️ 설정 메뉴 ─────────────────
+  // ───────────────── ⚙️ 설정 메뉴 (내 프로필용) ─────────────────
   void _openSettingsSheet(BuildContext context, String myUid) {
     final t = AppLocalizations.of(context)!;
-    final localeProvider = context.read<LocaleProvider>();
 
     showModalBottomSheet(
       context: context,
@@ -97,39 +99,39 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const Icon(Icons.report),
-                title: Text(t.report),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await FirebaseFirestore.instance.collection('reports').add({
-                    'type': 'profile',
-                    'reporterUid': myUid,
-                    'targetUid': myUid,
-                    'createdAt': FieldValue.serverTimestamp(),
-                  });
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.block),
-                title: Text(t.block),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(myUid)
-                      .collection('blocked')
-                      .doc(myUid)
-                      .set({'createdAt': FieldValue.serverTimestamp()});
-                },
-              ),
-              const Divider(),
+              // ✅ 언어설정
               ListTile(
                 leading: const Icon(Icons.language),
                 title: Text(t.language),
                 onTap: () {
                   Navigator.pop(context);
-                  _openLanguageSheet(context, localeProvider);
+                  _openLanguageSheet(context, myUid);
+                },
+              ),
+
+              const Divider(),
+
+              // ℹ️ 내 프로필에서는 신고/차단을 막아두는 게 안전함
+              ListTile(
+                leading: const Icon(Icons.report_outlined),
+                title: Text(t.report),
+                subtitle: const Text('신고는 게시글/댓글/다른 유저 프로필에서 가능합니다.'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('신고는 게시글/댓글/다른 유저 프로필에서 사용할 수 있어요.')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.block_outlined),
+                title: Text(t.block),
+                subtitle: const Text('차단은 게시글/댓글/채팅 또는 다른 유저 프로필에서 가능합니다.'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('차단은 게시글/댓글/채팅 또는 다른 유저 프로필에서 사용할 수 있어요.')),
+                  );
                 },
               ),
             ],
@@ -139,21 +141,39 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ───────────── 🌍 언어 설정 ─────────────
-  void _openLanguageSheet(
-      BuildContext context, LocaleProvider localeProvider) {
+  // ───────────── 🌍 언어 설정 (즉시 반영 + Firestore lang 저장) ─────────────
+  void _openLanguageSheet(BuildContext context, String myUid) {
+    final auth = context.read<AuthProvider>();
+    final localeProvider = context.read<LocaleProvider>();
+
+    Future<void> setLang(String code) async {
+      // 1) 앱 즉시 반영
+      localeProvider.setLocale(Locale(code));
+
+      // 2) Firestore 저장 (users/{uid}.lang)
+      await auth.updateProfile(lang: code);
+
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('언어가 변경되었습니다: $code')),
+        );
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       builder: (_) {
         return SafeArea(
           child: ListView(
             shrinkWrap: true,
-            children: const [
-              _LangItem('ko', '한국어'),
-              _LangItem('en', 'English'),
-              _LangItem('ja', '日本語'),
-              _LangItem('zh', '中文'),
-              _LangItem('vi', 'Tiếng Việt'),
+            children: [
+              ListTile(title: const Text('한국어'), onTap: () => setLang('ko')),
+              ListTile(title: const Text('English'), onTap: () => setLang('en')),
+              ListTile(title: const Text('日本語'), onTap: () => setLang('ja')),
+              ListTile(title: const Text('中文'), onTap: () => setLang('zh')),
+              ListTile(title: const Text('Tiếng Việt'), onTap: () => setLang('vi')),
+              // 필요하면 여기 계속 추가 가능
             ],
           ),
         );
@@ -178,10 +198,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
         if (!_initialized && data != null) {
           _initialized = true;
-          _displayNameController.text = data['displayName'] ?? '';
+          _displayNameController.text = (data['displayName'] ?? '') as String;
           _ageController.text = data['age']?.toString() ?? '';
-          _gender = data['gender'];
-          _bioController.text = data['bio'] ?? '';
+          _gender = data['gender'] as String?;
+          _bioController.text = (data['bio'] ?? '') as String;
           _interests = List<String>.from(data['interests'] ?? []);
         }
 
@@ -207,23 +227,27 @@ class _ProfilePageState extends State<ProfilePage> {
                       ? FileImage(_pickedImage!)
                       : (photoUrl != null
                       ? NetworkImage(photoUrl)
-                      : const AssetImage('assets/images/logo.png'))
-                  as ImageProvider,
+                      : const AssetImage('assets/images/logo.png')) as ImageProvider,
                 ),
                 TextButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.camera_alt_outlined),
                   label: const Text('사진 변경'),
                 ),
+
+                const SizedBox(height: 12),
+
                 TextField(
                   controller: _displayNameController,
                   decoration: const InputDecoration(labelText: '닉네임'),
                 ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _ageController,
                   decoration: const InputDecoration(labelText: '나이'),
                   keyboardType: TextInputType.number,
                 ),
+                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _gender,
                   items: const [
@@ -234,12 +258,15 @@ class _ProfilePageState extends State<ProfilePage> {
                   onChanged: (v) => setState(() => _gender = v),
                   decoration: const InputDecoration(labelText: '성별'),
                 ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _bioController,
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: '내 소개'),
                 ),
+
                 const SizedBox(height: 16),
+
                 Wrap(
                   spacing: 8,
                   children: _interestOptions.map((e) {
@@ -249,19 +276,27 @@ class _ProfilePageState extends State<ProfilePage> {
                       selected: selected,
                       onSelected: (v) {
                         setState(() {
-                          v ? _interests.add(e) : _interests.remove(e);
+                          if (v) {
+                            if (!_interests.contains(e)) _interests.add(e);
+                          } else {
+                            _interests.remove(e);
+                          }
                         });
                       },
                     );
                   }).toList(),
                 ),
+
                 const SizedBox(height: 24),
+
                 ElevatedButton.icon(
-                  onPressed: _saving
-                      ? null
-                      : () => _saveProfile(auth, uid, data),
+                  onPressed: _saving ? null : () => _saveProfile(auth, uid, data),
                   icon: _saving
-                      ? const CircularProgressIndicator()
+                      ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                       : const Icon(Icons.save),
                   label: Text(t.save),
                 ),
@@ -269,25 +304,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         );
-      },
-    );
-  }
-}
-
-class _LangItem extends StatelessWidget {
-  final String code;
-  final String label;
-  const _LangItem(this.code, this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    final localeProvider = context.read<LocaleProvider>();
-
-    return ListTile(
-      title: Text(label),
-      onTap: () {
-        localeProvider.setLocale(Locale(code));
-        Navigator.pop(context);
       },
     );
   }

@@ -1,8 +1,9 @@
-// lib/services/post_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 class PostService {
   final _db = FirebaseFirestore.instance;
 
+  /// 🔥 인기 게시글 (24시간 + 좋아요)
   Stream<QuerySnapshot<Map<String, dynamic>>> listenHotPosts() {
     final since =
     Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 24)));
@@ -16,6 +17,7 @@ class PostService {
         .snapshots();
   }
 
+  /// 🆕 최신 게시글
   Stream<QuerySnapshot<Map<String, dynamic>>> listenLatestPosts() {
     return _db
         .collection('posts')
@@ -23,6 +25,7 @@ class PostService {
         .snapshots();
   }
 
+  /// 💬 댓글 스트림
   Stream<QuerySnapshot<Map<String, dynamic>>> listenComments(String postId) {
     return _db
         .collection('posts')
@@ -32,6 +35,22 @@ class PostService {
         .snapshots();
   }
 
+  /// ✍️ 게시글 작성 (🔥 핵심)
+  Future<void> createPost({
+    required String uid,
+    required String content,
+  }) async {
+    if (content.trim().isEmpty) return;
+
+    await _db.collection('posts').add({
+      'authorId': uid,
+      'content': content.trim(),
+      'likesCount': 0,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// ❤️ 좋아요 토글
   Future<void> toggleLike(String postId, String uid) async {
     final ref = _db.collection('posts').doc(postId);
     final likeRef = ref.collection('likes').doc(uid);
@@ -51,14 +70,17 @@ class PostService {
     });
   }
 
+  /// 💬 댓글 작성
   Future<void> addComment(String postId, String uid, String text) async {
+    if (text.trim().isEmpty) return;
+
     await _db
         .collection('posts')
         .doc(postId)
         .collection('comments')
         .add({
       'authorId': uid,
-      'text': text,
+      'text': text.trim(),
       'createdAt': FieldValue.serverTimestamp(),
     });
   }

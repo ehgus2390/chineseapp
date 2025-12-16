@@ -1,13 +1,55 @@
-// lib/screens/tabs/board_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 import '../../services/post_service.dart';
 import '../../widgets/post_tile.dart';
+import '../../providers/auth_provider.dart';
+import '../../state/app_state.dart';
 
 class BoardScreen extends StatelessWidget {
   const BoardScreen({super.key});
+
+  Future<void> _openWritePostDialog(BuildContext context) async {
+    final controller = TextEditingController();
+    final postService = context.read<PostService>();
+    final auth = context.read<AuthProvider>();
+    final appState = context.read<AppState>();
+
+    final fb.User? user = appState.user ?? await auth.signInAnonymouslyUser();
+    if (user == null) return;
+
+    final text = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('글쓰기'),
+        content: TextField(
+          controller: controller,
+          maxLines: 5,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '내용을 입력하세요'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('등록'),
+          ),
+        ],
+      ),
+    );
+
+    if (text != null && text.isNotEmpty) {
+      await postService.createPost(
+        uid: user.uid,
+        content: text,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,64 +62,26 @@ class BoardScreen extends StatelessWidget {
         children: [
           const Text('🔥 인기 게시글', style: TextStyle(fontSize: 18)),
           const SizedBox(height: 12),
-
-          /// 🔥 HOT POSTS
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: postService.listenHotPosts(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-
               final docs = snapshot.data!.docs;
-              if (docs.isEmpty) {
-                return const Text('인기 게시글이 없습니다.');
-              }
-
+              if (docs.isEmpty) return const Text('인기 게시글이 없습니다.');
               return Column(
                 children: docs
-                    .map(
-                      (d) => PostTile(
-                    postId: d.id,
-                    data: d.data(),
-                  ),
-                )
-                    .toList(),
-              );
-            },
-          ),
-
-          const SizedBox(height: 24),
-          const Text('🆕 최신 게시글', style: TextStyle(fontSize: 18)),
-          const SizedBox(height: 12),
-
-          /// 🆕 LATEST POSTS
-          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: postService.listenLatestPosts(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final docs = snapshot.data!.docs;
-              if (docs.isEmpty) {
-                return const Text('게시글이 없습니다.');
-              }
-
-              return Column(
-                children: docs
-                    .map(
-                      (d) => PostTile(
-                    postId: d.id,
-                    data: d.data(),
-                    showComments: true,
-                  ),
-                )
+                    .map((d) => PostTile(postId: d.id, data: d.data()))
                     .toList(),
               );
             },
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.edit),
+        onPressed: () => _openWritePostDialog(context),
       ),
     );
   }
