@@ -19,8 +19,6 @@ class _ProfilePageState extends State<ProfilePage> {
   final _displayNameController = TextEditingController();
   final _ageController = TextEditingController();
   final _bioController = TextEditingController();
-  final _upgradeEmailController = TextEditingController();
-  final _upgradePasswordController = TextEditingController();
 
   final List<String> _interestOptions = const [
     'K-pop',
@@ -43,12 +41,9 @@ class _ProfilePageState extends State<ProfilePage> {
     _displayNameController.dispose();
     _ageController.dispose();
     _bioController.dispose();
-    _upgradeEmailController.dispose();
-    _upgradePasswordController.dispose();
     super.dispose();
   }
 
-  // ───────────────────────── 이미지 선택 ─────────────────────────
   Future<void> _pickImage() async {
     final file = await _picker.pickImage(source: ImageSource.gallery);
     if (file != null) {
@@ -58,43 +53,37 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<String?> _uploadPhoto(String uid) async {
     if (_pickedImage == null) return null;
-    final storage = StorageService();
-    return storage.uploadProfileImage(uid: uid, file: _pickedImage!);
+    return StorageService().uploadProfileImage(uid: uid, file: _pickedImage!);
   }
 
-  // ───────────────────────── 프로필 저장 ─────────────────────────
   Future<void> _saveProfile(
       AuthProvider auth,
       String uid,
       Map<String, dynamic>? data,
       ) async {
     setState(() => _saving = true);
+
     try {
-      final url = await _uploadPhoto(uid) ?? data?['photoUrl'] as String?;
+      final url = await _uploadPhoto(uid) ?? data?['photoUrl'];
       await auth.updateProfile(
-        displayName: _displayNameController.text.trim().isEmpty
-            ? null
-            : _displayNameController.text.trim(),
+        displayName: _displayNameController.text.trim(),
         photoUrl: url,
-        age: int.tryParse(_ageController.text.trim()),
+        age: int.tryParse(_ageController.text),
         gender: _gender,
-        bio: _bioController.text.trim().isEmpty
-            ? null
-            : _bioController.text.trim(),
+        bio: _bioController.text,
         interests: _interests,
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('프로필이 저장되었습니다.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('프로필이 저장되었습니다')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  // ───────────────────────── ⚙️ 설정 메뉴 ─────────────────────────
-  void _openProfileActions(BuildContext context, String myUid) {
+  // ⚙️ 신고 / 차단
+  void _openProfileActions(String myUid) {
     showModalBottomSheet(
       context: context,
       builder: (_) {
@@ -110,15 +99,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   await FirebaseFirestore.instance.collection('reports').add({
                     'type': 'profile',
                     'reporterUid': myUid,
-                    'targetUid': myUid, // ⚠️ 자기 프로필 신고 방지하려면 UI에서 막아도 됨
+                    'targetUid': myUid,
                     'reason': '부적절한 프로필',
                     'createdAt': FieldValue.serverTimestamp(),
                   });
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('신고가 접수되었습니다')),
-                    );
-                  }
                 },
               ),
               ListTile(
@@ -131,14 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       .doc(myUid)
                       .collection('blocked')
                       .doc(myUid)
-                      .set({
-                    'createdAt': FieldValue.serverTimestamp(),
-                  });
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('차단되었습니다')),
-                    );
-                  }
+                      .set({'createdAt': FieldValue.serverTimestamp()});
                 },
               ),
             ],
@@ -148,126 +125,28 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-
-  // ───────────────────────── 신고 다이얼로그 ─────────────────────────
-  void _openReportDialog(BuildContext context, String targetUid) {
-    final controller = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('신고하기'),
-          content: TextField(
-            controller: controller,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: '신고 사유를 입력해주세요',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                await _submitReport(context, targetUid, controller.text);
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('신고'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _submitReport(
-      BuildContext context,
-      String targetUid,
-      String reason,
-      ) async {
-    final auth = context.read<AuthProvider>();
-    final myUid = auth.currentUser!.uid;
-
-    await FirebaseFirestore.instance.collection('reports').add({
-      'reporterUid': myUid,
-      'targetUid': targetUid,
-      'type': 'profile',
-      'reason': reason,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  // ───────────────────────── 차단 ─────────────────────────
-  void _confirmBlock(BuildContext context, String targetUid) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('차단'),
-          content: const Text('이 사용자를 차단하면 서로 보이지 않게 됩니다.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                await _blockUser(context, targetUid);
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('차단'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _blockUser(BuildContext context, String targetUid) async {
-    final auth = context.read<AuthProvider>();
-    final myUid = auth.currentUser!.uid;
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(myUid)
-        .collection('blocked')
-        .doc(targetUid)
-        .set({
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  // ───────────────────────── UI ─────────────────────────
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final uid = auth.currentUser?.uid;
-
-    if (uid == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (uid == null) return const SizedBox.shrink();
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
-      builder: (context, snapshot) {
+      stream:
+      FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+      builder: (_, snapshot) {
         final data = snapshot.data?.data();
 
         if (!_initialised && data != null) {
           _initialised = true;
-          _displayNameController.text =
-              data['displayName'] as String? ?? '';
+          _displayNameController.text = data['displayName'] ?? '';
           _ageController.text = data['age']?.toString() ?? '';
-          _gender = data['gender'] as String?;
-          _bioController.text = data['bio'] as String? ?? '';
+          _gender = data['gender'];
+          _bioController.text = data['bio'] ?? '';
           _interests = List<String>.from(data['interests'] ?? []);
         }
 
-        final photoUrl = _pickedImage != null
-            ? null
-            : data?['photoUrl'] as String?;
+        final photoUrl = _pickedImage != null ? null : data?['photoUrl'];
 
         return Scaffold(
           appBar: AppBar(
@@ -275,7 +154,7 @@ class _ProfilePageState extends State<ProfilePage> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.settings),
-                onPressed: () => _openProfileActions(context, uid),
+                onPressed: () => _openProfileActions(uid),
               ),
             ],
           ),
@@ -287,30 +166,25 @@ class _ProfilePageState extends State<ProfilePage> {
                   radius: 56,
                   backgroundImage: _pickedImage != null
                       ? FileImage(_pickedImage!)
-                      : (photoUrl != null
+                      : photoUrl != null
                       ? NetworkImage(photoUrl)
                       : const AssetImage('assets/images/logo.png')
-                  as ImageProvider),
+                  as ImageProvider,
                 ),
                 TextButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.camera_alt_outlined),
                   label: const Text('사진 변경'),
                 ),
-
-                const SizedBox(height: 16),
-
                 TextField(
                   controller: _displayNameController,
                   decoration: const InputDecoration(labelText: '닉네임'),
                 ),
-                const SizedBox(height: 12),
                 TextField(
                   controller: _ageController,
-                  keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: '나이'),
+                  keyboardType: TextInputType.number,
                 ),
-                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _gender,
                   items: const [
@@ -321,46 +195,32 @@ class _ProfilePageState extends State<ProfilePage> {
                   onChanged: (v) => setState(() => _gender = v),
                   decoration: const InputDecoration(labelText: '성별'),
                 ),
-                const SizedBox(height: 12),
                 TextField(
                   controller: _bioController,
-                  maxLines: 3,
                   decoration: const InputDecoration(labelText: '내 소개'),
+                  maxLines: 3,
                 ),
-
-                const SizedBox(height: 16),
-                const Text('관심사'),
                 Wrap(
                   spacing: 8,
-                  children: _interestOptions.map((interest) {
-                    final selected = _interests.contains(interest);
+                  children: _interestOptions.map((e) {
+                    final selected = _interests.contains(e);
                     return FilterChip(
-                      label: Text(interest),
+                      label: Text(e),
                       selected: selected,
-                      onSelected: (value) {
+                      onSelected: (v) {
                         setState(() {
-                          if (value) {
-                            _interests.add(interest);
-                          } else {
-                            _interests.remove(interest);
-                          }
+                          v ? _interests.add(e) : _interests.remove(e);
                         });
                       },
                     );
                   }).toList(),
                 ),
-
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: _saving ? null : () => _saveProfile(auth, uid, data),
-                  icon: _saving
-                      ? const SizedBox(
-                    height: 16,
-                    width: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                      : const Icon(Icons.save),
-                  label: const Text('저장'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _saving
+                      ? null
+                      : () => _saveProfile(auth, uid, data),
+                  child: const Text('저장'),
                 ),
               ],
             ),

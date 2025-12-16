@@ -9,6 +9,18 @@ import '../chat/chat_room_screen.dart';
 class ChatListScreen extends StatelessWidget {
   const ChatListScreen({super.key});
 
+  // 🔒 차단 여부 확인
+  Future<bool> _isBlocked(String myUid, String peerUid) async {
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(myUid)
+        .collection('blocked')
+        .doc(peerUid)
+        .get();
+
+    return snap.exists;
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -38,25 +50,46 @@ class ChatListScreen extends StatelessWidget {
             final users = List<String>.from(data['users'] ?? []);
             if (users.isEmpty) return const SizedBox.shrink();
 
-            final peerId = users.firstWhere((u) => u != uid, orElse: () => '');
+            final peerId =
+            users.firstWhere((u) => u != uid, orElse: () => '');
 
-            return ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.person)),
-              title: Text(peerId.isEmpty ? 'Unknown' : peerId),
-              subtitle: Text((data['lastMessage'] as String?) ?? ''),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                if (!auth.requireVerified(context, '1:1 채팅')) return;
+            if (peerId.isEmpty) return const SizedBox.shrink();
 
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ChatRoomScreen(
-                      peerId: peerId,
-                      peerName: peerId,
-                      peerPhoto: null,
-                    ),
+            // 🔒 차단 필터링
+            return FutureBuilder<bool>(
+              future: _isBlocked(uid, peerId),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const SizedBox.shrink();
+                }
+
+                // 👉 차단된 유저면 채팅방 자체 제거
+                if (snap.data == true) {
+                  return const SizedBox.shrink();
+                }
+
+                return ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.person),
                   ),
+                  title: Text(peerId),
+                  subtitle:
+                  Text((data['lastMessage'] as String?) ?? ''),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    if (!auth.requireVerified(context, '1:1 채팅')) return;
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatRoomScreen(
+                          peerId: peerId,
+                          peerName: peerId,
+                          peerPhoto: null,
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             );

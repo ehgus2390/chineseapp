@@ -18,82 +18,34 @@ class PostTile extends StatelessWidget {
   final Map<String, dynamic> data;
   final bool showComments;
 
-  Future<void> _toggleLike(BuildContext context) async {
-    final user = context.read<AppState>().user;
+  Future<bool> _isBlocked(BuildContext context, String targetUid) async {
+    final uid = context.read<AppState>().user?.uid;
+    if (uid == null) return false;
 
-    if (user == null) {
-      await context.read<AuthProvider>().signInAnonymously();
-      return;
-    }
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('blocked')
+        .doc(targetUid)
+        .get();
 
-    await context.read<PostService>().toggleLike(postId, user.uid);
-  }
-
-  Future<void> _addComment(BuildContext context) async {
-    final user = context.read<AppState>().user;
-
-    if (user == null) {
-      await context.read<AuthProvider>().signInAnonymously();
-      return;
-    }
-
-    final controller = TextEditingController();
-
-    final text = await showDialog<String?>(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('댓글 작성'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(hintText: '댓글을 입력하세요'),
-            maxLines: 4,
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('취소'),
-            ),
-            ElevatedButton(
-              onPressed: () =>
-                  Navigator.of(ctx).pop(controller.text.trim()),
-              child: const Text('등록'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (text != null && text.isNotEmpty) {
-      await context.read<PostService>().addComment(
-        postId,
-        user.uid,
-        text,
-      );
-    }
+    return snap.exists;
   }
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final currentUser = appState.user;
+    final currentUser = context.watch<AppState>().user;
+    if (currentUser == null) return const SizedBox.shrink();
 
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('posts')
-          .doc(postId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const SizedBox.shrink();
-        }
+    final authorId = data['authorId'];
 
-        final post = snapshot.data!.data();
-        if (post == null) return const SizedBox.shrink();
+    return FutureBuilder<bool>(
+      future: _isBlocked(context, authorId),
+      builder: (_, snap) {
+        if (snap.data == true) return const SizedBox.shrink();
 
-        final content = post['content'] as String? ?? '';
-        final likesCount = (post['likesCount'] as int?) ?? 0;
+        final content = data['content'] ?? '';
+        final likesCount = data['likesCount'] ?? 0;
 
         return Card(
           child: Padding(
@@ -101,114 +53,57 @@ class PostTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🔥 익명 표시
-                const Text(
-                  '익명',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-
-                Text(
-                  content,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 8),
-
+                // 익명 + ⋮
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                      stream: currentUser == null
-                          ? const Stream.empty()
-                          : FirebaseFirestore.instance
-                          .collection('posts')
-                          .doc(postId)
-                          .collection('likes')
-                          .doc(currentUser.uid)
-                          .snapshots(),
-                      builder: (context, likeSnap) {
-                        final isLiked =
-                            likeSnap.data?.exists ?? false;
-
-                        return TextButton.icon(
-                          onPressed: () => _toggleLike(context),
-                          icon: Icon(
-                            isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: isLiked ? Colors.red : null,
-                          ),
-                          label: Text('좋아요 ($likesCount)'),
-                        );
+                    const Text('익명',
+                        style:
+                        TextStyle(fontSize: 12, color: Colors.grey)),
+                    PopupMenuButton<String>(
+                      onSelected: (v) async {
+                        if (v == 'report') {
+                          await FirebaseFirestore.instance
+                              .collection('reports')
+                              .add({
+                            'type': 'post',
+                            'reporterUid': currentUser.uid,
+                            'targetUid': authorId,
+                            'postId': postId,
+                            'createdAt':
+                            FieldValue.serverTimestamp(),
+                          });
+                        } else {
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(currentUser.uid)
+                              .collection('blocked')
+                              .doc(authorId)
+                              .set({
+                            'createdAt':
+                            FieldValue.serverTimestamp(),
+                          });
+                        }
                       },
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton.icon(
-                      onPressed: () => _addComment(context),
-                      icon:
-                      const Icon(Icons.mode_comment_outlined),
-                      label: const Text('댓글'),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                            value: 'report', child: Text('신고')),
+                        PopupMenuItem(
+                            value: 'block', child: Text('차단')),
+                      ],
                     ),
                   ],
                 ),
-
-                if (showComments) ...[
-                  const SizedBox(height: 8),
-                  _CommentsList(postId: postId),
-                ],
+                const SizedBox(height: 6),
+                Text(content),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text('좋아요 $likesCount'),
+                  ],
+                ),
               ],
             ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _CommentsList extends StatelessWidget {
-  const _CommentsList({required this.postId});
-
-  final String postId;
-
-  @override
-  Widget build(BuildContext context) {
-    final postService = context.read<PostService>();
-
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: postService.listenComments(postId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final comments = snapshot.data?.docs ?? [];
-        if (comments.isEmpty) {
-          return const Text('아직 댓글이 없습니다.');
-        }
-
-        return SizedBox(
-          height: 150,
-          child: ListView.builder(
-            itemCount: comments.length,
-            itemBuilder: (context, index) {
-              final comment = comments[index].data();
-              final text = comment['text'] as String? ?? '';
-
-              return ListTile(
-                dense: true,
-                title: Text(text),
-                subtitle: const Text(
-                  '익명',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              );
-            },
           ),
         );
       },
