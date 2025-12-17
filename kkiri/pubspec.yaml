@@ -32,7 +32,7 @@ dependencies:
   shared_preferences: ^2.3.2
   intl: ^0.20.2
   cupertino_icons: ^1.0.8
-  geoflutterfire_plus: ^0.0.33
+#  geoflutterfire_plus: ^0.0.33
 
 dev_dependencies:
   flutter_test:
@@ -46,5 +46,4 @@ flutter:
   assets:
     - assets/images/logo.png
     - lib/l10n/
-flutter_intl:
-  enabled: true
+

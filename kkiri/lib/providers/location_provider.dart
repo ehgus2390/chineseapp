@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 
 class LocationProvider extends ChangeNotifier {
@@ -40,16 +39,15 @@ class LocationProvider extends ChangeNotifier {
 
   // ───────────────────────── 위치 저장 ─────────────────────────
   Future<void> _saveToFirestore(String uid, Position pos) async {
-    final geoPoint = GeoFirePoint(GeoPoint(pos.latitude, pos.longitude));
-
     await db.collection("users").doc(uid).set(
       {
-        "position": geoPoint.data, // {"geohash": "...", "geopoint": GeoPoint()}
+        "position": GeoPoint(pos.latitude, pos.longitude),
         "updatedAt": FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
     );
   }
+
 
   // ───────────────────────── 자동 위치 업데이트 ─────────────────────────
   Future<void> startAutoUpdate(String uid) async {
@@ -115,30 +113,31 @@ class LocationProvider extends ChangeNotifier {
       String uid,
       double radiusKm,
       ) {
-    final usersRef = db.collection('users');
-
-    return usersRef.doc(uid).snapshots().asyncExpand((snap) {
-      final data = snap.data();
-      if (data == null || data['position'] == null) {
-        return Stream<List<DocumentSnapshot<Map<String, dynamic>>>>.value([]);
-      }
-
-      final positionData = data['position'];
-      final centerGeoPoint = positionData['geopoint'] as GeoPoint;
-
-      final center = GeoFirePoint(centerGeoPoint);
-
-      final geoRef = GeoCollectionReference<Map<String, dynamic>>(usersRef);
-
-      return geoRef.subscribeWithin(
-        center: center,
-        radiusInKm: radiusKm,
-        field: "position",
-        geopointFrom: (map) =>
-        (map['position'] as Map<String, dynamic>)['geopoint'] as GeoPoint,
-        strictMode: true,
-      );
-    });
+    // final usersRef = db.collection('users');
+    //
+    // return usersRef.doc(uid).snapshots().asyncExpand((snap) {
+    //   final data = snap.data();
+    //   if (data == null || data['position'] == null) {
+    //     return Stream<List<DocumentSnapshot<Map<String, dynamic>>>>.value([]);
+    //   }
+    //
+    //   final positionData = data['position'];
+    //   final centerGeoPoint = positionData['geopoint'] as GeoPoint;
+    //
+    //   final center = GeoFirePoint(centerGeoPoint);
+    //
+    //   final geoRef = GeoCollectionReference<Map<String, dynamic>>(usersRef);
+    //
+    //   return geoRef.subscribeWithin(
+    //     center: center,
+    //     radiusInKm: radiusKm,
+    //     field: "position",
+    //     geopointFrom: (map) =>
+    //     (map['position'] as Map<String, dynamic>)['geopoint'] as GeoPoint,
+    //     strictMode: true,
+    //   );
+    // });
+    return const Stream.empty();
   }
 
   @override
