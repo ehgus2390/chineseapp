@@ -22,9 +22,17 @@ class AppState extends ChangeNotifier {
   fb.User? user;
   bool isLoading = true;
 
+  // ✅ 피드 언어 필터
+  bool showOnlyMyLanguages = true;
+
   // 필요하면 외부에서 직접 user를 세팅할 때 사용
   void setUser(fb.User? newUser) {
     user = newUser;
+    notifyListeners();
+  }
+
+  void toggleFeedLanguageFilter() {
+    showOnlyMyLanguages = !showOnlyMyLanguages;
     notifyListeners();
   }
 

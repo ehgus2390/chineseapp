@@ -28,6 +28,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final _scrollCtrl = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final myId =
+          context.read<AuthProvider>().currentUser?.uid;
+      if (myId == null) return;
+
+      await context.read<ChatProvider>().resetUnread(
+        myUid: myId,
+        peerUid: widget.peerId,
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final chat = context.read<ChatProvider>();
@@ -35,49 +51,42 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 0,
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundImage: (widget.peerPhoto != null &&
-                  widget.peerPhoto!.startsWith('http'))
-                  ? NetworkImage(widget.peerPhoto!)
-                  : const AssetImage('assets/images/logo.png') as ImageProvider,
-            ),
-            const SizedBox(width: 8),
-            Text(widget.peerName),
-          ],
-        ),
+        title: Text(widget.peerName),
       ),
       body: Column(
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: chat.messageStream(myId, widget.peerId),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+              builder: (_, snap) {
+                if (!snap.hasData) {
+                  return const Center(
+                      child: CircularProgressIndicator());
                 }
 
-                final docs = snapshot.data!.docs;
+                final docs = snap.data!.docs;
                 return ListView.builder(
                   controller: _scrollCtrl,
                   padding: const EdgeInsets.all(12),
                   itemCount: docs.length,
-                  itemBuilder: (context, i) {
+                  itemBuilder: (_, i) {
                     final msg = docs[i].data();
-                    final isMe = msg['senderId'] == myId;
+                    final isMe =
+                        msg['senderId'] == myId;
 
-                    final ts = msg['createdAt'] as Timestamp?;
+                    final ts =
+                    msg['createdAt'] as Timestamp?;
                     final time = ts != null
-                        ? DateFormat('HH:mm').format(ts.toDate())
+                        ? DateFormat('HH:mm')
+                        .format(ts.toDate())
                         : '';
 
                     return ChatBubble(
                       text: msg['text'] ?? '',
                       isMe: isMe,
-                      photoUrl:
-                      isMe ? auth.currentUser?.photoURL : widget.peerPhoto,
+                      photoUrl: isMe
+                          ? auth.currentUser?.photoURL
+                          : widget.peerPhoto,
                       time: time,
                     );
                   },
@@ -85,45 +94,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               },
             ),
           ),
-          _buildInputArea(chat, myId),
+          _input(chat, myId),
         ],
       ),
     );
   }
 
-  Widget _buildInputArea(ChatProvider chat, String myId) {
+  Widget _input(ChatProvider chat, String myId) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                textInputAction: TextInputAction.send,
-                decoration: InputDecoration(
-                  hintText: '메시지 입력...',
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                ),
-                onSubmitted: (_) => _send(chat, myId),
-              ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              onSubmitted: (_) => _send(chat, myId),
+              decoration:
+              const InputDecoration(hintText: '메시지 입력'),
             ),
-            const SizedBox(width: 4),
-            IconButton(
-              icon: const Icon(Icons.send, color: Colors.blueAccent),
-              onPressed: () => _send(chat, myId),
-            ),
-          ],
-        ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.send),
+            onPressed: () => _send(chat, myId),
+          ),
+        ],
       ),
     );
   }
@@ -138,13 +131,5 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       text: text,
     );
     _controller.clear();
-
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (!_scrollCtrl.hasClients) return;
-    _scrollCtrl.animateTo(
-      _scrollCtrl.position.maxScrollExtent + 80,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
   }
 }

@@ -1,4 +1,3 @@
-// lib/screens/main_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,9 +18,9 @@ class _MainScreenState extends State<MainScreen> {
   int _index = 0;
 
   static final List<Widget> _pages = <Widget>[
-    const HomePage(),
-    const CommunityPage(),
     const ChatPage(),
+    const CommunityPage(),
+    const HomePage(),
     const ProfilePage(),
   ];
 
@@ -47,16 +46,16 @@ class _MainScreenState extends State<MainScreen> {
         onTap: (newIndex) => setState(() => _index = newIndex),
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.star),
-            label: 'Home',
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Chat',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.forum),
             label: 'Community',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Chat',
+            icon: Icon(Icons.star),
+            label: 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

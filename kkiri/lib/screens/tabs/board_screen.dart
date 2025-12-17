@@ -36,7 +36,8 @@ class BoardScreen extends StatelessWidget {
             child: const Text('취소'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            onPressed: () =>
+                Navigator.pop(context, controller.text.trim()),
             child: const Text('등록'),
           ),
         ],
@@ -57,27 +58,27 @@ class BoardScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Community')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text('🔥 인기 게시글', style: TextStyle(fontSize: 18)),
-          const SizedBox(height: 12),
-          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: postService.listenHotPosts(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final docs = snapshot.data!.docs;
-              if (docs.isEmpty) return const Text('인기 게시글이 없습니다.');
-              return Column(
-                children: docs
-                    .map((d) => PostTile(postId: d.id, data: d.data()))
-                    .toList(),
-              );
-            },
-          ),
-        ],
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: postService.listenHotPosts(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return const Center(child: Text('게시글이 없습니다.'));
+          }
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: docs
+                .map((d) => PostTile(
+              postId: d.id,
+              data: d.data(),
+              showComments: true,
+            ))
+                .toList(),
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.edit),

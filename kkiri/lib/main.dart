@@ -1,124 +1,121 @@
-import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ 추가
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
-import 'firebase_options.dart';
-import 'providers/auth_provider.dart';
-import 'providers/chat_provider.dart';
-import 'providers/friends_provider.dart';
-import 'providers/location_provider.dart';
-import 'providers/locale_provider.dart';
-import 'services/post_service.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/main_screen.dart';
-import 'state/app_state.dart';
-import 'l10n/app_localizations.dart';
+import '../providers/auth_provider.dart';
+import '../providers/chat_provider.dart';
+import '../state/app_state.dart';
+import '../screens/tabs/chat_page.dart';
+import '../screens/tabs/community_page.dart';
+import '../screens/tabs/home_page.dart';
+import '../screens/tabs/profile_page.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => AppState()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => FriendsProvider()),
-        ChangeNotifierProvider(create: (_) => LocationProvider()),
-        ChangeNotifierProvider(create: (_) => LocaleProvider()),
-        Provider<PostService>(create: (_) => PostService()),
-      ],
-      child: const KkiriApp(),
-    ),
-  );
-}
-
-class KkiriApp extends StatefulWidget {
-  const KkiriApp({super.key});
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
 
   @override
-  State<KkiriApp> createState() => _KkiriAppState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _KkiriAppState extends State<KkiriApp> {
-  String? _lastUidApplied;
+class _MainScreenState extends State<MainScreen> {
+  int _index = 0;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    final auth = context.watch<AuthProvider>();
-    final localeProv = context.watch<LocaleProvider>();
-
-    final uid = auth.currentUser?.uid;
-
-    // ✅ uid가 바뀌었을 때만 1회 실행 (rebuild 폭탄 방지)
-    if (uid != null && uid != _lastUidApplied && !localeProv.isManuallySet) {
-      _lastUidApplied = uid;
-
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get()
-          .then((snap) {
-        final lang = snap.data()?['mainLanguage'];
-        if (lang is String && lang.isNotEmpty) {
-          localeProv.setLocaleFromProfile(lang);
-        }
-      });
-    }
-  }
+  static final List<Widget> _pages = <Widget>[
+    const ChatPage(),
+    const CommunityPage(),
+    const HomePage(),
+    const ProfilePage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final localeProv = context.watch<LocaleProvider>();
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Kkiri'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => context.read<AppState>().signOut(),
+          ),
+        ],
+      ),
+      body: IndexedStack(
+        index: _index,
+        children: _pages,
+      ),
+      bottomNavigationBar:
+      Consumer2<AuthProvider, ChatProvider>(
+        builder: (context, auth, chat, _) {
+          final uid = auth.currentUser?.uid;
 
-    return MaterialApp(
-      title: 'Kkiri',
-      locale: localeProv.locale,
-      supportedLocales: const [
-        Locale('en'),
-        Locale('ko'),
-        Locale('ja'),
-        Locale('zh'),
-        Locale('es'),
-        Locale('vi'),
-        Locale('hi'),
-        Locale('bn'),
-        Locale('fil'),
-      ],
-      localizationsDelegates: const [
-        // ✅ gen-l10n 생성 delegate
-        AppLocalizations.delegate,
-
-        // ✅ Flutter 기본 로컬라이제이션
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: const RootScreen(),
+          return BottomNavigationBar(
+            currentIndex: _index,
+            onTap: (i) => setState(() => _index = i),
+            items: [
+              BottomNavigationBarItem(
+                icon: uid == null
+                    ? const Icon(Icons.chat)
+                    : StreamBuilder<int>(
+                  stream: chat.totalUnreadCount(uid),
+                  builder: (_, snap) {
+                    final count = snap.data ?? 0;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.chat),
+                        if (count > 0)
+                          Positioned(
+                            right: -6,
+                            top: -4,
+                            child: _UnreadBadge(count: count),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+                label: 'Chat',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.forum),
+                label: 'Community',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.star),
+                label: 'Home',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
 
-class RootScreen extends StatelessWidget {
-  const RootScreen({super.key});
+class _UnreadBadge extends StatelessWidget {
+  final int count;
+  const _UnreadBadge({required this.count});
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-
-    if (appState.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return appState.user == null ? const LoginScreen() : const MainScreen();
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: const BoxDecoration(
+        color: Colors.red,
+        shape: BoxShape.circle,
+      ),
+      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
   }
 }

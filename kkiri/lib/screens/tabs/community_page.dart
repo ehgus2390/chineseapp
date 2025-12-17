@@ -12,46 +12,106 @@ class CommunityPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final auth = context.watch<AuthProvider>();
     final postService = context.read<PostService>();
 
+    final uid = auth.currentUser?.uid;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Community')),
+      appBar: AppBar(
+        title: const Text('Community'),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              context.read<AppState>().toggleFeedLanguageFilter();
+            },
+            icon: Icon(
+              appState.showOnlyMyLanguages
+                  ? Icons.record_voice_over
+                  : Icons.public,
+              color: Colors.white,
+            ),
+            label: Text(
+              appState.showOnlyMyLanguages ? '내 언어' : '전체',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: postService.listenLatestPosts(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+        builder: (context, postSnap) {
+          if (!postSnap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(child: Text('게시글이 없습니다.'));
+          final posts = postSnap.data!.docs;
+
+          if (uid == null) {
+            // 로그인 전 → 전체 게시글 표시
+            return _buildPostList(posts);
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
-            itemBuilder: (_, i) {
-              final d = docs[i];
-              return PostTile(
-                postId: d.id,
-                data: d.data(),
-                showComments: true,
-              );
+          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(uid)
+                .snapshots(),
+            builder: (context, userSnap) {
+              if (!userSnap.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final userData = userSnap.data!.data() ?? {};
+              final myLanguages =
+              List<String>.from(userData['languages'] ?? []);
+
+              final filtered = appState.showOnlyMyLanguages
+                  ? posts.where((doc) {
+                final lang = doc.data()['language'];
+                return lang is String && myLanguages.contains(lang);
+              }).toList()
+                  : posts;
+
+              if (filtered.isEmpty) {
+                return const Center(
+                  child: Text('표시할 게시글이 없습니다.'),
+                );
+              }
+
+              return _buildPostList(filtered);
             },
           );
         },
       ),
+
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.edit),
         onPressed: () async {
-          final user = context.read<AppState>().user ??
-              await context.read<AuthProvider>().signInAnonymously();
+          final user = auth.currentUser ??
+              await auth.signInAnonymouslyUser();
           if (user == null) return;
 
-          // TODO: 글쓰기 다이얼로그
+          // ✍️ 글쓰기 다이얼로그는 다음 단계
         },
       ),
+    );
+  }
+
+  Widget _buildPostList(List<QueryDocumentSnapshot<Map<String, dynamic>>> posts) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: posts.length,
+      itemBuilder: (_, i) {
+        final doc = posts[i];
+        return PostTile(
+          postId: doc.id,
+          data: doc.data(),
+          showComments: true,
+        );
+      },
     );
   }
 }

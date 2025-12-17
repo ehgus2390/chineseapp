@@ -23,72 +23,127 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 대화방 ID 생성 (양쪽 UID를 정렬해서 항상 동일)
-  String _chatRoomId(String userA, String userB) {
+  /// ✅ 1:1 채팅방 ID 생성 (양쪽 UID 정렬해서 항상 동일)
+  String chatRoomIdFor(String userA, String userB) {
     final ids = [userA, userB]..sort();
     return ids.join('_');
   }
 
+  /// ✅ 1:1 채팅방 생성 or 가져오기 (chat_rooms)
   Future<String> createOrGetChatId(String userA, String userB) async {
-    final roomId = _chatRoomId(userA, userB);
-    final ref = _firestore.collection('chats').doc(roomId);
+    final roomId = chatRoomIdFor(userA, userB);
+    final ref = _firestore.collection('chat_rooms').doc(roomId);
+
     await ref.set(
       {
         'users': [userA, userB],
         'updatedAt': FieldValue.serverTimestamp(),
+        'lastMessage': '',
+        'unread': {
+          userA: 0,
+          userB: 0,
+        },
       },
       SetOptions(merge: true),
     );
+
     return roomId;
   }
 
-  // ✅ ChatListScreen이 쓰는 메서드 (누락되어 에러났던 부분)
+  /// ✅ ChatListScreen이 쓰는 1:1 채팅방 목록 (chat_rooms)
   Stream<QuerySnapshot<Map<String, dynamic>>> myChatRooms(String uid) {
     return _firestore
-        .collection('chats')
+        .collection('chat_rooms')
         .where('users', arrayContains: uid)
         .orderBy('updatedAt', descending: true)
         .snapshots();
   }
 
+  /// ✅ 1:1 메시지 보내기 + unread 증가(상대방만)
   Future<void> sendMessage({
     required String senderId,
     required String receiverId,
     required String text,
   }) async {
-    if (text.trim().isEmpty) return;
+    final value = text.trim();
+    if (value.isEmpty) return;
 
-    final roomId = _chatRoomId(senderId, receiverId);
-    final ref = _firestore.collection('chats').doc(roomId).collection('messages');
+    final roomId = chatRoomIdFor(senderId, receiverId);
+    final roomRef = _firestore.collection('chat_rooms').doc(roomId);
+    final msgRef = roomRef.collection('messages');
 
-    await ref.add({
+    // 메시지 추가
+    await msgRef.add({
       'senderId': senderId,
       'receiverId': receiverId,
-      'text': text.trim(),
+      'text': value,
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    await _firestore.collection('chats').doc(roomId).set(
+    // 방 문서 업데이트 (lastMessage, updatedAt, users 유지, unread +1)
+    await roomRef.set(
       {
-        'lastMessage': text.trim(),
-        'updatedAt': FieldValue.serverTimestamp(),
         'users': [senderId, receiverId],
+        'lastMessage': value,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'unread': {
+          senderId: 0, // 보낸 사람은 읽고 있는 상태로 간주(원하면 유지 가능)
+          receiverId: FieldValue.increment(1),
+        },
       },
       SetOptions(merge: true),
     );
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(String userA, String userB) {
-    final roomId = _chatRoomId(userA, userB);
+  /// ✅ 1:1 메시지 스트림 (chat_rooms/{roomId}/messages)
+  Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(
+      String userA, String userB) {
+    final roomId = chatRoomIdFor(userA, userB);
     return _firestore
-        .collection('chats')
+        .collection('chat_rooms')
         .doc(roomId)
         .collection('messages')
         .orderBy('createdAt', descending: false)
         .snapshots();
   }
 
-  // ───────────────── 오픈채팅 ─────────────────
+  /// ✅ 채팅방 들어갈 때 내 unread = 0
+  Future<void> resetUnread({
+    required String myUid,
+    required String peerUid,
+  }) async {
+    final roomId = chatRoomIdFor(myUid, peerUid);
+    await _firestore.collection('chat_rooms').doc(roomId).set(
+      {
+        'unread': {myUid: 0},
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// ✅ 하단 탭 뱃지용: 내 unread 총합
+  Stream<int> totalUnreadCount(String uid) {
+    return _firestore
+        .collection('chat_rooms')
+        .where('users', arrayContains: uid)
+        .snapshots()
+        .map((snapshot) {
+      var total = 0;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final unread = data['unread'];
+        if (unread is Map<String, dynamic>) {
+          final v = unread[uid];
+          if (v is int) total += v;
+          if (v is num) total += v.toInt();
+        }
+      }
+      return total;
+    });
+  }
+
+  // ───────────────── 오픈채팅(openChatRooms) 기존 유지 ─────────────────
 
   Future<void> joinRandomRoom(String uid) async {
     _isJoining = true;
@@ -120,7 +175,8 @@ class ChatProvider with ChangeNotifier {
     return null;
   }
 
-  Future<String?> _tryJoinRoom(DocumentSnapshot<Map<String, dynamic>> doc, String uid) async {
+  Future<String?> _tryJoinRoom(
+      DocumentSnapshot<Map<String, dynamic>> doc, String uid) async {
     return _firestore.runTransaction<String?>((txn) async {
       final fresh = await txn.get(doc.reference);
       if (!fresh.exists) return null;
@@ -217,13 +273,14 @@ class ChatProvider with ChangeNotifier {
     required bool profileAllowed,
   }) async {
     final roomId = _currentRoomId;
-    if (roomId == null || text.trim().isEmpty) return;
+    final value = text.trim();
+    if (roomId == null || value.isEmpty) return;
 
     final roomRef = _firestore.collection('openChatRooms').doc(roomId);
 
     await roomRef.collection('messages').add({
       'userId': userId,
-      'text': text.trim(),
+      'text': value,
       'displayName': displayName,
       'profileAllowed': profileAllowed,
       'createdAt': FieldValue.serverTimestamp(),
@@ -231,7 +288,7 @@ class ChatProvider with ChangeNotifier {
 
     await roomRef.set(
       {
-        'lastMessage': text.trim(),
+        'lastMessage': value,
         'updatedAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
