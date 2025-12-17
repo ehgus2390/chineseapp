@@ -9,7 +9,7 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
-  String get appName => 'キリ';
+  String get appName => 'Kkiri';
 
   @override
   String get welcome => 'Kkiriへようこそ';
@@ -27,7 +27,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settings => '設定';
 
   @override
-  String get report => '通報する';
+  String get report => '通報';
 
   @override
   String get block => 'ブロック';
@@ -51,11 +51,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get logout => 'ログアウト';
 
   @override
-  String get language => 'Language';
+  String get language => '言語';
 
   @override
-  String get shareLocation => '위치 공유 허용';
+  String get shareLocation => '位置情報を共有';
 
   @override
-  String get shareLocationDesc => '근처 친구 추천에 사용됩니다';
+  String get shareLocationDesc => '近くの友達の推薦に使用されます';
 }

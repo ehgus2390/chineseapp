@@ -2,20 +2,25 @@
   "@@locale": "zh",
 
   "appName": "Kkiri",
-  "welcome": "Welcome to Kkiri",
-  "startAnonymous": "Start anonymously",
-  "emailLogin": "Login with email",
-  "profile": "Profile",
-  "settings": "Settings",
-  "report": "Report",
-  "block": "Block",
-  "post": "Post",
-  "comment": "Comment",
-  "like": "Like",
-  "anonymous": "Anonymous",
-  "save": "Save",
-  "logout": "Logout",
-  "language": "Language",
-  "shareLocation": "Share location",
-  "shareLocationDesc": "Used for nearby friend recommendations"
+  "welcome": "欢迎使用 Kkiri",
+  "startAnonymous": "匿名开始",
+  "emailLogin": "使用邮箱登录",
+
+  "profile": "个人资料",
+  "settings": "设置",
+  "language": "语言",
+
+  "post": "发布",
+  "comment": "评论",
+  "like": "点赞",
+  "anonymous": "匿名",
+
+  "save": "保存",
+  "logout": "退出登录",
+
+  "shareLocation": "共享位置",
+  "shareLocationDesc": "用于附近朋友推荐",
+
+  "report": "举报",
+  "block": "屏蔽"
 }

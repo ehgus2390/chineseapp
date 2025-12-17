@@ -31,10 +31,15 @@ class PostTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final myUid = context.read<AppState>().user?.uid;
-    final authorId = data['authorId'] as String?;
+    final authorId = data['authorId'];
+
+    // ❗️authorId 1차 방어 (가장 중요)
+    if (authorId == null || authorId is! String || authorId.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     // 로그인 안 된 상태 → 차단 체크 생략
-    if (myUid == null || authorId == null) {
+    if (myUid == null) {
       return _buildCard(context);
     }
 
@@ -44,7 +49,7 @@ class PostTile extends StatelessWidget {
           .collection('users')
           .doc(myUid)
           .collection('blocked')
-          .doc(authorId)
+          .doc(authorId) // ✅ 이제 절대 빈 값 아님
           .get(),
       builder: (context, snap) {
         if (snap.data?.exists == true) {
@@ -54,6 +59,7 @@ class PostTile extends StatelessWidget {
       },
     );
   }
+
 
   /// 🧱 게시글 UI
   Widget _buildCard(BuildContext context) {

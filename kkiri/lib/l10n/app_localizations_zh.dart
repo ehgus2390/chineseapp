@@ -12,50 +12,50 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appName => 'Kkiri';
 
   @override
-  String get welcome => 'Welcome to Kkiri';
+  String get welcome => '欢迎使用 Kkiri';
 
   @override
-  String get startAnonymous => 'Start anonymously';
+  String get startAnonymous => '匿名开始';
 
   @override
-  String get emailLogin => 'Login with email';
+  String get emailLogin => '使用邮箱登录';
 
   @override
-  String get profile => 'Profile';
+  String get profile => '个人资料';
 
   @override
-  String get settings => 'Settings';
+  String get settings => '设置';
 
   @override
-  String get report => 'Report';
+  String get report => '举报';
 
   @override
-  String get block => 'Block';
+  String get block => '屏蔽';
 
   @override
-  String get post => 'Post';
+  String get post => '发布';
 
   @override
-  String get comment => 'Comment';
+  String get comment => '评论';
 
   @override
-  String get like => 'Like';
+  String get like => '点赞';
 
   @override
-  String get anonymous => 'Anonymous';
+  String get anonymous => '匿名';
 
   @override
-  String get save => 'Save';
+  String get save => '保存';
 
   @override
-  String get logout => 'Logout';
+  String get logout => '退出登录';
 
   @override
-  String get language => 'Language';
+  String get language => '语言';
 
   @override
-  String get shareLocation => 'Share location';
+  String get shareLocation => '共享位置';
 
   @override
-  String get shareLocationDesc => 'Used for nearby friend recommendations';
+  String get shareLocationDesc => '用于附近朋友推荐';
 }
