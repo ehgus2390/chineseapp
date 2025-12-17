@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:provider/provider.dart';
+import 'locale_provider.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
@@ -20,6 +23,14 @@ class AuthProvider extends ChangeNotifier {
       currentUser = u;
       if (u != null) {
         await _migrateLanguageFields(u.uid);
+
+        final snap = await _db.collection('users').doc(u.uid).get();
+        final mainLanguage = snap.data()?['mainLanguage'];
+
+        if (mainLanguage is String) {
+          // 🔥 여기서 UI 언어 자동 설정
+          // context 못 쓰므로, 나중에 main.dart에서 처리
+        }
       }
       notifyListeners();
     });
