@@ -1,156 +1,42 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 class ChatProvider with ChangeNotifier {
-  final _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // ───────── 상태 ─────────
+  String? _currentRoomId;
+  bool _isJoining = false;
+  double _vicinityKm = 5;
 
   static const int _maxMembers = 20;
 
-  double _vicinityKm = 5;
-  bool _isJoining = false;
-  String? _currentRoomId;
-
-  double get vicinityKm => _vicinityKm;
-  bool get isJoining => _isJoining;
+  // ───────── getter ─────────
   String? get currentRoomId => _currentRoomId;
   bool get isInRoom => _currentRoomId != null;
+  bool get isJoining => _isJoining;
+  double get vicinityKm => _vicinityKm;
 
+  // ───────── 설정 ─────────
   void updateVicinity(double value) {
     _vicinityKm = double.parse(value.toStringAsFixed(1));
     notifyListeners();
   }
 
-  /// ✅ 1:1 채팅방 ID 생성 (양쪽 UID 정렬해서 항상 동일)
-  String chatRoomIdFor(String userA, String userB) {
-    final ids = [userA, userB]..sort();
-    return ids.join('_');
-  }
-
-  /// ✅ 1:1 채팅방 생성 or 가져오기 (chat_rooms)
-  Future<String> createOrGetChatId(String userA, String userB) async {
-    final roomId = chatRoomIdFor(userA, userB);
-    final ref = _firestore.collection('chat_rooms').doc(roomId);
-
-    await ref.set(
-      {
-        'users': [userA, userB],
-        'updatedAt': FieldValue.serverTimestamp(),
-        'lastMessage': '',
-        'unread': {
-          userA: 0,
-          userB: 0,
-        },
-      },
-      SetOptions(merge: true),
-    );
-
-    return roomId;
-  }
-
-  /// ✅ ChatListScreen이 쓰는 1:1 채팅방 목록 (chat_rooms)
-  Stream<QuerySnapshot<Map<String, dynamic>>> myChatRooms(String uid) {
-    return _firestore
-        .collection('chat_rooms')
-        .where('users', arrayContains: uid)
-        .orderBy('updatedAt', descending: true)
-        .snapshots();
-  }
-
-  /// ✅ 1:1 메시지 보내기 + unread 증가(상대방만)
-  Future<void> sendMessage({
-    required String senderId,
-    required String receiverId,
-    required String text,
-  }) async {
-    final value = text.trim();
-    if (value.isEmpty) return;
-
-    final roomId = chatRoomIdFor(senderId, receiverId);
-    final roomRef = _firestore.collection('chat_rooms').doc(roomId);
-    final msgRef = roomRef.collection('messages');
-
-    // 메시지 추가
-    await msgRef.add({
-      'senderId': senderId,
-      'receiverId': receiverId,
-      'text': value,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    // 방 문서 업데이트 (lastMessage, updatedAt, users 유지, unread +1)
-    await roomRef.set(
-      {
-        'users': [senderId, receiverId],
-        'lastMessage': value,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'unread': {
-          senderId: 0, // 보낸 사람은 읽고 있는 상태로 간주(원하면 유지 가능)
-          receiverId: FieldValue.increment(1),
-        },
-      },
-      SetOptions(merge: true),
-    );
-  }
-
-  /// ✅ 1:1 메시지 스트림 (chat_rooms/{roomId}/messages)
-  Stream<QuerySnapshot<Map<String, dynamic>>> messageStream(
-      String userA, String userB) {
-    final roomId = chatRoomIdFor(userA, userB);
-    return _firestore
-        .collection('chat_rooms')
-        .doc(roomId)
-        .collection('messages')
-        .orderBy('createdAt', descending: false)
-        .snapshots();
-  }
-
-  /// ✅ 채팅방 들어갈 때 내 unread = 0
-  Future<void> resetUnread({
-    required String myUid,
-    required String peerUid,
-  }) async {
-    final roomId = chatRoomIdFor(myUid, peerUid);
-    await _firestore.collection('chat_rooms').doc(roomId).set(
-      {
-        'unread': {myUid: 0},
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
-  }
-
-  /// ✅ 하단 탭 뱃지용: 내 unread 총합
-  Stream<int> totalUnreadCount(String uid) {
-    return _firestore
-        .collection('chat_rooms')
-        .where('users', arrayContains: uid)
-        .snapshots()
-        .map((snapshot) {
-      var total = 0;
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final unread = data['unread'];
-        if (unread is Map<String, dynamic>) {
-          final v = unread[uid];
-          if (v is int) total += v;
-          if (v is num) total += v.toInt();
-        }
-      }
-      return total;
-    });
-  }
-
-  // ───────────────── 오픈채팅(openChatRooms) 기존 유지 ─────────────────
-
+  // ─────────────────────────
+  // 🚪 오픈챗 입장
+  // ─────────────────────────
   Future<void> joinRandomRoom(String uid) async {
+    if (_isJoining) return;
+
     _isJoining = true;
     notifyListeners();
 
     try {
-      final roomId = await _attachToExistingRoom(uid) ?? await _createRoom(uid);
+      final roomId =
+          await _attachToExistingRoom(uid) ?? await _createRoom(uid);
       _currentRoomId = roomId;
     } finally {
       _isJoining = false;
@@ -158,8 +44,9 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
+  // 기존 방 탐색
   Future<String?> _attachToExistingRoom(String uid) async {
-    final snapshot = await _firestore
+    final snap = await _db
         .collection('openChatRooms')
         .where('vicinityKm', isEqualTo: _vicinityKm)
         .where('isOpen', isEqualTo: true)
@@ -167,66 +54,82 @@ class ChatProvider with ChangeNotifier {
         .limit(10)
         .get();
 
-    final docs = snapshot.docs.toList()..shuffle(Random());
+    final docs = snap.docs.toList()..shuffle(Random());
+
     for (final doc in docs) {
-      final joinedId = await _tryJoinRoom(doc, uid);
-      if (joinedId != null) return joinedId;
+      final joined = await _tryJoinRoom(doc, uid);
+      if (joined != null) return joined;
     }
     return null;
   }
 
+  // 방 참여 시도 (트랜잭션)
   Future<String?> _tryJoinRoom(
-      DocumentSnapshot<Map<String, dynamic>> doc, String uid) async {
-    return _firestore.runTransaction<String?>((txn) async {
+      DocumentSnapshot<Map<String, dynamic>> doc,
+      String uid,
+      ) async {
+    return _db.runTransaction<String?>((txn) async {
       final fresh = await txn.get(doc.reference);
       if (!fresh.exists) return null;
 
-      final data = fresh.data() ?? {};
-      final members = Map<String, dynamic>.from(data['members'] ?? {});
-      final memberCount = (data['memberCount'] as int?) ?? members.length;
-
+      final data = fresh.data()!;
+      final members =
+      Map<String, dynamic>.from(data['members'] ?? <String, dynamic>{});
+      final memberCount =
+          (data['memberCount'] as int?) ?? members.length;
       final isOpen = data['isOpen'] as bool? ?? true;
+
       if (!isOpen || memberCount >= _maxMembers) return null;
 
       if (members.containsKey(uid)) {
-        txn.update(doc.reference, {'updatedAt': FieldValue.serverTimestamp()});
+        txn.update(doc.reference, {
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
         return doc.id;
       }
 
       members[uid] = true;
+
       txn.update(doc.reference, {
         'members': members,
         'memberCount': memberCount + 1,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
       return doc.id;
     }).catchError((_) => null);
   }
 
+  // 새 방 생성
   Future<String> _createRoom(String uid) async {
-    final ref = await _firestore.collection('openChatRooms').add({
+    final ref = await _db.collection('openChatRooms').add({
       'vicinityKm': _vicinityKm,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
       'isOpen': true,
       'memberCount': 1,
       'members': {uid: true},
+      'lastMessage': '',
     });
     return ref.id;
   }
 
+  // ─────────────────────────
+  // 🚪 오픈챗 퇴장
+  // ─────────────────────────
   Future<void> leaveRoom(String uid) async {
     final roomId = _currentRoomId;
     if (roomId == null) return;
 
-    final ref = _firestore.collection('openChatRooms').doc(roomId);
+    final ref = _db.collection('openChatRooms').doc(roomId);
 
-    await _firestore.runTransaction((txn) async {
+    await _db.runTransaction((txn) async {
       final snap = await txn.get(ref);
       if (!snap.exists) return;
 
-      final data = snap.data() ?? {};
-      final members = Map<String, dynamic>.from(data['members'] ?? {});
+      final data = snap.data()!;
+      final members =
+      Map<String, dynamic>.from(data['members'] ?? {});
       if (!members.containsKey(uid)) return;
 
       members.remove(uid);
@@ -236,8 +139,8 @@ class ChatProvider with ChangeNotifier {
       txn.update(ref, {
         'members': members,
         'memberCount': updatedCount < 0 ? 0 : updatedCount,
-        'updatedAt': FieldValue.serverTimestamp(),
         'isOpen': updatedCount > 0,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
     });
 
@@ -245,20 +148,16 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Stream<DocumentSnapshot<Map<String, dynamic>>> currentRoomSnapshot() {
-    final roomId = _currentRoomId;
-    if (roomId == null) {
-      return const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty();
-    }
-    return _firestore.collection('openChatRooms').doc(roomId).snapshots();
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> currentRoomMessagesStream() {
+  // ─────────────────────────
+  // 💬 메시지
+  // ─────────────────────────
+  Stream<QuerySnapshot<Map<String, dynamic>>> currentRoomMessages() {
     final roomId = _currentRoomId;
     if (roomId == null) {
       return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
     }
-    return _firestore
+
+    return _db
         .collection('openChatRooms')
         .doc(roomId)
         .collection('messages')
@@ -267,7 +166,7 @@ class ChatProvider with ChangeNotifier {
   }
 
   Future<void> sendRoomMessage({
-    required String userId,
+    required String uid,
     required String text,
     required String displayName,
     required bool profileAllowed,
@@ -276,10 +175,10 @@ class ChatProvider with ChangeNotifier {
     final value = text.trim();
     if (roomId == null || value.isEmpty) return;
 
-    final roomRef = _firestore.collection('openChatRooms').doc(roomId);
+    final roomRef = _db.collection('openChatRooms').doc(roomId);
 
     await roomRef.collection('messages').add({
-      'userId': userId,
+      'userId': uid,
       'text': value,
       'displayName': displayName,
       'profileAllowed': profileAllowed,
@@ -293,5 +192,16 @@ class ChatProvider with ChangeNotifier {
       },
       SetOptions(merge: true),
     );
+  }
+
+  // ─────────────────────────
+  // 📡 현재 방 상태
+  // ─────────────────────────
+  Stream<DocumentSnapshot<Map<String, dynamic>>> currentRoomSnapshot() {
+    final roomId = _currentRoomId;
+    if (roomId == null) {
+      return const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty();
+    }
+    return _db.collection('openChatRooms').doc(roomId).snapshots();
   }
 }
