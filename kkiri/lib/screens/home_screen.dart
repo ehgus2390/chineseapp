@@ -23,11 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index < 0 || index >= _tabs.length) return;
     final target = _tabs[index];
 
-    final current = GoRouter.of(context)
-        .routeInformationProvider
-        .value
-        .uri
-        .toString();
+    final current =
+        GoRouter.of(context).routeInformationProvider.value.uri.toString();
 
     if (current != target) {
       context.go(target);
@@ -51,12 +48,13 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.grey,
         onTap: _onTap,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: '친구'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: '채팅'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: '게시판'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Friends'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
+          BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Board'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
     );

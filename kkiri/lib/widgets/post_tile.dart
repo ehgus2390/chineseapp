@@ -1,8 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 import '../services/post_service.dart';
 import '../state/app_state.dart';
@@ -21,8 +19,7 @@ class PostTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final myLang =
-        context.read<LocaleProvider>().locale?.languageCode;
+    final myLang = context.read<LocaleProvider>().locale?.languageCode;
     final postLang = data['language'] as String?;
 
     final showTranslate =
@@ -35,8 +32,7 @@ class PostTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('익명',
-                style:
-                TextStyle(fontSize: 12, color: Colors.grey)),
+                style: TextStyle(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 4),
             Text(data['content'] ?? ''),
             if (showTranslate)
@@ -47,15 +43,11 @@ class PostTile extends StatelessWidget {
               ),
             TextButton.icon(
               icon: const Icon(Icons.favorite_border),
-              label: Text(
-                  '좋아요 ${(data['likesCount'] ?? 0)}'),
+              label: Text('좋아요 ${(data['likesCount'] ?? 0)}'),
               onPressed: () async {
-                final uid =
-                    context.read<AppState>().user?.uid;
+                final uid = context.read<AppState>().user?.uid;
                 if (uid == null) return;
-                await context
-                    .read<PostService>()
-                    .toggleLike(postId, uid);
+                await context.read<PostService>().toggleLike(postId, uid);
               },
             ),
           ],

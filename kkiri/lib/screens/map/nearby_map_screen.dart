@@ -7,7 +7,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
@@ -37,7 +36,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
   )..repeat(reverse: true);
 
   late final Animation<double> _pulse =
-  Tween<double>(begin: 120, end: 300).animate(_pulseCtrl);
+      Tween<double>(begin: 120, end: 300).animate(_pulseCtrl);
 
   @override
   void initState() {
@@ -70,8 +69,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
     final uid = auth.currentUser?.uid;
     if (uid == null) return;
 
-    _nearbySub =
-        loc.nearbyUsersStream(uid, _radiusKm).listen(_buildMarkers);
+    _nearbySub = loc.nearbyUsersStream(uid, _radiusKm).listen(_buildMarkers);
   }
 
   /// 🔹 썸네일 원형 이미지 → 마커 아이콘으로 변환
@@ -120,8 +118,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
 
   /// 🗺 Firestore → 마커로 렌더링
   Future<void> _buildMarkers(
-      List<DocumentSnapshot<Map<String, dynamic>>> docs,
-      ) async {
+    List<DocumentSnapshot<Map<String, dynamic>>> docs,
+  ) async {
     final auth = context.read<AuthProvider>();
     final myId = auth.currentUser?.uid;
     if (myId == null) return;
@@ -130,7 +128,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
 
     // 내 관심사
     final myDoc =
-    await FirebaseFirestore.instance.collection('users').doc(myId).get();
+        await FirebaseFirestore.instance.collection('users').doc(myId).get();
     final myData = myDoc.data();
     if (myData == null) return;
     final myInterests = Set<String>.from(myData['interests'] ?? []);
@@ -157,8 +155,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
           data['photoUrl'].toString().startsWith('http')) {
         icon = await _createProfileMarker(data['photoUrl'] as String);
       } else {
-        icon =
-            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
+        icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
       }
 
       m[markerId] = Marker(
@@ -194,8 +191,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
   Set<Circle> _buildPulseCircle() {
     final loc = context.read<LocationProvider>();
     if (loc.position == null) return {};
-    final myCenter =
-    LatLng(loc.position!.latitude, loc.position!.longitude);
+    final myCenter = LatLng(loc.position!.latitude, loc.position!.longitude);
     final radiusMeters = _pulse.value;
 
     return {
@@ -238,8 +234,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: () =>
-                      GoRouter.of(context).go('/home/settings'),
+                  onPressed: () => GoRouter.of(context).go('/home/settings'),
                   icon: const Icon(Icons.settings),
                   label: const Text('설정으로 이동'),
                 ),
@@ -256,8 +251,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
       );
     }
 
-    final myPos =
-    LatLng(loc.position!.latitude, loc.position!.longitude);
+    final myPos = LatLng(loc.position!.latitude, loc.position!.longitude);
 
     return AnimatedBuilder(
       animation: _pulse,
@@ -266,8 +260,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
           appBar: AppBar(title: const Text('주변 사용자')),
           body: GoogleMap(
             onMapCreated: (controller) => _mapController = controller,
-            initialCameraPosition:
-            CameraPosition(target: myPos, zoom: 14),
+            initialCameraPosition: CameraPosition(target: myPos, zoom: 14),
             myLocationEnabled: true,
             myLocationButtonEnabled: true,
             markers: _markers.values.toSet(),
@@ -285,8 +278,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
                     max: 20,
                     divisions: 19,
                     label: '${_radiusKm.toInt()} km',
-                    onChanged: (v) =>
-                        setState(() => _radiusKm = v),
+                    onChanged: (v) => setState(() => _radiusKm = v),
                     onChangeEnd: (_) => _subscribeNearby(),
                   ),
                 ),

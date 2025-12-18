@@ -1,8 +1,5 @@
 import 'dart:async';
 
-import 'package:provider/provider.dart';
-import 'locale_provider.dart';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
@@ -157,7 +154,9 @@ class AuthProvider extends ChangeNotifier {
     if (gender != null) data['gender'] = gender;
     if (bio != null) data['bio'] = bio;
     if (interests != null) data['interests'] = interests;
-    if (preferredCountries != null) data['preferredCountries'] = preferredCountries;
+    if (preferredCountries != null) {
+      data['preferredCountries'] = preferredCountries;
+    }
     if (notifyChat != null) data['notifyChat'] = notifyChat;
     if (notifyComment != null) data['notifyComment'] = notifyComment;
     if (notifyLike != null) data['notifyLike'] = notifyLike;

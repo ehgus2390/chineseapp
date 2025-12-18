@@ -37,7 +37,8 @@ class SettingsScreen extends StatelessWidget {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+      stream:
+          FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Scaffold(
@@ -59,7 +60,8 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               /// 🌍 Language
-              Text(t.language,
+              Text(
+                t.language,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               // Text(
@@ -69,23 +71,21 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: 8),
 
               DropdownButtonFormField<Locale>(
-                value: localeProvider.locale,
+                initialValue: localeProvider.locale,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                 ),
                 items: languageOptions
                     .map(
                       (lang) => DropdownMenuItem<Locale>(
-                    value: Locale(lang['code']!),
-                    child: Text(lang['label']!),
-                  ),
-                )
+                        value: Locale(lang['code']!),
+                        child: Text(lang['label']!),
+                      ),
+                    )
                     .toList(),
                 onChanged: (locale) async {
                   if (locale == null) return;
                   localeProvider.setLocale(locale);
-
-
                 },
               ),
 

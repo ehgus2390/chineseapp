@@ -60,10 +60,10 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _saveProfile(
-      AuthProvider auth,
-      String uid,
-      Map<String, dynamic>? data,
-      ) async {
+    AuthProvider auth,
+    String uid,
+    Map<String, dynamic>? data,
+  ) async {
     setState(() => _saving = true);
     try {
       final photoUrl = await _uploadPhoto(uid) ?? data?['photoUrl'];
@@ -74,7 +74,9 @@ class _ProfilePageState extends State<ProfilePage> {
             : _displayNameController.text.trim(),
         age: int.tryParse(_ageController.text.trim()),
         gender: _gender,
-        bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
+        bio: _bioController.text.trim().isEmpty
+            ? null
+            : _bioController.text.trim(),
         interests: _interests,
         photoUrl: photoUrl,
       );
@@ -119,7 +121,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('신고는 게시글/댓글/다른 유저 프로필에서 사용할 수 있어요.')),
+                    const SnackBar(
+                        content: Text('신고는 게시글/댓글/다른 유저 프로필에서 사용할 수 있어요.')),
                   );
                 },
               ),
@@ -130,7 +133,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('차단은 게시글/댓글/채팅 또는 다른 유저 프로필에서 사용할 수 있어요.')),
+                    const SnackBar(
+                        content:
+                            Text('차단은 게시글/댓글/채팅 또는 다른 유저 프로필에서 사용할 수 있어요.')),
                   );
                 },
               ),
@@ -169,10 +174,12 @@ class _ProfilePageState extends State<ProfilePage> {
             shrinkWrap: true,
             children: [
               ListTile(title: const Text('한국어'), onTap: () => setLang('ko')),
-              ListTile(title: const Text('English'), onTap: () => setLang('en')),
+              ListTile(
+                  title: const Text('English'), onTap: () => setLang('en')),
               ListTile(title: const Text('日本語'), onTap: () => setLang('ja')),
               ListTile(title: const Text('中文'), onTap: () => setLang('zh')),
-              ListTile(title: const Text('Tiếng Việt'), onTap: () => setLang('vi')),
+              ListTile(
+                  title: const Text('Tiếng Việt'), onTap: () => setLang('vi')),
               // 필요하면 여기 계속 추가 가능
             ],
           ),
@@ -192,7 +199,8 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+      stream:
+          FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
       builder: (context, snapshot) {
         final data = snapshot.data?.data();
 
@@ -226,17 +234,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   backgroundImage: _pickedImage != null
                       ? FileImage(_pickedImage!)
                       : (photoUrl != null
-                      ? NetworkImage(photoUrl)
-                      : const AssetImage('assets/images/logo.png')) as ImageProvider,
+                              ? NetworkImage(photoUrl)
+                              : const AssetImage('assets/images/logo.png'))
+                          as ImageProvider,
                 ),
                 TextButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.camera_alt_outlined),
                   label: const Text('사진 변경'),
                 ),
-
                 const SizedBox(height: 12),
-
                 TextField(
                   controller: _displayNameController,
                   decoration: const InputDecoration(labelText: '닉네임'),
@@ -249,7 +256,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _gender,
+                  initialValue: _gender,
                   items: const [
                     DropdownMenuItem(value: 'male', child: Text('남')),
                     DropdownMenuItem(value: 'female', child: Text('여')),
@@ -264,9 +271,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: '내 소개'),
                 ),
-
                 const SizedBox(height: 16),
-
                 Wrap(
                   spacing: 8,
                   children: _interestOptions.map((e) {
@@ -286,17 +291,16 @@ class _ProfilePageState extends State<ProfilePage> {
                     );
                   }).toList(),
                 ),
-
                 const SizedBox(height: 24),
-
                 ElevatedButton.icon(
-                  onPressed: _saving ? null : () => _saveProfile(auth, uid, data),
+                  onPressed:
+                      _saving ? null : () => _saveProfile(auth, uid, data),
                   icon: _saving
                       ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.save),
                   label: Text(t.save),
                 ),
