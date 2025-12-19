@@ -1,41 +1,46 @@
 {
   "@@locale": "ko",
 
-  "appName": "?�리",
-  "welcome": "Kkiri???�신 것을 ?�영?�니??,
-  "startAnonymous": "?�명?�로 ?�작?�기",
-  "emailLogin": "?�메?�로 로그??,
+  "appName": "Kkiri",
+  "welcome": "Kkiri에 오신 것을 환영해요",
+  "startAnonymous": "익명으로 시작하기",
+  "emailLogin": "이메일로 로그인",
 
-  "profile": "?�로??,
+  "profile": "프로필",
   "friends": "친구",
   "chat": "채팅",
-  "map": "지??,
-  "board": "게시??,
-  "settings": "?�정",
-  "language": "?�어",
+  "map": "지도",
+  "board": "게시판",
+  "settings": "설정",
+  "language": "언어",
 
-  "post": "게시글",
-  "comment": "?��?",
-  "like": "좋아??,
-  "anonymous": "?�명",
+  "post": "게시",
+  "comment": "댓글",
+  "like": "좋아요",
+  "anonymous": "익명",
 
-  "save": "?�??,
-  "logout": "로그?�웃",
+  "save": "저장",
+  "logout": "로그아웃",
 
-  "shareLocation": "?�치 공유 ?�용",
-  "shareLocationDesc": "근처 친구 추천???�용?�니??,
+  "shareLocation": "위치 정보 공유",
+  "shareLocationDesc": "근처 친구 추천에 사용됩니다",
 
-  "report": "?�고?�기",
-  "block": "차단?�기",
-  "homeCampusLabel": "ķ�۽�",
-  "homeCampusFallback": "�������б�",
-  "homeFeedEmpty": "���� �Խñ��� �����ϴ�. ù ���� ���ܺ�����!",
-  "categoryFood": "����",
-  "categoryClasses": "����",
-  "categoryHousing": "�ְ�",
-  "categoryLifeInKorea": "�ѱ� ��Ȱ",
-  "writePostTitle": "�۾���",
-  "writePostHint": "ķ�۽� �ҽ��� ���ܺ�����",
-  "cancel": "���",
-  "submitPost": "�Խ�"}
+  "report": "신고",
+  "block": "차단",
 
+  "homeCampusLabel": "캠퍼스",
+  "homeCampusFallback": "연세대학교",
+
+  "homeFeedEmpty": "아직 게시글이 없어요. 첫 글을 작성해보세요!",
+
+  "categoryFood": "음식",
+  "categoryClasses": "수업",
+  "categoryHousing": "주거",
+  "categoryLifeInKorea": "한국 생활",
+
+  "writePostTitle": "게시글 작성",
+  "writePostHint": "캠퍼스에서의 소식을 공유해보세요",
+  "cancel": "취소",
+  "submitPost": "게시"
+
+}

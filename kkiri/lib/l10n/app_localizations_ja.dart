@@ -12,96 +12,96 @@ class AppLocalizationsJa extends AppLocalizations {
   String get appName => 'Kkiri';
 
   @override
-  String get welcome => 'Kkiri?¸ã‚ˆ?†ã“??;
+  String get welcome => 'Kkiriã¸ã‚ˆã†ã“ã';
 
   @override
-  String get startAnonymous => '?¿å?§å§‹?ã‚‹';
+  String get startAnonymous => '?å?å§‹?ã‚‹';
 
   @override
-  String get emailLogin => '?¡ãƒ¼?«ã§??‚°?¤ãƒ³';
+  String get emailLogin => '?ï¿½ãƒ¼?ï¿½ã§??ï¿½ï¿½?ï¿½ãƒ³';
 
   @override
-  String get profile => '?—ãƒ­?•ã‚£?¼ãƒ«';
+  String get profile => '?ï¿½ãƒ­?ï¿½ã‚£?ï¿½ãƒ«';
 
   @override
-  String get friends => '?‹ã ??;
+  String get friends => '?ï¿½ã ??;
 
   @override
-  String get chat => '?ãƒ£?ƒãƒˆ';
+  String get chat => '?ï¿½ãƒ£?ï¿½ãƒˆ';
 
   @override
-  String get map => '?°å›³';
+  String get map => '?ï¿½å›³';
 
   @override
-  String get board => '?²ç¤º??;
+  String get board => '?ï¿½ç¤º??;
 
   @override
-  String get settings => 'è¨?®š';
+  String get settings => 'ï¿½?ï¿½ï¿½';
 
   @override
-  String get report => '?šå ±';
+  String get report => '?ï¿½å ±';
 
   @override
-  String get block => '?–ãƒ­?ƒã‚¯';
+  String get block => '?ï¿½ãƒ­?ï¿½ã‚¯';
 
   @override
-  String get post => '?•ç¨¿';
+  String get post => '?ï¿½ç¨¿';
 
   @override
-  String get comment => '?³ãƒ¡?³ãƒˆ';
+  String get comment => '?ï¿½ãƒ¡?ï¿½ãƒˆ';
 
   @override
-  String get like => '?„ã„??;
+  String get like => '?ï¿½ã„??;
 
   @override
-  String get anonymous => '?¿å';
+  String get anonymous => '?ï¿½å';
 
   @override
   String get save => 'ä¿å­˜';
 
   @override
-  String get logout => '??‚°?¢ã‚¦??;
+  String get logout => '??ï¿½ï¿½?ï¿½ã‚¦??;
 
   @override
-  String get language => 'è¨€èª?;
+  String get language => 'è¨€ï¿½?;
 
   @override
-  String get shareLocation => 'ä½ç½®?±æœ‰?’ä½¿??;
+  String get shareLocation => 'ä½ç½®?ï¿½æœ‰?ï¿½ä½¿??;
 
   @override
-  String get shareLocationDesc => 'è¿‘ã??‹? ã¡?¨è–¦?«ä½¿?ã‚Œ?¾ã™';
+  String get shareLocationDesc => 'è¿‘ã??ï¿½ï¿½?ï¿½ã¡?ï¿½è–¦?ï¿½ä½¿?ï¿½ã‚Œ?ï¿½ã™';
 
   @override
-  String get homeCampusLabel => '«­«ã«ó«Ñ«¹';
+  String get homeCampusLabel => 'ï¿½ï¿½ï¿½ï¿½ï¿½Ñ«ï¿½';
 
   @override
-  String get homeCampusFallback => 'æÅá¦ÓÞ?';
+  String get homeCampusFallback => 'ï¿½ï¿½ï¿½ï¿½ï¿½?';
 
   @override
-  String get homeFeedEmpty => 'ªÞªÀ÷áÍÃª¬ª¢ªêªÞª»ªó¡£õÌôøªÎ÷áÍÃªòª·ªÆªßªÞª·ªçª¦£¡';
+  String get homeFeedEmpty => 'ï¿½Þªï¿½ï¿½ï¿½ï¿½Ãªï¿½ï¿½ï¿½ï¿½ï¿½Þªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ãªòª·ªÆªßªÞªï¿½ï¿½çª¦ï¿½ï¿½';
 
   @override
-  String get categoryFood => 'ãÝÞÀ';
+  String get categoryFood => 'ï¿½ï¿½ï¿½ï¿½';
 
   @override
-  String get categoryClasses => 'â£åö';
+  String get categoryClasses => 'ï¿½ï¿½ï¿½';
 
   @override
-  String get categoryHousing => 'ñ¬ËÜ';
+  String get categoryHousing => 'ï¿½ï¿½ï¿½';
 
   @override
-  String get categoryLifeInKorea => 'ùÛ?ßæüÀ';
+  String get categoryLifeInKorea => 'ï¿½ï¿½?ï¿½ï¿½ï¿½ï¿½';
 
   @override
-  String get writePostTitle => '÷áÍÃª¹ªë';
+  String get writePostTitle => 'ï¿½ï¿½ï¿½Ãªï¿½ï¿½ï¿½';
 
   @override
-  String get writePostHint => '«­«ã«ó«Ñ«¹ªÎõó?ÞÀªò«·«§«¢ª·ªÞª·ªçª¦';
+  String get writePostHint => 'ï¿½ï¿½ï¿½ï¿½ï¿½Ñ«ï¿½ï¿½ï¿½ï¿½ï¿½?ï¿½ï¿½ï¿½ò«·«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þªï¿½ï¿½çª¦';
 
   @override
-  String get cancel => '«­«ã«ó«»«ë';
+  String get cancel => 'ï¿½ï¿½ï¿½ï¿½ó«»«ï¿½';
 
   @override
-  String get submitPost => '÷áÍÃ';
+  String get submitPost => 'ï¿½ï¿½ï¿½ï¿½';
 }
 
