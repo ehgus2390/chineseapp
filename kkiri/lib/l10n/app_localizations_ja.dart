@@ -24,7 +24,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profile => '?�ロ?�ィ?�ル';
 
   @override
-  String get friends => '?�だ??;
+  String get friends => '?�だ??';
 
   @override
   String get chat => '?�ャ?�ト';
@@ -33,10 +33,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get map => '?�図';
 
   @override
-  String get board => '?�示??;
+  String get board => '?�示??';
 
   @override
-  String get settings => '�?��';
+  String get settings => '?';
 
   @override
   String get report => '?�報';
@@ -60,16 +60,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get save => '保存';
 
   @override
-  String get logout => '??��?�ウ??;
+  String get logout => 'ログアウト';
 
   @override
-  String get language => '言�?;
+  String get language => '言語';
 
   @override
-  String get shareLocation => '位置?�有?�使??;
+  String get shareLocation => '位置情報を共有する';
 
   @override
-  String get shareLocationDesc => '近く??��?�ち?�薦?�使?�れ?�す';
+  String get shareLocationDesc => '近くの友達を推薦するために使用します';
 
   @override
   String get homeCampusLabel => '�����ѫ�';
