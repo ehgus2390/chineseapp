@@ -12,13 +12,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appName => 'Kkiri';
 
   @override
-  String get welcome => 'ζ¬ΆθΏδ½Ώη”¨ Kkiri';
+  String get welcome => 'ζ¬?Ώδ½Ώη”¨ Kkiri';
 
   @override
-  String get startAnonymous => 'δ»¥εΏεεΌ€ε§‹';
+  String get startAnonymous => 'δ»¥εΏ?ε?ε§?;
 
   @override
-  String get emailLogin => 'δ½Ώη”¨ι‚®η®±η™»ε½•';
+  String get emailLogin => 'δ½Ώη”¨????»ε½•';
 
   @override
   String get profile => 'δΈªδΊΊθµ„ζ–™';
@@ -27,10 +27,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get friends => 'ε¥½ε‹';
 
   @override
-  String get chat => 'θε¤©';
+  String get chat => '?ε¤©';
 
   @override
-  String get map => 'ε°ε›Ύ';
+  String get map => '?°ε›Ύ';
 
   @override
   String get board => 'θ®Ίε›';
@@ -48,26 +48,60 @@ class AppLocalizationsZh extends AppLocalizations {
   String get post => 'εΈ–ε­';
 
   @override
-  String get comment => 'θ―„θ®Ί';
+  String get comment => 'θ―„θ?';
 
   @override
-  String get like => 'η‚Ήθµ';
+  String get like => '?Ήθµ';
 
   @override
-  String get anonymous => 'εΏε';
+  String get anonymous => '?Ώε';
 
   @override
   String get save => 'δΏε­';
 
   @override
-  String get logout => 'ι€€ε‡Ίη™»ε½•';
+  String get logout => '?€?Ίη™»ε½?;
 
   @override
-  String get language => 'θ―­θ¨€';
+  String get language => 'θ―??';
 
   @override
-  String get shareLocation => 'ε―η”¨δ½η½®ε…±δΊ«';
+  String get shareLocation => '??”¨δ½η½®?±δΊ«';
 
   @override
-  String get shareLocationDesc => 'η”¨δΊζ¨θι™„θΏ‘η„ζ‹ε‹';
+  String get shareLocationDesc => '?¨δΊ?¨θ?„θΏ‘?„ζ‹??;
+
+  @override
+  String get homeCampusLabel => 'Ξθ?';
+
+  @override
+  String get homeCampusFallback => 'ζΕα¦Σή?';
+
+  @override
+  String get homeFeedEmpty => '??κστήν­΅£έΒϊ½οΓδ§??£΅';
+
+  @override
+  String get categoryFood => 'ΪΈγέ';
+
+  @override
+  String get categoryClasses => '?οο';
+
+  @override
+  String get categoryHousing => 'ρ¬βΦ';
+
+  @override
+  String get categoryLifeInKorea => '??ίζόΐ';
+
+  @override
+  String get writePostTitle => '?τή';
+
+  @override
+  String get writePostHint => 'έΒϊ½?ξάΞθ?μνίΘ';
+
+  @override
+  String get cancel => 'φΆαΌ';
+
+  @override
+  String get submitPost => '?ψΦ';
 }
+

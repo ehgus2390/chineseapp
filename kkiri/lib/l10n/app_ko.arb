@@ -1,30 +1,41 @@
 {
   "@@locale": "ko",
 
-  "appName": "ë¼ë¦¬",
-  "welcome": "Kkiriì— ì˜¤ì‹  ê²ƒì„ í™˜ì˜í•©ë‹ˆë‹¤",
-  "startAnonymous": "ìµëª…ìœ¼ë¡œ ì‹œì‘í•˜ê¸°",
-  "emailLogin": "ì´ë©”ì¼ë¡œ ë¡œê·¸ì¸",
+  "appName": "?¼ë¦¬",
+  "welcome": "Kkiri???¤ì‹  ê²ƒì„ ?˜ì˜?©ë‹ˆ??,
+  "startAnonymous": "?µëª…?¼ë¡œ ?œì‘?˜ê¸°",
+  "emailLogin": "?´ë©”?¼ë¡œ ë¡œê·¸??,
 
-  "profile": "í”„ë¡œí•„",
+  "profile": "?„ë¡œ??,
   "friends": "ì¹œêµ¬",
   "chat": "ì±„íŒ…",
-  "map": "ì§€ë„",
-  "board": "ê²Œì‹œíŒ",
-  "settings": "ì„¤ì •",
-  "language": "ì–¸ì–´",
+  "map": "ì§€??,
+  "board": "ê²Œì‹œ??,
+  "settings": "?¤ì •",
+  "language": "?¸ì–´",
 
   "post": "ê²Œì‹œê¸€",
-  "comment": "ëŒ“ê¸€",
-  "like": "ì¢‹ì•„ìš”",
-  "anonymous": "ìµëª…",
+  "comment": "?“ê?",
+  "like": "ì¢‹ì•„??,
+  "anonymous": "?µëª…",
 
-  "save": "ì €ì¥",
-  "logout": "ë¡œê·¸ì•„ì›ƒ",
+  "save": "?€??,
+  "logout": "ë¡œê·¸?„ì›ƒ",
 
-  "shareLocation": "ìœ„ì¹˜ ê³µìœ  ì‚¬ìš©",
-  "shareLocationDesc": "ê·¼ì²˜ ì¹œêµ¬ ì¶”ì²œì— ì‚¬ìš©ë©ë‹ˆë‹¤",
+  "shareLocation": "?„ì¹˜ ê³µìœ  ?¬ìš©",
+  "shareLocationDesc": "ê·¼ì²˜ ì¹œêµ¬ ì¶”ì²œ???¬ìš©?©ë‹ˆ??,
 
-  "report": "ì‹ ê³ í•˜ê¸°",
-  "block": "ì°¨ë‹¨í•˜ê¸°"
-}
+  "report": "? ê³ ?˜ê¸°",
+  "block": "ì°¨ë‹¨?˜ê¸°",
+  "homeCampusLabel": "Ä·ÆÛ½º",
+  "homeCampusFallback": "¿¬¼¼´ëÇĞ±³",
+  "homeFeedEmpty": "¾ÆÁ÷ °Ô½Ã±ÛÀÌ ¾ø½À´Ï´Ù. Ã¹ ±ÛÀ» ³²°Üº¸¼¼¿ä!",
+  "categoryFood": "À½½Ä",
+  "categoryClasses": "¼ö¾÷",
+  "categoryHousing": "ÁÖ°Å",
+  "categoryLifeInKorea": "ÇÑ±¹ »ıÈ°",
+  "writePostTitle": "±Û¾²±â",
+  "writePostHint": "Ä·ÆÛ½º ¼Ò½ÄÀ» ³²°Üº¸¼¼¿ä",
+  "cancel": "Ãë¼Ò",
+  "submitPost": "°Ô½Ã"}
+

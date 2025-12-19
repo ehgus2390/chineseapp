@@ -12,62 +12,96 @@ class AppLocalizationsJa extends AppLocalizations {
   String get appName => 'Kkiri';
 
   @override
-  String get welcome => 'KkiriγΈγ‚γ†γ“γ';
+  String get welcome => 'Kkiri?Έγ‚?†γ“??;
 
   @override
-  String get startAnonymous => 'εΏεγ§ε§‹γ‚γ‚‹';
+  String get startAnonymous => '?Ώε?§ε§‹?γ‚‹';
 
   @override
-  String get emailLogin => 'γƒ΅γƒΌγƒ«γ§γƒ­γ‚°γ‚¤γƒ³';
+  String get emailLogin => '?΅γƒΌ?«γ§??‚°?¤γƒ³';
 
   @override
-  String get profile => 'γƒ—γƒ­γƒ•γ‚£γƒΌγƒ«';
+  String get profile => '?—γƒ­?•γ‚£?Όγƒ«';
 
   @override
-  String get friends => 'ε‹γ γ΅';
+  String get friends => '?‹γ ??;
 
   @override
-  String get chat => 'γƒγƒ£γƒƒγƒ';
+  String get chat => '?γƒ£?ƒγƒ';
 
   @override
-  String get map => 'ε°ε›³';
+  String get map => '?°ε›³';
 
   @override
-  String get board => 'ζ²η¤ΊζΏ';
+  String get board => '?²η¤Ί??;
 
   @override
-  String get settings => 'θ¨­ε®';
+  String get settings => 'θ¨?®';
 
   @override
-  String get report => 'ι€ε ±';
+  String get report => '?ε ±';
 
   @override
-  String get block => 'γƒ–γƒ­γƒƒγ‚―';
+  String get block => '?–γƒ­?ƒγ‚―';
 
   @override
-  String get post => 'ζ•η¨Ώ';
+  String get post => '?•η¨Ώ';
 
   @override
-  String get comment => 'γ‚³γƒ΅γƒ³γƒ';
+  String get comment => '?³γƒ΅?³γƒ';
 
   @override
-  String get like => 'γ„γ„γ­';
+  String get like => '?„γ„??;
 
   @override
-  String get anonymous => 'εΏε';
+  String get anonymous => '?Ώε';
 
   @override
   String get save => 'δΏε­';
 
   @override
-  String get logout => 'γƒ­γ‚°γ‚Άγ‚¦γƒ';
+  String get logout => '??‚°?Άγ‚¦??;
 
   @override
-  String get language => 'θ¨€θª';
+  String get language => 'θ¨€θª?;
 
   @override
-  String get shareLocation => 'δ½η½®ε…±ζ‰γ‚’δ½Ώη”¨';
+  String get shareLocation => 'δ½η½®?±ζ‰?’δ½Ώ??;
 
   @override
-  String get shareLocationDesc => 'θΏ‘γγ®ε‹γ γ΅ζ¨θ–¦γ«δ½Ώγ‚γ‚γΎγ™';
+  String get shareLocationDesc => 'θΏ‘γ??‹? γ΅?¨θ–¦?«δ½Ώ?γ‚?Ύγ™';
+
+  @override
+  String get homeCampusLabel => '«­«γ«σ«Ρ«Ή';
+
+  @override
+  String get homeCampusFallback => 'ζΕα¦Σή?';
+
+  @override
+  String get homeFeedEmpty => 'ªήªΐχαΝΓª¬ªΆªκªήª»ªσ΅£υΜτψªΞχαΝΓªςª·ªΖªίªήª·ªηª¦£΅';
+
+  @override
+  String get categoryFood => 'γέήΐ';
+
+  @override
+  String get categoryClasses => 'β£εφ';
+
+  @override
+  String get categoryHousing => 'ρ¬Λά';
+
+  @override
+  String get categoryLifeInKorea => 'ωΫ?ίζόΐ';
+
+  @override
+  String get writePostTitle => 'χαΝΓªΉªλ';
+
+  @override
+  String get writePostHint => '«­«γ«σ«Ρ«ΉªΞυσ?ήΐªς«·«§«Άª·ªήª·ªηª¦';
+
+  @override
+  String get cancel => '«­«γ«σ«»«λ';
+
+  @override
+  String get submitPost => 'χαΝΓ';
 }
+

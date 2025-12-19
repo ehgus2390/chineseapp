@@ -227,6 +227,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Used for nearby friend recommendations'**
   String get shareLocationDesc;
+
+  /// No description provided for @homeCampusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Campus'**
+  String get homeCampusLabel;
+
+  /// No description provided for @homeCampusFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Yonsei University'**
+  String get homeCampusFallback;
+
+  /// No description provided for @homeFeedEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No posts yet. Share something to get started!'**
+  String get homeFeedEmpty;
+
+  /// No description provided for @categoryFood.
+  ///
+  /// In en, this message translates to:
+  /// **'Food'**
+  String get categoryFood;
+
+  /// No description provided for @categoryClasses.
+  ///
+  /// In en, this message translates to:
+  /// **'Classes'**
+  String get categoryClasses;
+
+  /// No description provided for @categoryHousing.
+  ///
+  /// In en, this message translates to:
+  /// **'Housing'**
+  String get categoryHousing;
+
+  /// No description provided for @categoryLifeInKorea.
+  ///
+  /// In en, this message translates to:
+  /// **'Life in Korea'**
+  String get categoryLifeInKorea;
+
+  /// No description provided for @writePostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a post'**
+  String get writePostTitle;
+
+  /// No description provided for @writePostHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share what's happening on campus'**
+  String get writePostHint;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @submitPost.
+  ///
+  /// In en, this message translates to:
+  /// **'Post'**
+  String get submitPost;
 }
 
 class _AppLocalizationsDelegate

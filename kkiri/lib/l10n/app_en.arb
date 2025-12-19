@@ -26,5 +26,16 @@
   "shareLocationDesc": "Used for nearby friend recommendations",
 
   "report": "Report",
-  "block": "Block"
-}
+  "block": "Block",
+  "homeCampusLabel": "Campus",
+  "homeCampusFallback": "Yonsei University",
+  "homeFeedEmpty": "No posts yet. Share something to get started!",
+  "categoryFood": "Food",
+  "categoryClasses": "Classes",
+  "categoryHousing": "Housing",
+  "categoryLifeInKorea": "Life in Korea",
+  "writePostTitle": "Write a post",
+  "writePostHint": "Share what's happening on campus",
+  "cancel": "Cancel",
+  "submitPost": "Post"}
+

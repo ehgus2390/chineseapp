@@ -2,29 +2,40 @@
   "@@locale": "zh",
 
   "appName": "Kkiri",
-  "welcome": "æ¬¢è¿ä½¿ç”¨ Kkiri",
-  "startAnonymous": "ä»¥åŒ¿åå¼€å§‹",
-  "emailLogin": "ä½¿ç”¨é‚®ç®±ç™»å½•",
+  "welcome": "æ¬?¿ä½¿ç”¨ Kkiri",
+  "startAnonymous": "ä»¥åŒ¿?å?å§?,
+  "emailLogin": "ä½¿ç”¨????»å½•",
 
   "profile": "ä¸ªäººèµ„æ–™",
   "friends": "å¥½å‹",
-  "chat": "èŠå¤©",
-  "map": "åœ°å›¾",
+  "chat": "?Šå¤©",
+  "map": "?°å›¾",
   "board": "è®ºå›",
   "settings": "è®¾ç½®",
-  "language": "è¯­è¨€",
+  "language": "è¯??",
 
   "post": "å¸–å­",
-  "comment": "è¯„è®º",
-  "like": "ç‚¹èµ",
-  "anonymous": "åŒ¿å",
+  "comment": "è¯„è?",
+  "like": "?¹èµ",
+  "anonymous": "?¿å",
 
   "save": "ä¿å­˜",
-  "logout": "é€€å‡ºç™»å½•",
+  "logout": "?€?ºç™»å½?,
 
-  "shareLocation": "å¯ç”¨ä½ç½®å…±äº«",
-  "shareLocationDesc": "ç”¨äºæ¨èé™„è¿‘çš„æœ‹å‹",
+  "shareLocation": "??”¨ä½ç½®?±äº«",
+  "shareLocationDesc": "?¨äº?¨è?„è¿‘?„æœ‹??,
 
   "report": "ä¸¾æŠ¥",
-  "block": "å±è”½"
-}
+  "block": "å±è”½",
+  "homeCampusLabel": "Îè?",
+  "homeCampusFallback": "æÅá¦ÓŞ?",
+  "homeFeedEmpty": "??êóôŞí­¡£İÂú½ïÃä§??£¡",
+  "categoryFood": "Ú¸ãİ",
+  "categoryClasses": "?ïï",
+  "categoryHousing": "ñ¬âÖ",
+  "categoryLifeInKorea": "??ßæüÀ",
+  "writePostTitle": "?ôŞ",
+  "writePostHint": "İÂú½?îÜÎè?ìíßÈ",
+  "cancel": "ö¢á¼",
+  "submitPost": "?øÖ"}
+

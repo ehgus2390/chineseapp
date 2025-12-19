@@ -51,11 +51,14 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.grey,
         onTap: _onTap,
         items: [
-          BottomNavigationBarItem(icon: const Icon(Icons.person), label: t.profile),
-          BottomNavigationBarItem(icon: const Icon(Icons.group), label: t.friends),
+          BottomNavigationBarItem(
+              icon: const Icon(Icons.person), label: t.profile),
+          BottomNavigationBarItem(
+              icon: const Icon(Icons.group), label: t.friends),
           BottomNavigationBarItem(icon: const Icon(Icons.chat), label: t.chat),
           BottomNavigationBarItem(icon: const Icon(Icons.map), label: t.map),
-          BottomNavigationBarItem(icon: const Icon(Icons.article), label: t.board),
+          BottomNavigationBarItem(
+              icon: const Icon(Icons.article), label: t.board),
           BottomNavigationBarItem(
               icon: const Icon(Icons.settings), label: t.settings),
         ],

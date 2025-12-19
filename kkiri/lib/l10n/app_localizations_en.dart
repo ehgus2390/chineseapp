@@ -70,4 +70,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shareLocationDesc => 'Used for nearby friend recommendations';
+
+  @override
+  String get homeCampusLabel => 'Campus';
+
+  @override
+  String get homeCampusFallback => 'Yonsei University';
+
+  @override
+  String get homeFeedEmpty => 'No posts yet. Share something to get started!';
+
+  @override
+  String get categoryFood => 'Food';
+
+  @override
+  String get categoryClasses => 'Classes';
+
+  @override
+  String get categoryHousing => 'Housing';
+
+  @override
+  String get categoryLifeInKorea => 'Life in Korea';
+
+  @override
+  String get writePostTitle => 'Write a post';
+
+  @override
+  String get writePostHint => 'Share what\'s happening on campus';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get submitPost => 'Post';
 }
