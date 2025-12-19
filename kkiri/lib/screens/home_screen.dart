@@ -60,7 +60,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-extension on GoRouter {
-  get location => null;
-}

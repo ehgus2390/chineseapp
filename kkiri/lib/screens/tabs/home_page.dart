@@ -1,4 +1,3 @@
-// lib/screens/tabs/home_page.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +22,8 @@ class HomePage extends StatelessWidget {
         final docs = snapshot.data!.docs;
         if (docs.isEmpty) {
           return const Center(
-            child: Text('No popular posts yet. Share something to get started!'),
+            child:
+                Text('No popular posts yet. Share something to get started!'),
           );
         }
 
