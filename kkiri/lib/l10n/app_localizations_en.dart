@@ -24,6 +24,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profile => 'Profile';
 
   @override
+  String get friends => 'Friends';
+
+  @override
+  String get chat => 'Chat';
+
+  @override
+  String get map => 'Map';
+
+  @override
+  String get board => 'Board';
+
+  @override
   String get settings => 'Settings';
 
   @override

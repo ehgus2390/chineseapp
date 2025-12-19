@@ -15,13 +15,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get welcome => '欢迎使用 Kkiri';
 
   @override
-  String get startAnonymous => '匿名开始';
+  String get startAnonymous => '以匿名开始';
 
   @override
   String get emailLogin => '使用邮箱登录';
 
   @override
   String get profile => '个人资料';
+
+  @override
+  String get friends => '好友';
+
+  @override
+  String get chat => '聊天';
+
+  @override
+  String get map => '地图';
+
+  @override
+  String get board => '论坛';
 
   @override
   String get settings => '设置';
@@ -33,7 +45,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get block => '屏蔽';
 
   @override
-  String get post => '发布';
+  String get post => '帖子';
 
   @override
   String get comment => '评论';
@@ -54,8 +66,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get language => '语言';
 
   @override
-  String get shareLocation => '共享位置';
+  String get shareLocation => '启用位置共享';
 
   @override
-  String get shareLocationDesc => '用于附近朋友推荐';
+  String get shareLocationDesc => '用于推荐附近的朋友';
 }

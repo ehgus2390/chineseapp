@@ -24,6 +24,18 @@ class AppLocalizationsKo extends AppLocalizations {
   String get profile => '프로필';
 
   @override
+  String get friends => '친구';
+
+  @override
+  String get chat => '채팅';
+
+  @override
+  String get map => '지도';
+
+  @override
+  String get board => '게시판';
+
+  @override
   String get settings => '설정';
 
   @override
@@ -54,7 +66,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get language => '언어';
 
   @override
-  String get shareLocation => '위치 공유 허용';
+  String get shareLocation => '위치 공유 사용';
 
   @override
   String get shareLocationDesc => '근처 친구 추천에 사용됩니다';

@@ -7,6 +7,10 @@
   "emailLogin": "メールでログイン",
 
   "profile": "プロフィール",
+  "friends": "友だち",
+  "chat": "チャット",
+  "map": "地図",
+  "board": "掲示板",
   "settings": "設定",
   "language": "言語",
 
@@ -18,8 +22,8 @@
   "save": "保存",
   "logout": "ログアウト",
 
-  "shareLocation": "位置情報を共有",
-  "shareLocationDesc": "近くの友達の推薦に使用されます",
+  "shareLocation": "位置共有を使用",
+  "shareLocationDesc": "近くの友だち推薦に使われます",
 
   "report": "通報",
   "block": "ブロック"

@@ -24,6 +24,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profile => 'プロフィール';
 
   @override
+  String get friends => '友だち';
+
+  @override
+  String get chat => 'チャット';
+
+  @override
+  String get map => '地図';
+
+  @override
+  String get board => '掲示板';
+
+  @override
   String get settings => '設定';
 
   @override
@@ -54,8 +66,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get language => '言語';
 
   @override
-  String get shareLocation => '位置情報を共有';
+  String get shareLocation => '位置共有を使用';
 
   @override
-  String get shareLocationDesc => '近くの友達の推薦に使用されます';
+  String get shareLocationDesc => '近くの友だち推薦に使われます';
 }

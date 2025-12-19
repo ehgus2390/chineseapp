@@ -5,17 +5,26 @@
   "welcome": "Welcome to Kkiri",
   "startAnonymous": "Start anonymously",
   "emailLogin": "Login with email",
+
   "profile": "Profile",
+  "friends": "Friends",
+  "chat": "Chat",
+  "map": "Map",
+  "board": "Board",
   "settings": "Settings",
-  "report": "Report",
-  "block": "Block",
+  "language": "Language",
+
   "post": "Post",
   "comment": "Comment",
   "like": "Like",
   "anonymous": "Anonymous",
+
   "save": "Save",
   "logout": "Logout",
-  "language": "Language",
+
   "shareLocation": "Share location",
-  "shareLocationDesc": "Used for nearby friend recommendations"
+  "shareLocationDesc": "Used for nearby friend recommendations",
+
+  "report": "Report",
+  "block": "Block"
 }

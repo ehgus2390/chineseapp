@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
+
 class HomeScreen extends StatefulWidget {
   final Widget child;
   const HomeScreen({super.key, required this.child});
@@ -38,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     final currentIndex = _locationToIndex(GoRouter.of(context).location);
     return Scaffold(
       body: widget.child,
@@ -47,14 +50,14 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,
         onTap: _onTap,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Friends'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Board'),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.person), label: t.profile),
+          BottomNavigationBarItem(icon: const Icon(Icons.group), label: t.friends),
+          BottomNavigationBarItem(icon: const Icon(Icons.chat), label: t.chat),
+          BottomNavigationBarItem(icon: const Icon(Icons.map), label: t.map),
+          BottomNavigationBarItem(icon: const Icon(Icons.article), label: t.board),
           BottomNavigationBarItem(
-              icon: Icon(Icons.settings), label: 'Settings'),
+              icon: const Icon(Icons.settings), label: t.settings),
         ],
       ),
     );
