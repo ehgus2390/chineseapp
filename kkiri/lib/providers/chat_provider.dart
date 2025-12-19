@@ -204,4 +204,14 @@ class ChatProvider with ChangeNotifier {
     }
     return _db.collection('openChatRooms').doc(roomId).snapshots();
   }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> myChatRooms(String? uid) {
+    if (uid == null || uid.isEmpty) {
+      return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+    }
+    return _db
+        .collection('chatRooms')
+        .where('members', arrayContains: uid)
+        .snapshots();
+  }
 }

@@ -24,6 +24,17 @@ class PostService {
         .snapshots();
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> listenPosts() {
+    return listenLatestPosts();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> listenPopularPosts() {
+    return _db
+        .collection('posts')
+        .orderBy('likesCount', descending: true)
+        .snapshots();
+  }
+
   Stream<QuerySnapshot<Map<String, dynamic>>> listenComments(
       String postId) {
     return _db
@@ -65,14 +76,20 @@ class PostService {
     await _db.runTransaction((txn) async {
       final liked = await txn.get(likeRef);
       final post = await txn.get(ref);
-      final count = (post['likesCount'] ?? 0) as int;
+      final data = post.data();
+      final rawCount = data?['likesCount'];
+      final count = rawCount is int
+          ? rawCount
+          : rawCount is num
+              ? rawCount.toInt()
+              : 0;
 
       if (liked.exists) {
         txn.delete(likeRef);
-        txn.update(ref, {'likesCount': count - 1});
+        final nextCount = count > 0 ? count - 1 : 0;
+        txn.update(ref, {'likesCount': nextCount});
       } else {
-        txn.set(likeRef,
-            {'createdAt': FieldValue.serverTimestamp()});
+        txn.set(likeRef, {'createdAt': FieldValue.serverTimestamp()});
         txn.update(ref, {'likesCount': count + 1});
       }
     });

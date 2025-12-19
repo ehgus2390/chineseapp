@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 import '../services/post_service.dart';
-import '../state/app_state.dart';
 
 class PostTile extends StatelessWidget {
   const PostTile({
@@ -31,7 +31,7 @@ class PostTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('익명',
+            const Text('?�명',
                 style: TextStyle(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 4),
             Text(data['content'] ?? ''),
@@ -43,9 +43,12 @@ class PostTile extends StatelessWidget {
               ),
             TextButton.icon(
               icon: const Icon(Icons.favorite_border),
-              label: Text('좋아요 ${(data['likesCount'] ?? 0)}'),
+              label: Text('좋아??${(data['likesCount'] ?? 0)}'),
               onPressed: () async {
-                final uid = context.read<AppState>().user?.uid;
+                final auth = context.read<AuthProvider>();
+                final user =
+                    auth.currentUser ?? await auth.signInAnonymouslyUser();
+                final uid = user?.uid;
                 if (uid == null) return;
                 await context.read<PostService>().toggleLike(postId, uid);
               },
@@ -56,3 +59,6 @@ class PostTile extends StatelessWidget {
     );
   }
 }
+
+
+

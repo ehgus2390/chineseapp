@@ -83,14 +83,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('프로필이 저장되었습니다')),
+        const SnackBar(content: Text('?�로?�이 ?�?�되?�습?�다')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  // ───────────────── ⚙️ 설정 메뉴 (내 프로필용) ─────────────────
+  // ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� ?�️ ?�정 메뉴 (???�로?�용) ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
   void _openSettingsSheet(BuildContext context, String myUid) {
     final t = AppLocalizations.of(context)!;
 
@@ -101,7 +101,7 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ✅ 언어설정
+              // ???�어?�정
               ListTile(
                 leading: const Icon(Icons.language),
                 title: Text(t.language),
@@ -113,29 +113,29 @@ class _ProfilePageState extends State<ProfilePage> {
 
               const Divider(),
 
-              // ℹ️ 내 프로필에서는 신고/차단을 막아두는 게 안전함
+              // ?�️ ???�로?�에?�는 ?�고/차단??막아?�는 �??�전??
               ListTile(
                 leading: const Icon(Icons.report_outlined),
                 title: Text(t.report),
-                subtitle: const Text('신고는 게시글/댓글/다른 유저 프로필에서 가능합니다.'),
+                subtitle: const Text('?�고??게시글/?��?/?�른 ?��? ?�로?�에??가?�합?�다.'),
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('신고는 게시글/댓글/다른 유저 프로필에서 사용할 수 있어요.')),
+                        content: Text('?�고??게시글/?��?/?�른 ?��? ?�로?�에???�용?????�어??')),
                   );
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.block_outlined),
                 title: Text(t.block),
-                subtitle: const Text('차단은 게시글/댓글/채팅 또는 다른 유저 프로필에서 가능합니다.'),
+                subtitle: const Text('차단?� 게시글/?��?/채팅 ?�는 ?�른 ?��? ?�로?�에??가?�합?�다.'),
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                         content:
-                            Text('차단은 게시글/댓글/채팅 또는 다른 유저 프로필에서 사용할 수 있어요.')),
+                            Text('차단?� 게시글/?��?/채팅 ?�는 ?�른 ?��? ?�로?�에???�용?????�어??')),
                   );
                 },
               ),
@@ -146,22 +146,22 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ───────────── 🌍 언어 설정 (즉시 반영 + Firestore lang 저장) ─────────────
+  // ?�?�?�?�?�?�?�?�?�?�?�?�?� ?�� ?�어 ?�정 (즉시 반영 + Firestore lang ?�?? ?�?�?�?�?�?�?�?�?�?�?�?�?�
   void _openLanguageSheet(BuildContext context, String myUid) {
     final auth = context.read<AuthProvider>();
     final localeProvider = context.read<LocaleProvider>();
 
     Future<void> setLang(String code) async {
-      // 1) 앱 즉시 반영
+      // 1) ??즉시 반영
       localeProvider.setLocale(Locale(code));
 
-      // 2) Firestore 저장 (users/{uid}.lang)
+      // 2) Firestore ?�??(users/{uid}.lang)
       await auth.updateProfile(languages: [code], mainLanguage: code);
 
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('언어가 변경되었습니다: $code')),
+          SnackBar(content: Text('?�어가 변경되?�습?�다: $code')),
         );
       }
     }
@@ -173,14 +173,12 @@ class _ProfilePageState extends State<ProfilePage> {
           child: ListView(
             shrinkWrap: true,
             children: [
-              ListTile(title: const Text('한국어'), onTap: () => setLang('ko')),
+              ListTile(title: const Text('?�국??), onTap: () => setLang('ko')),
               ListTile(
                   title: const Text('English'), onTap: () => setLang('en')),
-              ListTile(title: const Text('日本語'), onTap: () => setLang('ja')),
-              ListTile(title: const Text('中文'), onTap: () => setLang('zh')),
-              ListTile(
-                  title: const Text('Tiếng Việt'), onTap: () => setLang('vi')),
-              // 필요하면 여기 계속 추가 가능
+              ListTile(title: const Text('?�本�?), onTap: () => setLang('ja')),
+              ListTile(title: const Text('�?��'), onTap: () => setLang('zh')),
+              // ?�요?�면 ?�기 계속 추�? 가??
             ],
           ),
         );
@@ -241,35 +239,35 @@ class _ProfilePageState extends State<ProfilePage> {
                 TextButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.camera_alt_outlined),
-                  label: const Text('사진 변경'),
+                  label: const Text('?�진 변�?),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _displayNameController,
-                  decoration: const InputDecoration(labelText: '닉네임'),
+                  decoration: const InputDecoration(labelText: '?�네??),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _ageController,
-                  decoration: const InputDecoration(labelText: '나이'),
+                  decoration: const InputDecoration(labelText: '?�이'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _gender,
                   items: const [
-                    DropdownMenuItem(value: 'male', child: Text('남')),
-                    DropdownMenuItem(value: 'female', child: Text('여')),
-                    DropdownMenuItem(value: 'other', child: Text('기타')),
+                    DropdownMenuItem(value: 'male', child: Text('??)),
+                    DropdownMenuItem(value: 'female', child: Text('??)),
+                    DropdownMenuItem(value: 'other', child: Text('기�?')),
                   ],
                   onChanged: (v) => setState(() => _gender = v),
-                  decoration: const InputDecoration(labelText: '성별'),
+                  decoration: const InputDecoration(labelText: '?�별'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _bioController,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: '내 소개'),
+                  decoration: const InputDecoration(labelText: '???�개'),
                 ),
                 const SizedBox(height: 16),
                 Wrap(
