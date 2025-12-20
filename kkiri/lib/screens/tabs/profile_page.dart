@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/storage_service.dart';
+import '../tabs/profile_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -83,14 +84,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('?„ë¡œ?„ì´ ?€?¥ë˜?ˆìŠµ?ˆë‹¤')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.profileSaved)),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  // ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€ ?™ï¸ ?¤ì • ë©”ë‰´ (???„ë¡œ?„ìš©) ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
   void _openSettingsSheet(BuildContext context, String myUid) {
     final t = AppLocalizations.of(context)!;
 
@@ -101,7 +101,7 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ???¸ì–´?¤ì •
+              // ???ï¿½ì–´?ï¿½ì •
               ListTile(
                 leading: const Icon(Icons.language),
                 title: Text(t.language),
@@ -113,29 +113,26 @@ class _ProfilePageState extends State<ProfilePage> {
 
               const Divider(),
 
-              // ?¹ï¸ ???„ë¡œ?„ì—?œëŠ” ? ê³ /ì°¨ë‹¨??ë§‰ì•„?ëŠ” ê²??ˆì „??
+              // ?ï¿½ï¸ ???ï¿½ë¡œ?ï¿½ì—?ï¿½ëŠ” ?ï¿½ê³ /ì°¨ë‹¨??ë§‰ì•„?ï¿½ëŠ” ï¿½??ï¿½ì „??
               ListTile(
                 leading: const Icon(Icons.report_outlined),
                 title: Text(t.report),
-                subtitle: const Text('? ê³ ??ê²Œì‹œê¸€/?“ê?/?¤ë¥¸ ? ì? ?„ë¡œ?„ì—??ê°€?¥í•©?ˆë‹¤.'),
+                subtitle: const Text(''),
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('? ê³ ??ê²Œì‹œê¸€/?“ê?/?¤ë¥¸ ? ì? ?„ë¡œ?„ì—???¬ìš©?????ˆì–´??')),
+                    const SnackBar(content: Text('')),
                   );
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.block_outlined),
                 title: Text(t.block),
-                subtitle: const Text('ì°¨ë‹¨?€ ê²Œì‹œê¸€/?“ê?/ì±„íŒ… ?ëŠ” ?¤ë¥¸ ? ì? ?„ë¡œ?„ì—??ê°€?¥í•©?ˆë‹¤.'),
+                subtitle: const Text(''),
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content:
-                            Text('ì°¨ë‹¨?€ ê²Œì‹œê¸€/?“ê?/ì±„íŒ… ?ëŠ” ?¤ë¥¸ ? ì? ?„ë¡œ?„ì—???¬ìš©?????ˆì–´??')),
+                    const SnackBar(content: Text('')),
                   );
                 },
               ),
@@ -146,7 +143,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ?€?€?€?€?€?€?€?€?€?€?€?€?€ ?Œ ?¸ì–´ ?¤ì • (ì¦‰ì‹œ ë°˜ì˜ + Firestore lang ?€?? ?€?€?€?€?€?€?€?€?€?€?€?€?€
+  // ?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½ ?ï¿½ï¿½ ?ï¿½ì–´ ?ï¿½ì • (ì¦‰ì‹œ ë°˜ì˜ + Firestore lang ?ï¿½?? ?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½
   void _openLanguageSheet(BuildContext context, String myUid) {
     final auth = context.read<AuthProvider>();
     final localeProvider = context.read<LocaleProvider>();
@@ -155,13 +152,13 @@ class _ProfilePageState extends State<ProfilePage> {
       // 1) ??ì¦‰ì‹œ ë°˜ì˜
       localeProvider.setLocale(Locale(code));
 
-      // 2) Firestore ?€??(users/{uid}.lang)
+      // 2) Firestore ?ï¿½??(users/{uid}.lang)
       await auth.updateProfile(languages: [code], mainLanguage: code);
 
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('?¸ì–´ê°€ ë³€ê²½ë˜?ˆìŠµ?ˆë‹¤: $code')),
+          SnackBar(content: Text('ì–¸ì–´ê°€ ë³€ê²½ë˜ì—ˆìŠµë‹ˆë‹¤: $code')),
         );
       }
     }
@@ -173,12 +170,13 @@ class _ProfilePageState extends State<ProfilePage> {
           child: ListView(
             shrinkWrap: true,
             children: [
-              ListTile(title: const Text('?œêµ­??), onTap: () => setLang('ko')),
+              ListTile(title: const Text('í•œêµ­ì–´'), onTap: () => setLang('ko')),
               ListTile(
                   title: const Text('English'), onTap: () => setLang('en')),
-              ListTile(title: const Text('?¥æœ¬èª?), onTap: () => setLang('ja')),
-              ListTile(title: const Text('ä¸?–‡'), onTap: () => setLang('zh')),
-              // ?„ìš”?˜ë©´ ?¬ê¸° ê³„ì† ì¶”ê? ê°€??
+              ListTile(title: const Text('æ—¥æœ¬èª'), onTap: () => setLang('ja')),
+              ListTile(
+                  title: const Text('ä¸­æ–‡'),
+                  onTap: () => setLang('zh')), // ?ìš”?ë©´ ?ê¸° ê³„ì† ì¶”? ê°€??
             ],
           ),
         );
@@ -239,35 +237,35 @@ class _ProfilePageState extends State<ProfilePage> {
                 TextButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.camera_alt_outlined),
-                  label: const Text('?¬ì§„ ë³€ê²?),
+                  label: const Text('ì‚¬ì§„ ë³€ê²½'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _displayNameController,
-                  decoration: const InputDecoration(labelText: '?‰ë„¤??),
+                  decoration: const InputDecoration(labelText: 'ì´ë¦„'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _ageController,
-                  decoration: const InputDecoration(labelText: '?˜ì´'),
+                  decoration: const InputDecoration(labelText: 'ë‚˜ì´'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _gender,
                   items: const [
-                    DropdownMenuItem(value: 'male', child: Text('??)),
-                    DropdownMenuItem(value: 'female', child: Text('??)),
-                    DropdownMenuItem(value: 'other', child: Text('ê¸°í?')),
+                    DropdownMenuItem(value: 'male', child: Text('ë‚¨ì„±')),
+                    DropdownMenuItem(value: 'female', child: Text('ì—¬ì„±')),
+                    DropdownMenuItem(value: 'other', child: Text('ê¸°íƒ€')),
                   ],
                   onChanged: (v) => setState(() => _gender = v),
-                  decoration: const InputDecoration(labelText: '?±ë³„'),
+                  decoration: const InputDecoration(labelText: '?ï¿½ë³„'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _bioController,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: '???Œê°œ'),
+                  decoration: const InputDecoration(labelText: '???ï¿½ê°œ'),
                 ),
                 const SizedBox(height: 16),
                 Wrap(

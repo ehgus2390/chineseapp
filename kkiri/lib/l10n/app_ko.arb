@@ -1,46 +1,64 @@
-{
+﻿{
   "@@locale": "ko",
 
-  "appName": "Kkiri",
-  "welcome": "Kkiri에 오신 것을 환영해요",
-  "startAnonymous": "익명으로 시작하기",
-  "emailLogin": "이메일로 로그인",
+  "appName": "끼리",
 
+  "home": "홈",
   "profile": "프로필",
   "friends": "친구",
   "chat": "채팅",
   "map": "지도",
-  "board": "게시판",
+  "board": "커뮤니티",
   "settings": "설정",
-  "language": "언어",
 
-  "post": "게시",
-  "comment": "댓글",
-  "like": "좋아요",
-  "anonymous": "익명",
+  "welcome": "끼리에 오신 것을 환영합니다",
+  "welcomeSubtitle": "한국에서의 첫 친구를 여기서 만나보세요",
 
+  "findMyPeople": "내 사람 찾기",
+
+  "peopleNearYou": "내 주변 사람들",
+  "seeMore": "더 보기",
+
+  "myCommunities": "내 커뮤니티",
+  "manage": "관리",
+
+  "smallEvents": "소규모 모임",
+  "smallEventsSubtitle": "붐비지 않게, 자연스럽게 만나요.",
+
+  "sayHi": "인사하기",
+  "sendRequest": "메시지 요청 보내기",
+
+  "profileSaved": "프로필이 저장되었습니다",
+
+  "changePhoto": "사진 변경",
+  "displayName": "닉네임",
+  "age": "나이",
+  "gender": "성별",
+  "bio": "자기소개",
   "save": "저장",
-  "logout": "로그아웃",
 
-  "shareLocation": "위치 정보 공유",
-  "shareLocationDesc": "근처 친구 추천에 사용됩니다",
+  "genderMale": "남성",
+  "genderFemale": "여성",
+  "genderOther": "기타",
+
+  "language": "언어",
+  "languageEnglish": "영어",
+  "languageKorean": "한국어",
+  "languageJapanese": "일본어",
+  "languageChinese": "중국어",
 
   "report": "신고",
   "block": "차단",
 
-  "homeCampusLabel": "캠퍼스",
-  "homeCampusFallback": "연세대학교",
+  "reportDescription": "게시글, 댓글 또는 사용자를 신고할 수 있습니다.",
+  "blockDescription": "차단한 사용자의 게시글과 채팅은 보이지 않습니다.",
 
-  "homeFeedEmpty": "아직 게시글이 없어요. 첫 글을 작성해보세요!",
-
-  "categoryFood": "음식",
-  "categoryClasses": "수업",
-  "categoryHousing": "주거",
-  "categoryLifeInKorea": "한국 생활",
-
-  "writePostTitle": "게시글 작성",
-  "writePostHint": "캠퍼스에서의 소식을 공유해보세요",
-  "cancel": "취소",
-  "submitPost": "게시"
-
+  "anonymous": "익명",
+  "universityCommunityTitle": "대학교 커뮤니티",
+  "universityCommunitySubtitle": "내 캠퍼스 전용",
+  "universityCommunityEmpty": "캠퍼스 커뮤니티에 아직 게시글이 없습니다.",
+  "universityCommunityMissing": "대학교 커뮤니티를 찾지 못했습니다.",
+  "justNow": "방금 전",  "minutesAgo": "{minutes}분 전",
+  "hoursAgo": "{hours}시간 전",
+  "daysAgo": "{days}일 전"
 }

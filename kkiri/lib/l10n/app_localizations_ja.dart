@@ -1,4 +1,4 @@
-// ignore: unused_import
+﻿// ignore: unused_import
 import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
@@ -103,5 +103,29 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get submitPost => '����';
+
+  @override
+  String get universityCommunityTitle => '大学コミュニティ';
+
+  @override
+  String get universityCommunitySubtitle => 'あなたのキャンパス限定';
+
+  @override
+  String get universityCommunityEmpty => 'キャンパスのコミュニティにはまだ投稿がありません。';
+
+  @override
+  String get universityCommunityMissing => '大学コミュニティが見つかりませんでした。';
+
+  @override
+  String get justNow => 'たった今';
+
+  @override
+  String minutesAgo(int minutes) => '$minutes分前';
+
+  @override
+  String hoursAgo(int hours) => '$hours時間前';
+
+  @override
+  String daysAgo(int days) => '$days日前';
 }
 

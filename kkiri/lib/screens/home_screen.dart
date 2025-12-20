@@ -40,8 +40,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final location =
+        GoRouter.of(context).routeInformationProvider.value.uri.toString();
+    final currentIndex = _locationToIndex(location);
     final t = AppLocalizations.of(context)!;
-    final currentIndex = _locationToIndex(GoRouter.of(context).location);
+
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(

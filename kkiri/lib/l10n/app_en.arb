@@ -1,41 +1,64 @@
-{
+﻿{
   "@@locale": "en",
 
   "appName": "Kkiri",
-  "welcome": "Welcome to Kkiri",
-  "startAnonymous": "Start anonymously",
-  "emailLogin": "Login with email",
 
+  "home": "Home",
   "profile": "Profile",
   "friends": "Friends",
   "chat": "Chat",
   "map": "Map",
-  "board": "Board",
+  "board": "Community",
   "settings": "Settings",
-  "language": "Language",
 
-  "post": "Post",
-  "comment": "Comment",
-  "like": "Like",
-  "anonymous": "Anonymous",
+  "welcome": "Welcome to Kkiri",
+  "welcomeSubtitle": "Your first friend in Korea starts here",
 
+  "findMyPeople": "Find my people",
+
+  "peopleNearYou": "People near you",
+  "seeMore": "See more",
+
+  "myCommunities": "My communities",
+  "manage": "Manage",
+
+  "smallEvents": "Small events",
+  "smallEventsSubtitle": "Meet people naturally, not crowded.",
+
+  "sayHi": "Say hi",
+  "sendRequest": "Send message request",
+
+  "profileSaved": "Profile saved",
+
+  "changePhoto": "Change photo",
+  "displayName": "Display name",
+  "age": "Age",
+  "gender": "Gender",
+  "bio": "Bio",
   "save": "Save",
-  "logout": "Logout",
 
-  "shareLocation": "Share location",
-  "shareLocationDesc": "Used for nearby friend recommendations",
+  "genderMale": "Male",
+  "genderFemale": "Female",
+  "genderOther": "Other",
+
+  "language": "Language",
+  "languageEnglish": "English",
+  "languageKorean": "Korean",
+  "languageJapanese": "Japanese",
+  "languageChinese": "Chinese",
 
   "report": "Report",
   "block": "Block",
-  "homeCampusLabel": "Campus",
-  "homeCampusFallback": "Yonsei University",
-  "homeFeedEmpty": "No posts yet. Share something to get started!",
-  "categoryFood": "Food",
-  "categoryClasses": "Classes",
-  "categoryHousing": "Housing",
-  "categoryLifeInKorea": "Life in Korea",
-  "writePostTitle": "Write a post",
-  "writePostHint": "Share what's happening on campus",
-  "cancel": "Cancel",
-  "submitPost": "Post"}
 
+  "reportDescription": "Report posts, comments, or users.",
+  "blockDescription": "Blocked users' posts and chats will be hidden.",
+
+  "anonymous": "Anonymous",
+  "universityCommunityTitle": "University community",
+  "universityCommunitySubtitle": "Only for your campus",
+  "universityCommunityEmpty": "No posts yet in your campus community.",
+  "universityCommunityMissing": "We couldn't find your university community.",
+  "justNow": "Just now",  "minutesAgo": "{minutes} min ago",
+  "hoursAgo": "{hours} hours ago",
+  "daysAgo": "{days} days ago"
+}

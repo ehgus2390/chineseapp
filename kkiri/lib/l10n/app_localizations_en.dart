@@ -72,6 +72,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareLocationDesc => 'Used for nearby friend recommendations';
 
   @override
+  String get universityCommunityTitle => 'University community';
+
+  @override
+  String get universityCommunitySubtitle => 'Only for your campus';
+
+  @override
+  String get universityCommunityEmpty =>
+      'No posts yet in your campus community.';
+
+  @override
+  String get universityCommunityMissing =>
+      'We couldn\'t find your university community.';
+
+  @override
+  String get justNow => 'Just now';
+
+  @override
+  String minutesAgo(int minutes) => '$minutes min ago';
+
+  @override
+  String hoursAgo(int hours) => '$hours hours ago';
+
+  @override
+  String daysAgo(int days) => '$days days ago';
+
+  @override
   String get homeCampusLabel => 'Campus';
 
   @override

@@ -12,13 +12,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appName => 'Kkiri';
 
   @override
-  String get welcome => '�?��使用 Kkiri';
+  String get welcome => '�?��使用 Kkiri';
 
   @override
-  String get startAnonymous => '以匿?��?�?;
+  String get startAnonymous => '以匿名方式开始';
 
   @override
-  String get emailLogin => '使用????�录';
+  String get emailLogin => '使用邮箱登录';
 
   @override
   String get profile => '个人资料';
@@ -27,10 +27,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get friends => '好友';
 
   @override
-  String get chat => '?�天';
+  String get chat => '聊天';
 
   @override
-  String get map => '?�图';
+  String get map => '地图';
 
   @override
   String get board => '论坛';
@@ -48,60 +48,59 @@ class AppLocalizationsZh extends AppLocalizations {
   String get post => '帖子';
 
   @override
-  String get comment => '评�?';
+  String get comment => '评论';
 
   @override
-  String get like => '?�赞';
+  String get like => '点赞';
 
   @override
-  String get anonymous => '?�名';
+  String get anonymous => '匿名';
 
   @override
   String get save => '保存';
 
   @override
-  String get logout => '?�?�登�?;
+  String get logout => '退出登录';
 
   @override
-  String get language => '�??';
+  String get language => '语言';
 
   @override
-  String get shareLocation => '??��位置?�享';
+  String get shareLocation => '共享位置信息';
 
   @override
-  String get shareLocationDesc => '?�于?�荐?�近?�朋??;
+  String get shareLocationDesc => '用于推荐附近的朋友们';
 
   @override
-  String get homeCampusLabel => '��?';
+  String get homeCampusLabel => '校园';
 
   @override
-  String get homeCampusFallback => '�����?';
+  String get homeCampusFallback => '�����?';
 
   @override
-  String get homeFeedEmpty => '??���������������??��';
+  String get homeFeedEmpty => '??���������������??��';
 
   @override
-  String get categoryFood => 'ڸ��';
+  String get categoryFood => '食物';
 
   @override
-  String get categoryClasses => '?��';
+  String get categoryClasses => '课程';
 
   @override
-  String get categoryHousing => '���';
+  String get categoryHousing => '住房';
 
   @override
-  String get categoryLifeInKorea => '??����';
+  String get categoryLifeInKorea => '韩国生活';
 
   @override
-  String get writePostTitle => '?��';
+  String get writePostTitle => '写帖子';
 
   @override
-  String get writePostHint => '����?����?����';
+  String get writePostHint => '分享你在校园里的消息';
 
   @override
-  String get cancel => '���';
+  String get cancel => '取消';
 
   @override
-  String get submitPost => '?��';
+  String get submitPost => '发布';
 }
-

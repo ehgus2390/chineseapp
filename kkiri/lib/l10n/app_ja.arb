@@ -1,45 +1,64 @@
-{
+﻿{
   "@@locale": "ja",
 
-  "appName": "Kkiri",
-  "welcome": "Kkiriへようこそ",
-  "startAnonymous": "匿名で始める",
-  "emailLogin": "メールでログイン",
+  "appName": "キリ",
 
+  "home": "ホーム",
   "profile": "プロフィール",
   "friends": "友だち",
   "chat": "チャット",
   "map": "地図",
-  "board": "掲示板",
+  "board": "コミュニティ",
   "settings": "設定",
-  "language": "言語",
 
-  "post": "投稿",
-  "comment": "コメント",
-  "like": "いいね",
-  "anonymous": "匿名",
+  "welcome": "Kkiriへようこそ",
+  "welcomeSubtitle": "韓国での最初の友だちを見つけましょう",
 
+  "findMyPeople": "仲間を探す",
+
+  "peopleNearYou": "近くの人",
+  "seeMore": "もっと見る",
+
+  "myCommunities": "参加中のコミュニティ",
+  "manage": "管理",
+
+  "smallEvents": "小規模な集まり",
+  "smallEventsSubtitle": "混雑せず、自然に出会えます。",
+
+  "sayHi": "あいさつする",
+  "sendRequest": "メッセージを送る",
+
+  "profileSaved": "プロフィールが保存されました",
+
+  "changePhoto": "写真を変更",
+  "displayName": "ニックネーム",
+  "age": "年齢",
+  "gender": "性別",
+  "bio": "自己紹介",
   "save": "保存",
-  "logout": "ログアウト",
 
-  "shareLocation": "位置情報を共有",
-  "shareLocationDesc": "近くの友だちをおすすめするために使用されます",
+  "genderMale": "男性",
+  "genderFemale": "女性",
+  "genderOther": "その他",
 
-  "report": "報告",
+  "language": "言語",
+  "languageEnglish": "英語",
+  "languageKorean": "韓国語",
+  "languageJapanese": "日本語",
+  "languageChinese": "中国語",
+
+  "report": "通報",
   "block": "ブロック",
 
-  "homeCampusLabel": "キャンパス",
-  "homeCampusFallback": "延世大学",
+  "reportDescription": "投稿、コメント、またはユーザーを通報します。",
+  "blockDescription": "ブロックしたユーザーの投稿やチャットは表示されません。",
 
-  "homeFeedEmpty": "まだ投稿がありません。最初の投稿をしてみましょう！",
-
-  "categoryFood": "食べ物",
-  "categoryClasses": "授業",
-  "categoryHousing": "住居",
-  "categoryLifeInKorea": "韓国生活",
-
-  "writePostTitle": "投稿を書く",
-  "writePostHint": "キャンパスでの出来事を共有しましょう",
-  "cancel": "キャンセル",
-  "submitPost": "投稿する"
+  "anonymous": "匿名",
+  "universityCommunityTitle": "大学コミュニティ",
+  "universityCommunitySubtitle": "あなたのキャンパス限定",
+  "universityCommunityEmpty": "キャンパスのコミュニティにはまだ投稿がありません。",
+  "universityCommunityMissing": "大学コミュニティが見つかりませんでした。",
+  "justNow": "たった今",  "minutesAgo": "{minutes}分前",
+  "hoursAgo": "{hours}時間前",
+  "daysAgo": "{days}日前"
 }

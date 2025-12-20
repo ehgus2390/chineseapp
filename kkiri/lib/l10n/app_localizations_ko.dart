@@ -1,4 +1,4 @@
-// ignore: unused_import
+﻿// ignore: unused_import
 import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
@@ -9,19 +9,19 @@ class AppLocalizationsKo extends AppLocalizations {
   AppLocalizationsKo([String locale = 'ko']) : super(locale);
 
   @override
-  String get appName => '?�리';
+  String get appName => '?�리';
 
   @override
-  String get welcome => 'Kkiri???�신 것을 ?�영?�니??;
+  String get welcome => 'Kkiri에 오신 것을 환영해요';
 
   @override
-  String get startAnonymous => '?�명?�로 ?�작?�기';
+  String get startAnonymous => '익명으로 시작하기';
 
   @override
-  String get emailLogin => '?�메?�로 로그??;
+  String get emailLogin => '이메일로 로그인';
 
   @override
-  String get profile => '?�로??;
+  String get profile => '프로필';
 
   @override
   String get friends => '친구';
@@ -30,78 +30,101 @@ class AppLocalizationsKo extends AppLocalizations {
   String get chat => '채팅';
 
   @override
-  String get map => '지??;
+  String get map => '지도';
 
   @override
-  String get board => '게시??;
+  String get board => '게시판';
 
   @override
-  String get settings => '?�정';
+  String get settings => '설정';
 
   @override
-  String get report => '?�고?�기';
+  String get report => '?�고?�기';
 
   @override
-  String get block => '차단?�기';
+  String get block => '차단?�기';
 
   @override
   String get post => '게시글';
 
   @override
-  String get comment => '?��?';
+  String get comment => '?��?';
 
   @override
-  String get like => '좋아??;
+  String get like => '좋아요';
 
   @override
-  String get anonymous => '?�명';
+  String get anonymous => '익명';
 
   @override
-  String get save => '?�??;
+  String get save => '저장';
 
   @override
-  String get logout => '로그?�웃';
+  String get logout => '로그아웃';
 
   @override
-  String get language => '?�어';
+  String get language => '?�어';
 
   @override
-  String get shareLocation => '?�치 공유 ?�용';
+  String get shareLocation => '?�치 공유 ?�용';
 
   @override
-  String get shareLocationDesc => '근처 친구 추천???�용?�니??;
+  String get shareLocationDesc => '근처 친구 추천에 사용됩니다';
 
   @override
-  String get homeCampusLabel => 'ķ�۽�';
+  String get homeCampusLabel => 'ķ۽';
 
   @override
-  String get homeCampusFallback => '�������б�';
+  String get homeCampusFallback => '�������б�';
 
   @override
-  String get homeFeedEmpty => '���� �Խñ��� �����ϴ�. ù ���� ���ܺ�����!';
+  String get homeFeedEmpty => '���� �Խñ��� �����ϴ�. ù ���� ���ܺ�����!';
 
   @override
-  String get categoryFood => '����';
+  String get categoryFood => '����';
 
   @override
-  String get categoryClasses => '����';
+  String get categoryClasses => '����';
 
   @override
-  String get categoryHousing => '�ְ�';
+  String get categoryHousing => '�ְ�';
 
   @override
-  String get categoryLifeInKorea => '�ѱ� ��Ȱ';
+  String get categoryLifeInKorea => '�ѱ� ��Ȱ';
 
   @override
-  String get writePostTitle => '�۾���';
+  String get writePostTitle => '�۾���';
 
   @override
-  String get writePostHint => 'ķ�۽� �ҽ��� ���ܺ�����';
+  String get writePostHint => 'ķ�۽� �ҽ��� ���ܺ�����';
 
   @override
-  String get cancel => '���';
+  String get cancel => '���';
 
   @override
-  String get submitPost => '�Խ�';
+  String get submitPost => '�Խ�';
+
+  @override
+  String get universityCommunityTitle => '대학교 커뮤니티';
+
+  @override
+  String get universityCommunitySubtitle => '내 캠퍼스 전용';
+
+  @override
+  String get universityCommunityEmpty => '캠퍼스 커뮤니티에 아직 게시글이 없습니다.';
+
+  @override
+  String get universityCommunityMissing => '대학교 커뮤니티를 찾지 못했습니다.';
+
+  @override
+  String get justNow => '방금 전';
+
+  @override
+  String minutesAgo(int minutes) => '$minutes분 전';
+
+  @override
+  String hoursAgo(int hours) => '$hours시간 전';
+
+  @override
+  String daysAgo(int days) => '$days일 전';
 }
-

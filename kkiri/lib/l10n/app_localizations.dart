@@ -228,6 +228,54 @@ abstract class AppLocalizations {
   /// **'Used for nearby friend recommendations'**
   String get shareLocationDesc;
 
+  /// No description provided for @universityCommunityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'University community'**
+  String get universityCommunityTitle;
+
+  /// No description provided for @universityCommunitySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Only for your campus'**
+  String get universityCommunitySubtitle;
+
+  /// No description provided for @universityCommunityEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No posts yet in your campus community.'**
+  String get universityCommunityEmpty;
+
+  /// No description provided for @universityCommunityMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn't find your university community.'**
+  String get universityCommunityMissing;
+
+  /// No description provided for @justNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get justNow;
+
+  /// No description provided for @minutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min ago'**
+  String minutesAgo(int minutes);
+
+  /// No description provided for @hoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} hours ago'**
+  String hoursAgo(int hours);
+
+  /// No description provided for @daysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days ago'**
+  String daysAgo(int days);
+
   /// No description provided for @homeCampusLabel.
   ///
   /// In en, this message translates to:

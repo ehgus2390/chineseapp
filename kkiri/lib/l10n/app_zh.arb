@@ -1,41 +1,64 @@
-{
+﻿{
   "@@locale": "zh",
 
   "appName": "Kkiri",
-  "welcome": "�?��使用 Kkiri",
-  "startAnonymous": "以匿?��?�?,
-  "emailLogin": "使用????�录",
 
+  "home": "首页",
   "profile": "个人资料",
-  "friends": "好友",
-  "chat": "?�天",
-  "map": "?�图",
-  "board": "论坛",
+  "friends": "朋友",
+  "chat": "聊天",
+  "map": "地图",
+  "board": "社区",
   "settings": "设置",
-  "language": "�??",
 
-  "post": "帖子",
-  "comment": "评�?",
-  "like": "?�赞",
-  "anonymous": "?�名",
+  "welcome": "欢迎来到 Kkiri",
+  "welcomeSubtitle": "在韩国找到你的第一个朋友",
 
+  "findMyPeople": "寻找同伴",
+
+  "peopleNearYou": "附近的人",
+  "seeMore": "查看更多",
+
+  "myCommunities": "我的社区",
+  "manage": "管理",
+
+  "smallEvents": "小型聚会",
+  "smallEventsSubtitle": "自然相遇，不拥挤。",
+
+  "sayHi": "打招呼",
+  "sendRequest": "发送消息请求",
+
+  "profileSaved": "个人资料已保存",
+
+  "changePhoto": "更换照片",
+  "displayName": "昵称",
+  "age": "年龄",
+  "gender": "性别",
+  "bio": "自我介绍",
   "save": "保存",
-  "logout": "?�?�登�?,
 
-  "shareLocation": "??��位置?�享",
-  "shareLocationDesc": "?�于?�荐?�近?�朋??,
+  "genderMale": "男",
+  "genderFemale": "女",
+  "genderOther": "其他",
+
+  "language": "语言",
+  "languageEnglish": "英语",
+  "languageKorean": "韩语",
+  "languageJapanese": "日语",
+  "languageChinese": "中文",
 
   "report": "举报",
   "block": "屏蔽",
-  "homeCampusLabel": "��?",
-  "homeCampusFallback": "�����?",
-  "homeFeedEmpty": "??���������������??��",
-  "categoryFood": "ڸ��",
-  "categoryClasses": "?��",
-  "categoryHousing": "���",
-  "categoryLifeInKorea": "??����",
-  "writePostTitle": "?��",
-  "writePostHint": "����?����?����",
-  "cancel": "���",
-  "submitPost": "?��"}
 
+  "reportDescription": "举报帖子、评论或用户。",
+  "blockDescription": "被屏蔽用户的帖子和聊天将被隐藏。",
+
+  "anonymous": "匿名",
+  "universityCommunityTitle": "大学社区",
+  "universityCommunitySubtitle": "仅限你的校园",
+  "universityCommunityEmpty": "校园社区还没有帖子。",
+  "universityCommunityMissing": "未找到你的大学社区。",
+  "justNow": "刚刚",  "minutesAgo": "{minutes}分钟前",
+  "hoursAgo": "{hours}小时前",
+  "daysAgo": "{days}天前"
+}
