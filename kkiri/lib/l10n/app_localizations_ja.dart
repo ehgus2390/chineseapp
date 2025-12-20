@@ -1,4 +1,4 @@
-﻿// ignore: unused_import
+// ignore: unused_import
 import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
@@ -9,100 +9,121 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
-  String get appName => 'Kkiri';
+  String get appName => 'キリ';
+
+  @override
+  String get home => 'ホーム';
+
+  @override
+  String get profile => 'プロフィール';
+
+  @override
+  String get friends => '友だち';
+
+  @override
+  String get chat => 'チャット';
+
+  @override
+  String get map => '地図';
+
+  @override
+  String get board => 'コミュニティ';
+
+  @override
+  String get settings => '設定';
 
   @override
   String get welcome => 'Kkiriへようこそ';
 
   @override
-  String get startAnonymous => '?名?始?る';
+  String get welcomeSubtitle => '韓国での最初の友だちを見つけましょう';
 
   @override
-  String get emailLogin => '?�ー?�で??��?�ン';
+  String get findMyPeople => '仲間を探す';
 
   @override
-  String get profile => '?�ロ?�ィ?�ル';
+  String get peopleNearYou => '近くの人';
 
   @override
-  String get friends => '?�だ??';
+  String get seeMore => 'もっと見る';
 
   @override
-  String get chat => '?�ャ?�ト';
+  String get myCommunities => '参加中のコミュニティ';
 
   @override
-  String get map => '?�図';
+  String get manage => '管理';
 
   @override
-  String get board => '?�示??';
+  String get smallEvents => '小規模な集まり';
 
   @override
-  String get settings => '?';
+  String get smallEventsSubtitle => '混雑せず、自然に出会えます。';
 
   @override
-  String get report => '?�報';
+  String get sayHi => 'あいさつする';
 
   @override
-  String get block => '?�ロ?�ク';
+  String get sendRequest => 'メッセージを送る';
 
   @override
-  String get post => '?�稿';
+  String get profileSaved => 'プロフィールが保存されました';
 
   @override
-  String get comment => '?�メ?�ト';
+  String get changePhoto => '写真を変更';
 
   @override
-  String get like => '?�い??;
+  String get displayName => 'ニックネーム';
 
   @override
-  String get anonymous => '?�名';
+  String get age => '年齢';
+
+  @override
+  String get gender => '性別';
+
+  @override
+  String get bio => '自己紹介';
 
   @override
   String get save => '保存';
 
   @override
-  String get logout => 'ログアウト';
+  String get genderMale => '男性';
+
+  @override
+  String get genderFemale => '女性';
+
+  @override
+  String get genderOther => 'その他';
 
   @override
   String get language => '言語';
 
   @override
-  String get shareLocation => '位置情報を共有する';
+  String get languageEnglish => '英語';
 
   @override
-  String get shareLocationDesc => '近くの友達を推薦するために使用します';
+  String get languageKorean => '韓国語';
 
   @override
-  String get homeCampusLabel => '�����ѫ�';
+  String get languageJapanese => '日本語';
 
   @override
-  String get homeCampusFallback => '�����?';
+  String get languageChinese => '中国語';
 
   @override
-  String get homeFeedEmpty => '�ު����ê�����ު������������ê򪷪ƪߪު��窦��';
+  String get report => '通報';
 
   @override
-  String get categoryFood => '����';
+  String get block => 'ブロック';
 
   @override
-  String get categoryClasses => '���';
+  String get reportDescription => '投稿、コメント、またはユーザーを通報します。';
 
   @override
-  String get categoryHousing => '���';
+  String get blockDescription => 'ブロックしたユーザーの投稿やチャットは表示されません。';
 
   @override
-  String get categoryLifeInKorea => '��?����';
-
-  @override
-  String get writePostTitle => '���ê���';
-
-  @override
-  String get writePostHint => '�����ѫ�����?���򫷫������ު��窦';
-
-  @override
-  String get cancel => '����󫻫�';
-
-  @override
-  String get submitPost => '����';
+  String get anonymous => '匿名';
 
   @override
   String get universityCommunityTitle => '大学コミュニティ';
@@ -117,15 +138,56 @@ class AppLocalizationsJa extends AppLocalizations {
   String get universityCommunityMissing => '大学コミュニティが見つかりませんでした。';
 
   @override
+  String get logout => 'ログアウト';
+  @override
+  String get shareLocation => '位置を共有';
+  @override
+  String get shareLocationDesc => '自分の位置を共有できます。';
+  @override
+  String get homeCampusLabel => '私のキャンパス';
+  @override
+  String get homeCampusFallback => '私のキャンパスが見つかりません。';
+  @override
+  String get homeFeedEmpty => 'ホームフィードにはまだ投稿がありません。';
+  @override
+  String get categoryFood => '食事';
+
+  @override
+  String get categoryClasses => '授業';
+  @override
+  String get categoryHousing => '住居';
+  @override
+  String get categoryLifeInKorea => '韓国生活';
+  @override
+  String get writePostTitle => '投稿を書く';
+  @override
+  String get writePostHint => '投稿を入力してください';
+  @override
+  String get cancel => 'キャンセル';
+  @override
+  String get submitPost => '投稿する';
+  @override
+  String get post => '投稿';
+  @override
+  String get comment => 'コメント';
+  @override
+  String get like => 'いいね';
+
+  @override
   String get justNow => 'たった今';
 
   @override
-  String minutesAgo(int minutes) => '$minutes分前';
+  String minutesAgo(Object minutes) {
+    return '$minutes分前';
+  }
 
   @override
-  String hoursAgo(int hours) => '$hours時間前';
+  String hoursAgo(Object hours) {
+    return '$hours時間前';
+  }
 
   @override
-  String daysAgo(int days) => '$days日前';
+  String daysAgo(Object days) {
+    return '$days日前';
+  }
 }
-

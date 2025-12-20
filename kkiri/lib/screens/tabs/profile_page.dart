@@ -84,7 +84,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.profileSaved)),
+        SnackBar(content: Text(AppLocalizations.of(context)!.save)),
       );
     } finally {
       if (mounted) setState(() => _saving = false);

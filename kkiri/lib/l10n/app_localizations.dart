@@ -99,7 +99,7 @@ abstract class AppLocalizations {
     Locale('en'),
     Locale('ja'),
     Locale('ko'),
-    Locale('zh'),
+    Locale('zh')
   ];
 
   /// No description provided for @appName.
@@ -108,23 +108,11 @@ abstract class AppLocalizations {
   /// **'Kkiri'**
   String get appName;
 
-  /// No description provided for @welcome.
+  /// No description provided for @home.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to Kkiri'**
-  String get welcome;
-
-  /// No description provided for @startAnonymous.
-  ///
-  /// In en, this message translates to:
-  /// **'Start anonymously'**
-  String get startAnonymous;
-
-  /// No description provided for @emailLogin.
-  ///
-  /// In en, this message translates to:
-  /// **'Login with email'**
-  String get emailLogin;
+  /// **'Home'**
+  String get home;
 
   /// No description provided for @profile.
   ///
@@ -153,7 +141,7 @@ abstract class AppLocalizations {
   /// No description provided for @board.
   ///
   /// In en, this message translates to:
-  /// **'Board'**
+  /// **'Community'**
   String get board;
 
   /// No description provided for @settings.
@@ -161,6 +149,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings'**
   String get settings;
+
+  /// No description provided for @welcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Kkiri'**
+  String get welcome;
+
+  /// No description provided for @welcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your first friend in Korea starts here'**
+  String get welcomeSubtitle;
+
+  /// No description provided for @findMyPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'Find my people'**
+  String get findMyPeople;
+
+  /// No description provided for @peopleNearYou.
+  ///
+  /// In en, this message translates to:
+  /// **'People near you'**
+  String get peopleNearYou;
+
+  /// No description provided for @seeMore.
+  ///
+  /// In en, this message translates to:
+  /// **'See more'**
+  String get seeMore;
+
+  /// No description provided for @myCommunities.
+  ///
+  /// In en, this message translates to:
+  /// **'My communities'**
+  String get myCommunities;
+
+  /// No description provided for @manage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get manage;
+
+  /// No description provided for @smallEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Small events'**
+  String get smallEvents;
+
+  /// No description provided for @smallEventsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Meet people naturally, not crowded.'**
+  String get smallEventsSubtitle;
+
+  /// No description provided for @sayHi.
+  ///
+  /// In en, this message translates to:
+  /// **'Say hi'**
+  String get sayHi;
+
+  /// No description provided for @sendRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send message request'**
+  String get sendRequest;
+
+  /// No description provided for @profileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile saved'**
+  String get profileSaved;
+
+  /// No description provided for @changePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Change photo'**
+  String get changePhoto;
+
+  /// No description provided for @displayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get displayName;
+
+  /// No description provided for @age.
+  ///
+  /// In en, this message translates to:
+  /// **'Age'**
+  String get age;
+
+  /// No description provided for @gender.
+  ///
+  /// In en, this message translates to:
+  /// **'Gender'**
+  String get gender;
+
+  /// No description provided for @bio.
+  ///
+  /// In en, this message translates to:
+  /// **'Bio'**
+  String get bio;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @genderMale.
+  ///
+  /// In en, this message translates to:
+  /// **'Male'**
+  String get genderMale;
+
+  /// No description provided for @genderFemale.
+  ///
+  /// In en, this message translates to:
+  /// **'Female'**
+  String get genderFemale;
+
+  /// No description provided for @genderOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get genderOther;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @languageEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get languageEnglish;
+
+  /// No description provided for @languageKorean.
+  ///
+  /// In en, this message translates to:
+  /// **'Korean'**
+  String get languageKorean;
+
+  /// No description provided for @languageJapanese.
+  ///
+  /// In en, this message translates to:
+  /// **'Japanese'**
+  String get languageJapanese;
+
+  /// No description provided for @languageChinese.
+  ///
+  /// In en, this message translates to:
+  /// **'Chinese'**
+  String get languageChinese;
 
   /// No description provided for @report.
   ///
@@ -174,59 +318,23 @@ abstract class AppLocalizations {
   /// **'Block'**
   String get block;
 
-  /// No description provided for @post.
+  /// No description provided for @reportDescription.
   ///
   /// In en, this message translates to:
-  /// **'Post'**
-  String get post;
+  /// **'Report posts, comments, or users.'**
+  String get reportDescription;
 
-  /// No description provided for @comment.
+  /// No description provided for @blockDescription.
   ///
   /// In en, this message translates to:
-  /// **'Comment'**
-  String get comment;
-
-  /// No description provided for @like.
-  ///
-  /// In en, this message translates to:
-  /// **'Like'**
-  String get like;
+  /// **'Blocked users\' posts and chats will be hidden.'**
+  String get blockDescription;
 
   /// No description provided for @anonymous.
   ///
   /// In en, this message translates to:
   /// **'Anonymous'**
   String get anonymous;
-
-  /// No description provided for @save.
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get save;
-
-  /// No description provided for @logout.
-  ///
-  /// In en, this message translates to:
-  /// **'Logout'**
-  String get logout;
-
-  /// No description provided for @language.
-  ///
-  /// In en, this message translates to:
-  /// **'Language'**
-  String get language;
-
-  /// No description provided for @shareLocation.
-  ///
-  /// In en, this message translates to:
-  /// **'Share location'**
-  String get shareLocation;
-
-  /// No description provided for @shareLocationDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'Used for nearby friend recommendations'**
-  String get shareLocationDesc;
 
   /// No description provided for @universityCommunityTitle.
   ///
@@ -249,8 +357,16 @@ abstract class AppLocalizations {
   /// No description provided for @universityCommunityMissing.
   ///
   /// In en, this message translates to:
-  /// **'We couldn't find your university community.'**
+  /// **'We couldn\'t find your university community.'**
   String get universityCommunityMissing;
+
+  String get logout;
+  String get shareLocation;
+  String get shareLocationDesc;
+  String get homeCampusLabel;
+  String get homeCampusFallback;
+  String get homeFeedEmpty;
+  String get categoryFood;
 
   /// No description provided for @justNow.
   ///
@@ -262,85 +378,19 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{minutes} min ago'**
-  String minutesAgo(int minutes);
+  String minutesAgo(Object minutes);
 
   /// No description provided for @hoursAgo.
   ///
   /// In en, this message translates to:
   /// **'{hours} hours ago'**
-  String hoursAgo(int hours);
+  String hoursAgo(Object hours);
 
   /// No description provided for @daysAgo.
   ///
   /// In en, this message translates to:
   /// **'{days} days ago'**
-  String daysAgo(int days);
-
-  /// No description provided for @homeCampusLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Campus'**
-  String get homeCampusLabel;
-
-  /// No description provided for @homeCampusFallback.
-  ///
-  /// In en, this message translates to:
-  /// **'Yonsei University'**
-  String get homeCampusFallback;
-
-  /// No description provided for @homeFeedEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No posts yet. Share something to get started!'**
-  String get homeFeedEmpty;
-
-  /// No description provided for @categoryFood.
-  ///
-  /// In en, this message translates to:
-  /// **'Food'**
-  String get categoryFood;
-
-  /// No description provided for @categoryClasses.
-  ///
-  /// In en, this message translates to:
-  /// **'Classes'**
-  String get categoryClasses;
-
-  /// No description provided for @categoryHousing.
-  ///
-  /// In en, this message translates to:
-  /// **'Housing'**
-  String get categoryHousing;
-
-  /// No description provided for @categoryLifeInKorea.
-  ///
-  /// In en, this message translates to:
-  /// **'Life in Korea'**
-  String get categoryLifeInKorea;
-
-  /// No description provided for @writePostTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Write a post'**
-  String get writePostTitle;
-
-  /// No description provided for @writePostHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Share what's happening on campus'**
-  String get writePostHint;
-
-  /// No description provided for @cancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get cancel;
-
-  /// No description provided for @submitPost.
-  ///
-  /// In en, this message translates to:
-  /// **'Post'**
-  String get submitPost;
+  String daysAgo(Object days);
 }
 
 class _AppLocalizationsDelegate
@@ -353,12 +403,8 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) => <String>[
-        'en',
-        'ja',
-        'ko',
-        'zh'
-      ].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'ja', 'ko', 'zh'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

@@ -1,4 +1,4 @@
-﻿// ignore: unused_import
+// ignore: unused_import
 import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
@@ -9,16 +9,10 @@ class AppLocalizationsKo extends AppLocalizations {
   AppLocalizationsKo([String locale = 'ko']) : super(locale);
 
   @override
-  String get appName => '?�리';
+  String get appName => '끼리';
 
   @override
-  String get welcome => 'Kkiri에 오신 것을 환영해요';
-
-  @override
-  String get startAnonymous => '익명으로 시작하기';
-
-  @override
-  String get emailLogin => '이메일로 로그인';
+  String get home => '홈';
 
   @override
   String get profile => '프로필';
@@ -33,76 +27,103 @@ class AppLocalizationsKo extends AppLocalizations {
   String get map => '지도';
 
   @override
-  String get board => '게시판';
+  String get board => '커뮤니티';
 
   @override
   String get settings => '설정';
 
   @override
-  String get report => '?�고?�기';
+  String get welcome => '끼리에 오신 것을 환영합니다';
 
   @override
-  String get block => '차단?�기';
+  String get welcomeSubtitle => '한국에서의 첫 친구를 여기서 만나보세요';
 
   @override
-  String get post => '게시글';
+  String get findMyPeople => '내 사람 찾기';
 
   @override
-  String get comment => '?��?';
+  String get peopleNearYou => '내 주변 사람들';
 
   @override
-  String get like => '좋아요';
+  String get seeMore => '더 보기';
 
   @override
-  String get anonymous => '익명';
+  String get myCommunities => '내 커뮤니티';
+
+  @override
+  String get manage => '관리';
+
+  @override
+  String get smallEvents => '소규모 모임';
+
+  @override
+  String get smallEventsSubtitle => '붐비지 않게, 자연스럽게 만나요.';
+
+  @override
+  String get sayHi => '인사하기';
+
+  @override
+  String get sendRequest => '메시지 요청 보내기';
+
+  @override
+  String get profileSaved => '프로필이 저장되었습니다';
+
+  @override
+  String get changePhoto => '사진 변경';
+
+  @override
+  String get displayName => '닉네임';
+
+  @override
+  String get age => '나이';
+
+  @override
+  String get gender => '성별';
+
+  @override
+  String get bio => '자기소개';
 
   @override
   String get save => '저장';
 
   @override
-  String get logout => '로그아웃';
+  String get genderMale => '남성';
 
   @override
-  String get language => '?�어';
+  String get genderFemale => '여성';
 
   @override
-  String get shareLocation => '?�치 공유 ?�용';
+  String get genderOther => '기타';
 
   @override
-  String get shareLocationDesc => '근처 친구 추천에 사용됩니다';
+  String get language => '언어';
 
   @override
-  String get homeCampusLabel => 'ķ۽';
+  String get languageEnglish => '영어';
 
   @override
-  String get homeCampusFallback => '�������б�';
+  String get languageKorean => '한국어';
 
   @override
-  String get homeFeedEmpty => '���� �Խñ��� �����ϴ�. ù ���� ���ܺ�����!';
+  String get languageJapanese => '일본어';
 
   @override
-  String get categoryFood => '����';
+  String get languageChinese => '중국어';
 
   @override
-  String get categoryClasses => '����';
+  String get report => '신고';
 
   @override
-  String get categoryHousing => '�ְ�';
+  String get block => '차단';
 
   @override
-  String get categoryLifeInKorea => '�ѱ� ��Ȱ';
+  String get reportDescription => '게시글, 댓글 또는 사용자를 신고할 수 있습니다.';
 
   @override
-  String get writePostTitle => '�۾���';
+  String get blockDescription => '차단한 사용자의 게시글과 채팅은 보이지 않습니다.';
 
   @override
-  String get writePostHint => 'ķ�۽� �ҽ��� ���ܺ�����';
-
-  @override
-  String get cancel => '���';
-
-  @override
-  String get submitPost => '�Խ�';
+  String get anonymous => '익명';
 
   @override
   String get universityCommunityTitle => '대학교 커뮤니티';
@@ -115,16 +136,58 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get universityCommunityMissing => '대학교 커뮤니티를 찾지 못했습니다.';
+  @override
+  String get logout => '로그아웃';
+
+  @override
+  String get shareLocation => '위치 공유';
+  @override
+  String get shareLocationDesc => '내 위치를 공유할 수 있습니다.';
+  @override
+  String get homeCampusLabel => '내 캠퍼스';
+  @override
+  String get homeCampusFallback => '내 캠퍼스를 찾을 수 없습니다.';
+  @override
+  String get homeFeedEmpty => '홈 피드에 아직 게시물이 없습니다.';
+  @override
+  String get categoryFood => '음식';
 
   @override
   String get justNow => '방금 전';
 
   @override
-  String minutesAgo(int minutes) => '$minutes분 전';
+  String get categoryClasses => '수업';
+  @override
+  String get categoryHousing => '주거';
+  @override
+  String get categoryLifeInKorea => '한국 생활';
+  @override
+  String get writePostTitle => '게시글 작성';
+  @override
+  String get writePostHint => '게시글을 입력하세요';
+  @override
+  String get cancel => '취소';
+  @override
+  String get submitPost => '게시하기';
+  @override
+  String get post => '게시글';
+  @override
+  String get comment => '댓글';
+  @override
+  String get like => '좋아요';
 
   @override
-  String hoursAgo(int hours) => '$hours시간 전';
+  String minutesAgo(Object minutes) {
+    return '$minutes분 전';
+  }
 
   @override
-  String daysAgo(int days) => '$days일 전';
+  String hoursAgo(Object hours) {
+    return '$hours시간 전';
+  }
+
+  @override
+  String daysAgo(Object days) {
+    return '$days일 전';
+  }
 }
