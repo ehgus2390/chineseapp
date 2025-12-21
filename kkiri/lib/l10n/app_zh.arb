@@ -58,7 +58,27 @@
   "universityCommunitySubtitle": "仅限你的校园",
   "universityCommunityEmpty": "校园社区还没有帖子。",
   "universityCommunityMissing": "未找到你的大学社区。",
-  "justNow": "刚刚",  "minutesAgo": "{minutes}分钟前",
+
+  "homeCampusLabel": "校园",
+  "homeCampusFallback": "请设置校园",
+  "homeFeedEmpty": "校园社区没有帖子。",
+  "categoryFood": "食物",
+  "categoryClasses": "课程",
+  "shareLocation": "分享位置",
+  "shareLocationDesc": "用于推荐你附近的朋友",
+  "logout": "退出登录",
+  "categoryHousing": "住房",
+  "categoryLifeInKorea": "韩国生活",
+  "writePostTitle": "写帖子",
+  "writePostHint": "请输入帖子内容",
+  "cancel": "取消",
+  "submitPost": "提交帖子",
+  "post": "帖子",
+  "comment": "评论",
+  "like": "点赞",
+  
+  "justNow": "刚刚",
+  "minutesAgo": "{minutes}分钟前",
   "hoursAgo": "{hours}小时前",
   "daysAgo": "{days}天前"
 }

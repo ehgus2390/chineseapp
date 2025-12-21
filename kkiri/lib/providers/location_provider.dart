@@ -9,8 +9,21 @@ class LocationProvider extends ChangeNotifier {
   Position? position;
   String? errorMessage;
   bool isUpdating = false;
+  bool _initialized = false;
+  bool get initialized => _initialized;
 
   StreamSubscription<Position>? _positionSub;
+
+  Future<void> init() async {
+    if (_initialized) return;
+    _initialized = true;
+
+    // ✅ 여기서만 권한 / 위치 요청
+    // await Geolocator.requestPermission();
+    // await Geolocator.getCurrentPosition();
+
+    notifyListeners();
+  }
 
   // ───────────────────────── 권한 체크 ─────────────────────────
   Future<bool> _ensurePermission() async {
@@ -47,7 +60,6 @@ class LocationProvider extends ChangeNotifier {
       SetOptions(merge: true),
     );
   }
-
 
   // ───────────────────────── 자동 위치 업데이트 ─────────────────────────
   Future<void> startAutoUpdate(String uid) async {
@@ -110,9 +122,9 @@ class LocationProvider extends ChangeNotifier {
 
   // ───────────────────────── 근처 사용자 쿼리 ─────────────────────────
   Stream<List<DocumentSnapshot<Map<String, dynamic>>>> nearbyUsersStream(
-      String uid,
-      double radiusKm,
-      ) {
+    String uid,
+    double radiusKm,
+  ) {
     // final usersRef = db.collection('users');
     //
     // return usersRef.doc(uid).snapshots().asyncExpand((snap) {

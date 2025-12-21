@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
+import '../../providers/location_provider.dart';
+import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -36,6 +37,14 @@ class _HomeScreenState extends State<HomeScreen> {
   int _locationToIndex(String location) {
     final matchIndex = _tabs.indexWhere((path) => location.startsWith(path));
     return matchIndex == -1 ? 2 : matchIndex;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      context.read<LocationProvider>().init();
+    });
   }
 
   @override

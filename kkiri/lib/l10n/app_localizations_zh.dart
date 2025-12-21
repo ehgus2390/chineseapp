@@ -138,55 +138,55 @@ class AppLocalizationsZh extends AppLocalizations {
   String get universityCommunityMissing => '未找到你的大学社区。';
 
   @override
-  String get homeCampusLabel => 'Campus';
+  String get homeCampusLabel => '校园';
 
   @override
-  String get homeCampusFallback => 'Please set your campus';
+  String get homeCampusFallback => '请设置校园';
 
   @override
-  String get homeFeedEmpty => 'No posts in your feed yet.';
+  String get homeFeedEmpty => '校园社区没有帖子。';
 
   @override
-  String get categoryFood => 'Food';
+  String get categoryFood => '食物';
 
   @override
-  String get categoryClasses => 'Classes';
+  String get categoryClasses => '课程';
 
   @override
-  String get shareLocation => 'Share location';
+  String get shareLocation => '分享位置';
 
   @override
-  String get shareLocationDesc => 'Share your location.';
+  String get shareLocationDesc => '用于推荐你附近的朋友';
 
   @override
-  String get logout => 'Logout';
+  String get logout => '退出登录';
 
   @override
-  String get categoryHousing => 'Housing';
+  String get categoryHousing => '住房';
 
   @override
-  String get categoryLifeInKorea => 'Life in Korea';
+  String get categoryLifeInKorea => '韩国生活';
 
   @override
-  String get writePostTitle => 'Write a post';
+  String get writePostTitle => '写帖子';
 
   @override
-  String get writePostHint => 'Share what\'s happening on your campus';
+  String get writePostHint => '请输入帖子内容';
 
   @override
-  String get cancel => 'Cancel';
+  String get cancel => '取消';
 
   @override
-  String get submitPost => 'Submit Post';
+  String get submitPost => '提交帖子';
 
   @override
-  String get post => 'Post';
+  String get post => '帖子';
 
   @override
-  String get comment => 'Comment';
+  String get comment => '评论';
 
   @override
-  String get like => 'Like';
+  String get like => '点赞';
 
   @override
   String get justNow => '刚刚';

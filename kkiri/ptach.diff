@@ -1,100 +1,249 @@
-diff --git a/kkiri/lib/main.dart b/kkiri/lib/main.dart
-index 1c06e3d9c1edde1c923249236df7c5f6a2a2366a..296df2376d37dd343620bc71b3fc4089153f7fa3 100644
---- a/kkiri/lib/main.dart
-+++ b/kkiri/lib/main.dart
-@@ -1,84 +1,84 @@
- import 'package:firebase_core/firebase_core.dart';
- import 'package:flutter/material.dart';
- import 'package:go_router/go_router.dart';
- import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'firebase_options.dart';
+import 'providers/auth_provider.dart';
+import 'providers/chat_provider.dart';
+import 'providers/match_provider.dart';
+import 'providers/location_provider.dart';
+
+import 'screens/auth/sign_in_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/map/nearby_map_screen.dart';
+import 'screens/settings/settings_screen.dart';
+import 'screens/tabs/chat_list_screen.dart';
+import 'screens/tabs/discover_screen.dart';
+import 'screens/tabs/matches_screen.dart';
+import 'screens/tabs/profile_screen.dart'; // (사용 안 하면 지워도 됨)
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Firebase init (안전하게 try/catch 권장)
+  try {
+    final options = DefaultFirebaseOptions.currentPlatform;
+    if (options != null) {
+      await Firebase.initializeApp(options: options);
+    } else {
+      await Firebase.initializeApp();
+    }
+  } catch (e, s) {
+    debugPrint('🔥 Firebase init error: $e');
+    debugPrintStack(stackTrace: s);
+  }
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => MatchProvider()),
+        
+      ],
+      child: const KkiriApp(),
+    ),
+  );
+}
+
+/// ✅ 핵심: GoRouter는 build() 안에서 만들지 말고, initState에서 1회 생성
+class KkiriApp extends StatefulWidget {
+  const KkiriApp({super.key});
+
+  @override
+  State<KkiriApp> createState() => _KkiriAppState();
+}
+
+class _KkiriAppState extends State<KkiriApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ watch() 쓰면 안 됨. initState에서는 read()만.
+    final auth = context.read<AuthProvider>();
+
+    _router = GoRouter(
+      initialLocation: '/home/discover',
+      refreshListenable: auth,
+
+      // (선택) 디버그 로그 보고 싶으면
+      // debugLogDiagnostics: true,
+
+      redirect: (context, state) {
+        // ✅ redirect는 앱 부팅 직후에도 호출될 수 있음
+        final isLoggedIn = auth.currentUser != null;
+        final loggingIn = state.matchedLocation == '/sign-in';
+
+        if (!isLoggedIn) {
+          return loggingIn ? null : '/sign-in';
+        }
+
+        if (loggingIn) {
+          return '/home/discover';
+        }
+
+        return null;
+      },
+
+      routes: [
+        GoRoute(
+          path: '/sign-in',
+          builder: (_, __) => const SignInScreen(),
+        ),
+
+        ShellRoute(
+          builder: (context, state, child) => HomeScreen(child: child),
+          routes: [
+            GoRoute(
+              path: '/home/discover',
+              builder: (_, __) => const DiscoverScreen(),
+            ),
+            GoRoute(
+              path: '/home/matches',
+              builder: (_, __) => const MatchesScreen(),
+            ),
+            GoRoute(
+              path: '/home/chat',
+              builder: (_, __) => const ChatListScreen(),
+            ),
+            GoRoute(
+              path: '/home/map',
+              builder: (_, __) => const NearbyMapScreen(),
+            ),
+            GoRoute(
+              path: '/home/settings',
+              builder: (_, __) => const SettingsScreen(),
+            ),
+
+            // ProfilePage를 실제로 쓰면 여기 추가하고,
+            // 안 쓰면 import부터 지우면 됨.
+            // GoRoute(
+            //   path: '/home/profile',
+            //   builder: (_, __) => const ProfilePage(),
+            // ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      title: 'HeartLink',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.pinkAccent,
+      ),
+      routerConfig: _router,
+    );
+  }
+}
+
+
+
+
+# diff --git a/kkiri/lib/main.dart b/kkiri/lib/main.dart
+# index 1c06e3d9c1edde1c923249236df7c5f6a2a2366a..296df2376d37dd343620bc71b3fc4089153f7fa3 100644
+# --- a/kkiri/lib/main.dart
+# +++ b/kkiri/lib/main.dart
+# @@ -1,84 +1,84 @@
+#  import 'package:firebase_core/firebase_core.dart';
+#  import 'package:flutter/material.dart';
+#  import 'package:go_router/go_router.dart';
+#  import 'package:provider/provider.dart';
  
- import 'firebase_options.dart';
- import 'providers/auth_provider.dart';
- import 'providers/chat_provider.dart';
--import 'providers/friends_provider.dart';
-+import 'providers/match_provider.dart';
- import 'providers/location_provider.dart';
- import 'screens/auth/sign_in_screen.dart';
- import 'screens/home_screen.dart';
- import 'screens/map/nearby_map_screen.dart';
- import 'screens/settings/settings_screen.dart';
--import 'screens/tabs/board_screen.dart';
- import 'screens/tabs/chat_list_screen.dart';
--import 'screens/tabs/friends_screen.dart';
-+import 'screens/tabs/discover_screen.dart';
-+import 'screens/tabs/matches_screen.dart';
- import 'screens/tabs/profile_screen.dart';
+#  import 'firebase_options.dart';
+#  import 'providers/auth_provider.dart';
+#  import 'providers/chat_provider.dart';
+# -import 'providers/friends_provider.dart';
+# +import 'providers/match_provider.dart';
+#  import 'providers/location_provider.dart';
+#  import 'screens/auth/sign_in_screen.dart';
+#  import 'screens/home_screen.dart';
+#  import 'screens/map/nearby_map_screen.dart';
+#  import 'screens/settings/settings_screen.dart';
+# -import 'screens/tabs/board_screen.dart';
+#  import 'screens/tabs/chat_list_screen.dart';
+# -import 'screens/tabs/friends_screen.dart';
+# +import 'screens/tabs/discover_screen.dart';
+# +import 'screens/tabs/matches_screen.dart';
+#  import 'screens/tabs/profile_screen.dart';
  
- Future<void> main() async {
-   WidgetsFlutterBinding.ensureInitialized();
-   final options = DefaultFirebaseOptions.currentPlatform;
-   if (options != null) {
-     await Firebase.initializeApp(options: options);
-   } else {
-     await Firebase.initializeApp();
-   }
+
+#  Future<void> main() async {
+#    WidgetsFlutterBinding.ensureInitialized();
+#    final options = DefaultFirebaseOptions.currentPlatform;
+#    if (options != null) {
+#      await Firebase.initializeApp(options: options);
+#    } else {
+#      await Firebase.initializeApp();
+#    }
  
-   runApp(
-     MultiProvider(
-       providers: [
-         ChangeNotifierProvider(create: (_) => AuthProvider()),
-         ChangeNotifierProvider(create: (_) => ChatProvider()),
--        ChangeNotifierProvider(create: (_) => FriendsProvider()),
-+        ChangeNotifierProvider(create: (_) => MatchProvider()),
-         ChangeNotifierProvider(create: (_) => LocationProvider()),
-       ],
-       child: const KkiriApp(),
-     ),
-   );
- }
+#    runApp(
+#      MultiProvider(
+#        providers: [
+#          ChangeNotifierProvider(create: (_) => AuthProvider()),
+#          ChangeNotifierProvider(create: (_) => ChatProvider()),
+# -        ChangeNotifierProvider(create: (_) => FriendsProvider()),
+# +        ChangeNotifierProvider(create: (_) => MatchProvider()),
+#          ChangeNotifierProvider(create: (_) => LocationProvider()),
+#        ],
+#        child: const KkiriApp(),
+#      ),
+#    );
+#  }
  
- class KkiriApp extends StatelessWidget {
-   const KkiriApp({super.key});
+#  class KkiriApp extends StatelessWidget {
+#    const KkiriApp({super.key});
  
-   @override
-   Widget build(BuildContext context) {
-     final auth = context.watch<AuthProvider>();
-     final router = GoRouter(
--      initialLocation: '/home/chat',
-+      initialLocation: '/home/discover',
-       refreshListenable: auth,
-       redirect: (context, state) {
-         final isLoggedIn = auth.currentUser != null;
-         final loggingIn = state.matchedLocation == '/sign-in';
-         if (!isLoggedIn) {
-           return loggingIn ? null : '/sign-in';
-         }
-         if (loggingIn) {
--          return '/home/chat';
-+          return '/home/discover';
-         }
-         return null;
-       },
-       routes: [
-         GoRoute(path: '/sign-in', builder: (_, __) => const SignInScreen()),
-         ShellRoute(
-           builder: (context, state, child) => HomeScreen(child: child),
-           routes: [
--            GoRoute(path: '/home/profile', builder: (_, __) => const ProfilePage()),
--            GoRoute(path: '/home/friends', builder: (_, __) => const FriendsScreen()),
-+            GoRoute(path: '/home/discover', builder: (_, __) => const DiscoverScreen()),
-+            GoRoute(path: '/home/matches', builder: (_, __) => const MatchesScreen()),
-             GoRoute(path: '/home/chat', builder: (_, __) => const ChatListScreen()),
-             GoRoute(path: '/home/map', builder: (_, __) => const NearbyMapScreen()),
--            GoRoute(path: '/home/board', builder: (_, __) => const BoardScreen()),
-+
-             GoRoute(path: '/home/settings', builder: (_, __) => const SettingsScreen()),
-           ],
-         ),
-       ],
-     );
+#    @override
+#    Widget build(BuildContext context) {
+#      final auth = context.watch<AuthProvider>();
+#      final router = GoRouter(
+# -      initialLocation: '/home/chat',
+# +      initialLocation: '/home/discover',
+#        refreshListenable: auth,
+#        redirect: (context, state) {
+#          final isLoggedIn = auth.currentUser != null;
+#          final loggingIn = state.matchedLocation == '/sign-in';
+#          if (!isLoggedIn) {
+#            return loggingIn ? null : '/sign-in';
+#          }
+#          if (loggingIn) {
+# -          return '/home/chat';
+# +          return '/home/discover';
+#          }
+#          return null;
+#        },
+#        routes: [
+#          GoRoute(path: '/sign-in', builder: (_, __) => const SignInScreen()),
+#          ShellRoute(
+#            builder: (context, state, child) => HomeScreen(child: child),
+#            routes: [
+# -            GoRoute(path: '/home/profile', builder: (_, __) => const ProfilePage()),
+# -            GoRoute(path: '/home/friends', builder: (_, __) => const FriendsScreen()),
+# +            GoRoute(path: '/home/discover', builder: (_, __) => const DiscoverScreen()),
+# +            GoRoute(path: '/home/matches', builder: (_, __) => const MatchesScreen()),
+#              GoRoute(path: '/home/chat', builder: (_, __) => const ChatListScreen()),
+#              GoRoute(path: '/home/map', builder: (_, __) => const NearbyMapScreen()),
+# -            GoRoute(path: '/home/board', builder: (_, __) => const BoardScreen()),
+# +
+#              GoRoute(path: '/home/settings', builder: (_, __) => const SettingsScreen()),
+#            ],
+#          ),
+#        ],
+#      );
  
-     return MaterialApp.router(
--      title: 'Kkiri',
--      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blueAccent),
-+      title: 'HeartLink',
-+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.pinkAccent),
-       routerConfig: router,
-     );
-   }
- }
+#      return MaterialApp.router(
+# -      title: 'Kkiri',
+# -      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blueAccent),
+# +      title: 'HeartLink',
+# +      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.pinkAccent),
+#        routerConfig: router,
+#      );
+#    }
+#  }

@@ -153,13 +153,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get categoryClasses => '수업';
 
   @override
-  String get shareLocation => 'Share location';
+  String get shareLocation => '위치 정보 공유';
 
   @override
-  String get shareLocationDesc => 'Share your location.';
+  String get shareLocationDesc => '내 주변 친구 추천에 사용됩니다';
 
   @override
-  String get logout => 'Logout';
+  String get logout => '로그아웃';
 
   @override
   String get categoryHousing => '주거';
