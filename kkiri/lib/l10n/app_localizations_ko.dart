@@ -136,45 +136,60 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get universityCommunityMissing => '대학교 커뮤니티를 찾지 못했습니다.';
-  @override
-  String get logout => '로그아웃';
 
   @override
-  String get shareLocation => '위치 공유';
+  String get homeCampusLabel => '캠퍼스';
+
   @override
-  String get shareLocationDesc => '내 위치를 공유할 수 있습니다.';
+  String get homeCampusFallback => '캠퍼스를 설정해주세요';
+
   @override
-  String get homeCampusLabel => '내 캠퍼스';
-  @override
-  String get homeCampusFallback => '내 캠퍼스를 찾을 수 없습니다.';
-  @override
-  String get homeFeedEmpty => '홈 피드에 아직 게시물이 없습니다.';
+  String get homeFeedEmpty => '캠퍼스에 새로운 소식이 없습니다.';
+
   @override
   String get categoryFood => '음식';
 
   @override
-  String get justNow => '방금 전';
+  String get categoryClasses => '수업';
 
   @override
-  String get categoryClasses => '수업';
+  String get shareLocation => 'Share location';
+
+  @override
+  String get shareLocationDesc => 'Share your location.';
+
+  @override
+  String get logout => 'Logout';
+
   @override
   String get categoryHousing => '주거';
+
   @override
   String get categoryLifeInKorea => '한국 생활';
+
   @override
   String get writePostTitle => '게시글 작성';
+
   @override
   String get writePostHint => '게시글을 입력하세요';
+
   @override
   String get cancel => '취소';
+
   @override
-  String get submitPost => '게시하기';
+  String get submitPost => '게시글 등록';
+
   @override
   String get post => '게시글';
+
   @override
   String get comment => '댓글';
+
   @override
   String get like => '좋아요';
+
+  @override
+  String get justNow => '방금 전';
 
   @override
   String minutesAgo(Object minutes) {

@@ -138,38 +138,53 @@ class AppLocalizationsJa extends AppLocalizations {
   String get universityCommunityMissing => '大学コミュニティが見つかりませんでした。';
 
   @override
-  String get logout => 'ログアウト';
+  String get homeCampusLabel => 'キャンパス';
+
   @override
-  String get shareLocation => '位置を共有';
+  String get homeCampusFallback => 'キャンパスを設定してください';
+
   @override
-  String get shareLocationDesc => '自分の位置を共有できます。';
-  @override
-  String get homeCampusLabel => '私のキャンパス';
-  @override
-  String get homeCampusFallback => '私のキャンパスが見つかりません。';
-  @override
-  String get homeFeedEmpty => 'ホームフィードにはまだ投稿がありません。';
+  String get homeFeedEmpty => 'キャンパスに新しい投稿がありません。';
+
   @override
   String get categoryFood => '食事';
 
   @override
   String get categoryClasses => '授業';
+
   @override
-  String get categoryHousing => '住居';
+  String get shareLocation => '位置情報共有';
+
+  @override
+  String get shareLocationDesc => '내 주변 친구 추천에 사용됩니다';
+
+  @override
+  String get logout => 'ログアウト';
+
+  @override
+  String get categoryHousing => '住宅';
+
   @override
   String get categoryLifeInKorea => '韓国生活';
+
   @override
-  String get writePostTitle => '投稿を書く';
+  String get writePostTitle => '投稿作成';
+
   @override
   String get writePostHint => '投稿を入力してください';
+
   @override
   String get cancel => 'キャンセル';
+
   @override
-  String get submitPost => '投稿する';
+  String get submitPost => '投稿を送信';
+
   @override
   String get post => '投稿';
+
   @override
   String get comment => 'コメント';
+
   @override
   String get like => 'いいね';
 

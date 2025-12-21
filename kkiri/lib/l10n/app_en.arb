@@ -58,6 +58,26 @@
   "universityCommunitySubtitle": "Only for your campus",
   "universityCommunityEmpty": "No posts yet in your campus community.",
   "universityCommunityMissing": "We couldn't find your university community.",
+
+  "homeCampusLabel": "Campus",
+  "homeCampusFallback": "Please set your campus",
+  "homeFeedEmpty": "No posts in your feed yet.",
+  "categoryFood": "Food",
+  "categoryClasses": "Classes",
+  "shareLocation": "Share location",
+  "shareLocationDesc": "Share your location.",
+  "logout": "Logout",
+  "categoryHousing": "Housing",
+  "categoryLifeInKorea": "Life in Korea",
+  "writePostTitle": "Write a post",
+  "writePostHint": "Share what's happening on your campus",
+  "cancel": "Cancel",
+  "submitPost": "Submit Post",
+  "post": "Post",
+  "comment": "Comment",
+  "like": "Like",
+
+
   "justNow": "Just now",  "minutesAgo": "{minutes} min ago",
   "hoursAgo": "{hours} hours ago",
   "daysAgo": "{days} days ago"

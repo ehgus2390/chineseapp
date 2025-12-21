@@ -141,39 +141,53 @@ class AppLocalizationsEn extends AppLocalizations {
       'We couldn\'t find your university community.';
 
   @override
-  String get logout => 'Logout';
-  @override
-  String get shareLocation => 'Share location';
-  @override
-  String get shareLocationDesc => 'You can share your location.';
-  @override
-  String get homeCampusLabel => 'My campus';
-  @override
-  String get homeCampusFallback => 'We couldn\'t find your campus.';
+  String get homeCampusLabel => 'Campus';
 
   @override
-  String get homeFeedEmpty => 'No posts yet in your home feed.';
+  String get homeCampusFallback => 'Please set your campus';
+
+  @override
+  String get homeFeedEmpty => 'No posts in your feed yet.';
+
   @override
   String get categoryFood => 'Food';
 
   @override
   String get categoryClasses => 'Classes';
+
+  @override
+  String get shareLocation => 'Share location';
+
+  @override
+  String get shareLocationDesc => 'Share your location.';
+
+  @override
+  String get logout => 'Logout';
+
   @override
   String get categoryHousing => 'Housing';
+
   @override
   String get categoryLifeInKorea => 'Life in Korea';
+
   @override
   String get writePostTitle => 'Write a post';
+
   @override
-  String get writePostHint => 'Enter your post';
+  String get writePostHint => 'Share what\'s happening on your campus';
+
   @override
   String get cancel => 'Cancel';
+
   @override
-  String get submitPost => 'Submit post';
+  String get submitPost => 'Submit Post';
+
   @override
   String get post => 'Post';
+
   @override
   String get comment => 'Comment';
+
   @override
   String get like => 'Like';
 

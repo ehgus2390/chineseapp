@@ -360,13 +360,107 @@ abstract class AppLocalizations {
   /// **'We couldn\'t find your university community.'**
   String get universityCommunityMissing;
 
-  String get logout;
-  String get shareLocation;
-  String get shareLocationDesc;
+  /// No description provided for @homeCampusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Campus'**
   String get homeCampusLabel;
+
+  /// No description provided for @homeCampusFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Please set your campus'**
   String get homeCampusFallback;
+
+  /// No description provided for @homeFeedEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No posts in your feed yet.'**
   String get homeFeedEmpty;
+
+  /// No description provided for @categoryFood.
+  ///
+  /// In en, this message translates to:
+  /// **'Food'**
   String get categoryFood;
+
+  /// No description provided for @categoryClasses.
+  ///
+  /// In en, this message translates to:
+  /// **'Classes'**
+  String get categoryClasses;
+
+  /// No description provided for @shareLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Share location'**
+  String get shareLocation;
+
+  /// No description provided for @shareLocationDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your location.'**
+  String get shareLocationDesc;
+
+  /// No description provided for @logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get logout;
+
+  /// No description provided for @categoryHousing.
+  ///
+  /// In en, this message translates to:
+  /// **'Housing'**
+  String get categoryHousing;
+
+  /// No description provided for @categoryLifeInKorea.
+  ///
+  /// In en, this message translates to:
+  /// **'Life in Korea'**
+  String get categoryLifeInKorea;
+
+  /// No description provided for @writePostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a post'**
+  String get writePostTitle;
+
+  /// No description provided for @writePostHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share what\'s happening on your campus'**
+  String get writePostHint;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @submitPost.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Post'**
+  String get submitPost;
+
+  /// No description provided for @post.
+  ///
+  /// In en, this message translates to:
+  /// **'Post'**
+  String get post;
+
+  /// No description provided for @comment.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment'**
+  String get comment;
+
+  /// No description provided for @like.
+  ///
+  /// In en, this message translates to:
+  /// **'Like'**
+  String get like;
 
   /// No description provided for @justNow.
   ///

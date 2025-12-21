@@ -58,7 +58,24 @@
   "universityCommunitySubtitle": "내 캠퍼스 전용",
   "universityCommunityEmpty": "캠퍼스 커뮤니티에 아직 게시글이 없습니다.",
   "universityCommunityMissing": "대학교 커뮤니티를 찾지 못했습니다.",
-  "justNow": "방금 전",  "minutesAgo": "{minutes}분 전",
+
+  "homeCampusLabel": "캠퍼스",
+  "homeCampusFallback": "캠퍼스를 설정해주세요",
+  "homeFeedEmpty": "캠퍼스에 새로운 소식이 없습니다.",
+  "categoryFood": "음식",
+  "categoryClasses": "수업",
+  "categoryHousing": "주거",
+  "categoryLifeInKorea": "한국 생활",
+  "writePostTitle": "게시글 작성",
+  "writePostHint": "게시글을 입력하세요",
+  "cancel": "취소",
+  "submitPost": "게시글 등록",
+  "post": "게시글",
+  "comment": "댓글",
+  "like": "좋아요",
+
+  "justNow": "방금 전",
+  "minutesAgo": "{minutes}분 전",
   "hoursAgo": "{hours}시간 전",
   "daysAgo": "{days}일 전"
 }
