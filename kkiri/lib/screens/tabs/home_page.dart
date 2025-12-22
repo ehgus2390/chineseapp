@@ -14,7 +14,7 @@ class HomePage extends StatelessWidget {
     final controller = TextEditingController();
     final postService = context.read<PostService>();
     final auth = context.read<AuthProvider>();
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
 
     final user = auth.currentUser ?? await auth.signInAnonymouslyUser();
     if (user == null) return;
@@ -52,7 +52,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     final auth = context.watch<AuthProvider>();
     final postService = context.read<PostService>();
 
@@ -138,7 +138,7 @@ class _CampusSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: uid == null

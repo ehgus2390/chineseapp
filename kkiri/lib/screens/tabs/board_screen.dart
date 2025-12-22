@@ -36,8 +36,7 @@ class BoardScreen extends StatelessWidget {
             child: const Text('취소'),
           ),
           ElevatedButton(
-            onPressed: () =>
-                Navigator.pop(context, controller.text.trim()),
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
             child: const Text('등록'),
           ),
         ],
@@ -72,10 +71,10 @@ class BoardScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: docs
                 .map((d) => PostTile(
-              postId: d.id,
-              data: d.data(),
-              showComments: true,
-            ))
+                      postId: d.id,
+                      data: d.data(),
+                      showComments: true,
+                    ))
                 .toList(),
           );
         },

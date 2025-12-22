@@ -33,7 +33,7 @@ class _UniversityCommunityFeedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     final provider = context.watch<CommunityProvider>();
 
     return Scaffold(
@@ -76,7 +76,7 @@ class _CommunityHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: communityStream,
@@ -145,7 +145,7 @@ class _CommunityPostList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
 
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 import '../services/post_service.dart';
+import '../widgets/post_tile.dart';
 
 class PostTile extends StatelessWidget {
   const PostTile({
@@ -31,7 +32,7 @@ class PostTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('?�명',
+            const Text('?�명',
                 style: TextStyle(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 4),
             Text(data['content'] ?? ''),
@@ -59,6 +60,3 @@ class PostTile extends StatelessWidget {
     );
   }
 }
-
-
-

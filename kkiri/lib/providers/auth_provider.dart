@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
-import '../../providers/locale_provider.dart';
-import '../../providers/auth_provider.dart';
 
 class AuthProvider extends ChangeNotifier {
   final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;

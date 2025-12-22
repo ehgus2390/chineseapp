@@ -52,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final location =
         GoRouter.of(context).routeInformationProvider.value.uri.toString();
     final currentIndex = _locationToIndex(location);
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       body: widget.child,

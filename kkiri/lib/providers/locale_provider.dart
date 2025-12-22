@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../providers/locale_provider.dart';
-import '../../providers/auth_provider.dart';
 
 class LocaleProvider extends ChangeNotifier {
   static const _prefLocaleKey = 'app_locale';

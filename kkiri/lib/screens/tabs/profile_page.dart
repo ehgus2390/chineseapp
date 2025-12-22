@@ -9,7 +9,6 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/storage_service.dart';
-import '../tabs/profile_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -84,7 +83,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.save)),
+        SnackBar(content: Text(AppLocalizations.of(context).save)),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -92,7 +91,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _openSettingsSheet(BuildContext context, String myUid) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
 
     showModalBottomSheet(
       context: context,
@@ -187,7 +186,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     final uid = auth.currentUser?.uid;
 
     if (uid == null) {

@@ -27,7 +27,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final localeProvider = context.watch<LocaleProvider>();
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     final uid = auth.currentUser?.uid;
 
     if (uid == null) {
