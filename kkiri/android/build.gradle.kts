@@ -41,3 +41,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         jvmTarget = "17"
     }
 }
+// ✅ CORRECT: Configures the existing "wrapper" task
+tasks.wrapper {
+    gradleVersion = "8.5."
+}

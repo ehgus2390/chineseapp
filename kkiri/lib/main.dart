@@ -1,4 +1,26 @@
 import 'package:flutter/material.dart';
+import 'screens/main_screen.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Kkiri Boot Test',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
+      ),
+      home: const MainScreen(), // 👈 여기서 MainScreen 연결
+    );
+  }
+}
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
