@@ -26,7 +26,7 @@ activeKeyFile?.inputStream()?.use(signingProps::load)
 
 android {
     namespace = "com.ant.company"
-    compileSdk = 36
+    compileSdk = 34
     ndkVersion = flutter.ndkVersion
 
     defaultConfig {
