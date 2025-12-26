@@ -40,7 +40,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => MatchProvider()),
-        
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
       ],
       child: const KkiriApp(),
     ),
@@ -146,11 +146,6 @@ class _KkiriAppState extends State<KkiriApp> {
 
 
 
-# diff --git a/kkiri/lib/main.dart b/kkiri/lib/main.dart
-# index 1c06e3d9c1edde1c923249236df7c5f6a2a2366a..296df2376d37dd343620bc71b3fc4089153f7fa3 100644
-# --- a/kkiri/lib/main.dart
-# +++ b/kkiri/lib/main.dart
-# @@ -1,84 +1,84 @@
 #  import 'package:firebase_core/firebase_core.dart';
 #  import 'package:flutter/material.dart';
 #  import 'package:go_router/go_router.dart';
