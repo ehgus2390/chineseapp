@@ -1,4 +1,4 @@
-// lib/screens/auth/login_screen.dart
+﻿// lib/screens/auth/login_screen.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 // 🔴 핵심: alias 사용
 import '../../providers/auth_provider.dart' as app_auth;
 import '../../state/app_state.dart';
+import '../main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,6 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    var success = false;
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -46,12 +48,20 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await appState.registerWithEmail(email, password);
       }
+      success = true;
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message ?? 'Authentication failed.')),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+
+    if (success && mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
     }
   }
 
@@ -81,6 +91,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     await context
                         .read<app_auth.AuthProvider>()
                         .signInAnonymously();
+                    if (!mounted) return;
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MainScreen()),
+                    );
                   } finally {
                     if (mounted) setState(() => _isSubmitting = false);
                   }

@@ -205,4 +205,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String daysAgo(Object days) {
     return '$days日前';
   }
+
+  @override
+  String get login => 'ログイン';
+
+  @override
+  String get requireEmailLoginTitle => 'メールログインが必要です';
+
+  @override
+  String requireEmailLoginMessage(Object featureName) {
+    return '$featureNameを利用するにはメールログインが必要です。';
+  }
 }

@@ -79,5 +79,8 @@
   "justNow": "たった今",
   "minutesAgo": "{minutes}分前",
   "hoursAgo": "{hours}時間前",
-  "daysAgo": "{days}日前"
+  "daysAgo": "{days}日前",
+  "login": "ログイン",
+  "requireEmailLoginTitle": "メールログインが必要です",
+  "requireEmailLoginMessage": "{featureName}を利用するにはメールログインが必要です。"
 }

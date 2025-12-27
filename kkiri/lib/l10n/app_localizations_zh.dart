@@ -205,4 +205,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String daysAgo(Object days) {
     return '$days天前';
   }
+
+  @override
+  String get login => '登录';
+
+  @override
+  String get requireEmailLoginTitle => '需要邮箱登录';
+
+  @override
+  String requireEmailLoginMessage(Object featureName) {
+    return '使用$featureName需要邮箱登录。';
+  }
 }

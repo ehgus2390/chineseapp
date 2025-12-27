@@ -208,4 +208,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String daysAgo(Object days) {
     return '$days days ago';
   }
+
+  @override
+  String get login => 'Login';
+
+  @override
+  String get requireEmailLoginTitle => 'Email login required';
+
+  @override
+  String requireEmailLoginMessage(Object featureName) {
+    return 'To use $featureName, please log in with email.';
+  }
 }

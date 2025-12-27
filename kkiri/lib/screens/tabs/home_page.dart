@@ -1,10 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/post_service.dart';
+import '../../utils/auth_guard.dart';
 import '../../widgets/post_tile.dart';
 
 class HomePage extends StatelessWidget {
@@ -14,9 +15,10 @@ class HomePage extends StatelessWidget {
     final controller = TextEditingController();
     final postService = context.read<PostService>();
     final auth = context.read<AuthProvider>();
-    final t = AppLocalizations.of(context);
+    final t = AppLocalizations.of(context)!;
 
-    final user = auth.currentUser ?? await auth.signInAnonymouslyUser();
+    if (!await requireEmailLogin(context, t.post)) return;
+    final user = auth.currentUser;
     if (user == null) return;
 
     final text = await showDialog<String>(
@@ -52,7 +54,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
+    final t = AppLocalizations.of(context)!;
     final auth = context.watch<AuthProvider>();
     final postService = context.read<PostService>();
 
@@ -138,7 +140,7 @@ class _CampusSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
+    final t = AppLocalizations.of(context)!;
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: uid == null

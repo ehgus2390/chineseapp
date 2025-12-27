@@ -1,12 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 
+import '../../l10n/app_localizations.dart';
+import '../../utils/auth_guard.dart';
 import '../../services/post_service.dart';
 import '../../widgets/post_tile.dart';
 import '../../providers/auth_provider.dart';
-import '../../state/app_state.dart';
 
 class BoardScreen extends StatelessWidget {
   const BoardScreen({super.key});
@@ -15,9 +15,10 @@ class BoardScreen extends StatelessWidget {
     final controller = TextEditingController();
     final postService = context.read<PostService>();
     final auth = context.read<AuthProvider>();
-    final appState = context.read<AppState>();
+    final t = AppLocalizations.of(context)!;
 
-    final fb.User? user = appState.user ?? await auth.signInAnonymouslyUser();
+    if (!await requireEmailLogin(context, t.post)) return;
+    final user = auth.currentUser;
     if (user == null) return;
 
     final text = await showDialog<String>(

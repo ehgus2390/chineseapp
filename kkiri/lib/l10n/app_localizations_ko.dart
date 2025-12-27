@@ -205,4 +205,15 @@ class AppLocalizationsKo extends AppLocalizations {
   String daysAgo(Object days) {
     return '$days일 전';
   }
+
+  @override
+  String get login => '로그인';
+
+  @override
+  String get requireEmailLoginTitle => '이메일 로그인이 필요합니다';
+
+  @override
+  String requireEmailLoginMessage(Object featureName) {
+    return '$featureName 기능을 사용하려면 이메일 로그인이 필요합니다.';
+  }
 }

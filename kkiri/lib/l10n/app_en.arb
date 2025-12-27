@@ -80,5 +80,8 @@
 
   "justNow": "Just now",  "minutesAgo": "{minutes} min ago",
   "hoursAgo": "{hours} hours ago",
-  "daysAgo": "{days} days ago"
+  "daysAgo": "{days} days ago",
+  "login": "Login",
+  "requireEmailLoginTitle": "Email login required",
+  "requireEmailLoginMessage": "To use {featureName}, please log in with email."
 }

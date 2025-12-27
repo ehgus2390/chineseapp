@@ -80,5 +80,8 @@
   "justNow": "刚刚",
   "minutesAgo": "{minutes}分钟前",
   "hoursAgo": "{hours}小时前",
-  "daysAgo": "{days}天前"
+  "daysAgo": "{days}天前",
+  "login": "登录",
+  "requireEmailLoginTitle": "需要邮箱登录",
+  "requireEmailLoginMessage": "使用{featureName}需要邮箱登录。"
 }

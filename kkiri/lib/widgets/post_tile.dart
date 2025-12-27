@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../l10n/app_localizations.dart';
+import '../utils/auth_guard.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
@@ -45,10 +48,9 @@ class PostTile extends StatelessWidget {
               icon: const Icon(Icons.favorite_border),
               label: Text('좋아??${(data['likesCount'] ?? 0)}'),
               onPressed: () async {
-                final auth = context.read<AuthProvider>();
-                final user =
-                    auth.currentUser ?? await auth.signInAnonymouslyUser();
-                final uid = user?.uid;
+                final t = AppLocalizations.of(context)!;
+                if (!await requireEmailLogin(context, t.like)) return;
+                final uid = context.read<AuthProvider>().currentUser?.uid;
                 if (uid == null) return;
                 await context.read<PostService>().toggleLike(postId, uid);
               },

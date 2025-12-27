@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/storage_service.dart';
+import '../../utils/auth_guard.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -288,8 +289,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed:
-                      _saving ? null : () => _saveProfile(auth, uid, data),
+                  onPressed: _saving
+                      ? null
+                      : () async {
+                          if (!await requireEmailLogin(context, t.profile)) {
+                            return;
+                          }
+                          await _saveProfile(auth, uid, data);
+                        },
                   icon: _saving
                       ? const SizedBox(
                           width: 16,

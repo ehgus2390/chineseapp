@@ -485,6 +485,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{days} days ago'**
   String daysAgo(Object days);
+
+  /// No description provided for @login.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get login;
+
+  /// No description provided for @requireEmailLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email login required'**
+  String get requireEmailLoginTitle;
+
+  /// No description provided for @requireEmailLoginMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'To use {featureName}, please log in with email.'**
+  String requireEmailLoginMessage(Object featureName);
 }
 
 class _AppLocalizationsDelegate
