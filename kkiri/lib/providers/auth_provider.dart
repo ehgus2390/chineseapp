@@ -79,18 +79,23 @@ class AuthProvider extends ChangeNotifier {
       currentUser = cred.user;
       if (currentUser == null) return null;
 
-      final ref = _db.collection('users').doc(currentUser!.uid);
+      final user = currentUser;
+      if (user == null) {
+        lastError = 'User not available after anonymous sign-in.';
+        return null;
+      }
+      final ref = _db.collection('users').doc(user.uid);
       final snap = await ref.get();
 
       if (!snap.exists) {
         await ref.set({
-          'displayName': 'User_${currentUser!.uid.substring(0, 6)}',
+          'displayName': 'User_${user.uid.substring(0, 6)}',
           'photoUrl': null,
           'languages': ['ko'],
           'mainLanguage': 'ko',
           'createdAt': FieldValue.serverTimestamp(),
           'friends': [],
-          'searchId': currentUser!.uid.substring(0, 6),
+          'searchId': user.uid.substring(0, 6),
           'age': null,
           'gender': null,
           'bio': null,
@@ -101,7 +106,7 @@ class AuthProvider extends ChangeNotifier {
           'notifyLike': true,
         }, SetOptions(merge: true));
       } else {
-        await _migrateLanguageFields(currentUser!.uid);
+        await _migrateLanguageFields(user.uid);
       }
 
       notifyListeners();

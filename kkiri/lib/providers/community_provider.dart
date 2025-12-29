@@ -35,6 +35,21 @@ class CommunityProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> loadPublic() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _universityCommunityId = await _service.resolveDefaultCommunityId();
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Stream<DocumentSnapshot<Map<String, dynamic>>> universityCommunityStream() {
     final id = _universityCommunityId;
     if (id == null || id.isEmpty) {

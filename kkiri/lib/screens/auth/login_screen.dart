@@ -86,20 +86,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _isSubmitting
                     ? null
                     : () async {
-                  setState(() => _isSubmitting = true);
-                  try {
-                    await context
-                        .read<app_auth.AuthProvider>()
-                        .signInAnonymously();
-                    if (!mounted) return;
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                    );
-                  } finally {
-                    if (mounted) setState(() => _isSubmitting = false);
-                  }
-                },
+                        setState(() => _isSubmitting = true);
+                        try {
+                          await context
+                              .read<app_auth.AuthProvider>()
+                              .signInAnonymously();
+                          if (!mounted) return;
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const MainScreen()),
+                          );
+                        } finally {
+                          if (mounted) setState(() => _isSubmitting = false);
+                        }
+                      },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: Text('익명으로 시작하기'),
@@ -143,10 +144,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: _isSubmitting
                       ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : Text(_isLoginMode ? 'Login' : 'Sign up'),
                 ),
               ),

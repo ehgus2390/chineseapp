@@ -219,4 +219,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String requireEmailLoginMessage(Object featureName) {
     return 'To use $featureName, please log in with email.';
   }
+
+  @override
+  String get loginAction => 'Login';
+
+  @override
+  String get profileLoginRequiredMessage =>
+      'This feature is available after login.';
+
+  @override
+  String get chatLoginRequiredMessage => 'Login is required to use chat.';
 }

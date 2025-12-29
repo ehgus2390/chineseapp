@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/post_service.dart';
-import '../../utils/auth_guard.dart';
 import '../../widgets/post_tile.dart';
 
 class HomePage extends StatelessWidget {
@@ -17,7 +16,6 @@ class HomePage extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final t = AppLocalizations.of(context)!;
 
-    if (!await requireEmailLogin(context, t.post)) return;
     final user = auth.currentUser;
     if (user == null) return;
 

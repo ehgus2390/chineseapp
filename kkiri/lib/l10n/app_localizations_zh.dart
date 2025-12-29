@@ -216,4 +216,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String requireEmailLoginMessage(Object featureName) {
     return '使用$featureName需要邮箱登录。';
   }
+
+  @override
+  String get loginAction => '登录';
+
+  @override
+  String get profileLoginRequiredMessage => '登录后可使用该功能';
+
+  @override
+  String get chatLoginRequiredMessage => '使用聊天需要登录。';
 }

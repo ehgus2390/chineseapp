@@ -216,4 +216,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String requireEmailLoginMessage(Object featureName) {
     return '$featureName 기능을 사용하려면 이메일 로그인이 필요합니다.';
   }
+
+  @override
+  String get loginAction => '로그인하기';
+
+  @override
+  String get profileLoginRequiredMessage => '로그인 후 이용 가능한 기능입니다';
+
+  @override
+  String get chatLoginRequiredMessage => '채팅은 로그인 후 이용할 수 있습니다.';
 }

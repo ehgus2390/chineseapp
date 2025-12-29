@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
@@ -26,7 +26,7 @@ class UserProfilePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final myUid = context.read<AuthProvider>().currentUser!.uid;
+    final myUid = context.read<AuthProvider>().currentUser?.uid;
     final friends = context.read<FriendsProvider>();
 
     return FutureBuilder<Map<String, dynamic>?>(
@@ -76,11 +76,12 @@ class UserProfilePopup extends StatelessWidget {
               const SizedBox(height: 16),
 
               /// 🔥 MVP에서는 메시지 버튼 제거
-              if (uid != myUid)
+              if (myUid != null && uid != myUid)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () async {
+                      if (myUid == null) return;
                       await friends.sendLike(myUid, uid);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(

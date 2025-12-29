@@ -82,5 +82,8 @@
   "daysAgo": "{days}日前",
   "login": "ログイン",
   "requireEmailLoginTitle": "メールログインが必要です",
-  "requireEmailLoginMessage": "{featureName}を利用するにはメールログインが必要です。"
+  "requireEmailLoginMessage": "{featureName}を利用するにはメールログインが必要です。",
+  "loginAction": "ログインする",
+  "profileLoginRequiredMessage": "ログイン後に利用できる機能です",
+  "chatLoginRequiredMessage": "チャットの利用にはログインが必要です。"
 }

@@ -83,5 +83,8 @@
   "daysAgo": "{days}일 전",
   "login": "로그인",
   "requireEmailLoginTitle": "이메일 로그인이 필요합니다",
-  "requireEmailLoginMessage": "{featureName} 기능을 사용하려면 이메일 로그인이 필요합니다."
+  "requireEmailLoginMessage": "{featureName} 기능을 사용하려면 이메일 로그인이 필요합니다.",
+  "loginAction": "로그인하기",
+  "profileLoginRequiredMessage": "로그인 후 이용 가능한 기능입니다",
+  "chatLoginRequiredMessage": "채팅은 로그인 후 이용할 수 있습니다."
 }

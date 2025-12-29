@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
@@ -13,10 +13,19 @@ class ChatPage extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final chat = context.watch<ChatProvider>();
 
-    final uid = auth.currentUser?.uid;
+    final user = auth.currentUser;
+    final uid = user?.uid;
 
-    if (uid == null) {
-      return const Center(child: Text('로그인이 필요합니다.'));
+    if (user == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            '로그인 후 이용 가능한 기능입니다',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
     }
 
     if (chat.isInRoom) {
@@ -40,8 +49,9 @@ class ChatPage extends StatelessWidget {
             onPressed: chat.isJoining
                 ? null
                 : () async {
-              await chat.joinRandomRoom(uid);
-            },
+                    if (uid == null) return;
+                    await chat.joinRandomRoom(uid);
+                  },
           ),
         ],
       ),

@@ -18,6 +18,22 @@ class CommunityService {
     return null;
   }
 
+  Future<String?> resolveDefaultCommunityId() async {
+    final snap = await _db
+        .collection('communities')
+        .where('isDefault', isEqualTo: true)
+        .limit(1)
+        .get();
+    if (snap.docs.isNotEmpty) {
+      return snap.docs.first.id;
+    }
+    final fallback = await _db.collection('communities').limit(1).get();
+    if (fallback.docs.isNotEmpty) {
+      return fallback.docs.first.id;
+    }
+    return null;
+  }
+
   Stream<DocumentSnapshot<Map<String, dynamic>>> listenCommunity(
       String communityId) {
     return _db.collection('communities').doc(communityId).snapshots();

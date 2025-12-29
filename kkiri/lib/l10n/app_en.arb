@@ -83,5 +83,8 @@
   "daysAgo": "{days} days ago",
   "login": "Login",
   "requireEmailLoginTitle": "Email login required",
-  "requireEmailLoginMessage": "To use {featureName}, please log in with email."
+  "requireEmailLoginMessage": "To use {featureName}, please log in with email.",
+  "loginAction": "Login",
+  "profileLoginRequiredMessage": "This feature is available after login.",
+  "chatLoginRequiredMessage": "Login is required to use chat."
 }

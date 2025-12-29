@@ -503,6 +503,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'To use {featureName}, please log in with email.'**
   String requireEmailLoginMessage(Object featureName);
+
+  /// No description provided for @loginAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get loginAction;
+
+  /// No description provided for @profileLoginRequiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This feature is available after login.'**
+  String get profileLoginRequiredMessage;
+
+  /// No description provided for @chatLoginRequiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Login is required to use chat.'**
+  String get chatLoginRequiredMessage;
 }
 
 class _AppLocalizationsDelegate

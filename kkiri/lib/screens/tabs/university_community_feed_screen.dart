@@ -20,6 +20,8 @@ class UniversityCommunityFeedScreen extends StatelessWidget {
         final provider = CommunityProvider(service: CommunityService());
         if (uid != null) {
           provider.loadForUser(uid);
+        } else {
+          provider.loadPublic();
         }
         return provider;
       },
@@ -46,6 +48,8 @@ class _UniversityCommunityFeedView extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: _CommunityHeader(
               subtitle: t.universityCommunitySubtitle,
+              fallbackName:
+                  provider.hasUniversityCommunity ? t.homeCampusFallback : '전체 커뮤니티',
               communityStream: provider.universityCommunityStream(),
             ),
           ),
@@ -68,10 +72,12 @@ class _UniversityCommunityFeedView extends StatelessWidget {
 class _CommunityHeader extends StatelessWidget {
   const _CommunityHeader({
     required this.subtitle,
+    required this.fallbackName,
     required this.communityStream,
   });
 
   final String subtitle;
+  final String fallbackName;
   final Stream<DocumentSnapshot<Map<String, dynamic>>> communityStream;
 
   @override
@@ -82,7 +88,7 @@ class _CommunityHeader extends StatelessWidget {
       stream: communityStream,
       builder: (context, snapshot) {
         final data = snapshot.data?.data();
-        final name = (data?['name'] as String?) ?? t.homeCampusFallback;
+        final name = (data?['name'] as String?) ?? fallbackName;
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

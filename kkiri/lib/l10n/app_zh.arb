@@ -83,5 +83,8 @@
   "daysAgo": "{days}天前",
   "login": "登录",
   "requireEmailLoginTitle": "需要邮箱登录",
-  "requireEmailLoginMessage": "使用{featureName}需要邮箱登录。"
+  "requireEmailLoginMessage": "使用{featureName}需要邮箱登录。",
+  "loginAction": "登录",
+  "profileLoginRequiredMessage": "登录后可使用该功能",
+  "chatLoginRequiredMessage": "使用聊天需要登录。"
 }

@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../l10n/app_localizations.dart';
-import '../../utils/auth_guard.dart';
-
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../widgets/chat_bubble.dart';
@@ -26,8 +23,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final auth = context.read<AuthProvider>();
     final chat = context.read<ChatProvider>();
 
-    final myId = auth.currentUser!.uid;
-    final myName = auth.currentUser?.displayName ?? '익명';
+    final user = auth.currentUser;
+    if (user == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text('로그인 후 이용 가능한 기능입니다'),
+        ),
+      );
+    }
+
+    final myId = user.uid;
+    final myName = user.displayName ?? '익명';
 
     return Scaffold(
       appBar: AppBar(
@@ -117,9 +123,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       ) async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-
-    final t = AppLocalizations.of(context)!;
-    if (!await requireEmailLogin(context, t.chat)) return;
 
     await chat.sendRoomMessage(
       uid: myId,

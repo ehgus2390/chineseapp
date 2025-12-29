@@ -216,4 +216,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String requireEmailLoginMessage(Object featureName) {
     return '$featureNameを利用するにはメールログインが必要です。';
   }
+
+  @override
+  String get loginAction => 'ログインする';
+
+  @override
+  String get profileLoginRequiredMessage => 'ログイン後に利用できる機能です';
+
+  @override
+  String get chatLoginRequiredMessage => 'チャットの利用にはログインが必要です。';
 }
