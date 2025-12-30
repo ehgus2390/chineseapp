@@ -114,7 +114,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
               const Divider(),
 
-              // ?�️ ???�로?�에?�는 ?�고/차단??막아?�는 �??�전??
               ListTile(
                 leading: const Icon(Icons.report_outlined),
                 title: Text(t?.report ?? 'Report'),
@@ -268,13 +267,13 @@ class _ProfilePageState extends State<ProfilePage> {
                     DropdownMenuItem(value: 'other', child: Text('기타')),
                   ],
                   onChanged: (v) => setState(() => _gender = v),
-                  decoration: const InputDecoration(labelText: '?�별'),
+                  decoration: const InputDecoration(labelText: '성별'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _bioController,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: '???�개'),
+                  decoration: const InputDecoration(labelText: '자기소개'),
                 ),
                 const SizedBox(height: 16),
                 Wrap(

@@ -31,7 +31,7 @@ class PostTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('?�명',
+            const Text('익명 사용자',
                 style: TextStyle(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 4),
             Text(data['content'] ?? ''),
