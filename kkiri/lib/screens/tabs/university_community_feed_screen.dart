@@ -47,11 +47,11 @@ class _UniversityCommunityFeedView extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: _CommunityHeader(
-              subtitle: t?.universityCommunitySubtitle ?? 'Only for your campus',
-              fallbackName:
-                  provider.hasUniversityCommunity
-                      ? (t?.homeCampusFallback ?? 'Campus')
-                      : '전체 커뮤니티',
+              subtitle:
+                  t?.universityCommunitySubtitle ?? 'Only for your campus',
+              fallbackName: provider.hasUniversityCommunity
+                  ? (t?.homeCampusFallback ?? 'Campus')
+                  : '전체 커뮤니티',
               communityStream: provider.universityCommunityStream(),
             ),
           ),
@@ -60,8 +60,8 @@ class _UniversityCommunityFeedView extends StatelessWidget {
               isLoading: provider.isLoading,
               error: provider.error,
               hasCommunity: provider.hasUniversityCommunity,
-              emptyMessage:
-                  t?.universityCommunityEmpty ?? 'No posts yet in your campus community.',
+              emptyMessage: t?.universityCommunityEmpty ??
+                  'No posts yet in your campus community.',
               missingMessage: t?.universityCommunityMissing ??
                   'We could not find your university community.',
               postsStream: provider.universityPostsStream(),

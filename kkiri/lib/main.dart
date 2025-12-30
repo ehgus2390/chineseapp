@@ -10,11 +10,9 @@ import '../screens/tabs/chat_page.dart';
 import '../screens/tabs/community_page.dart';
 import '../screens/tabs/home_page.dart';
 import '../screens/tabs/profile_page.dart';
-import '../screens/auth/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -39,7 +37,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorSchemeSeed: Colors.blue,
       ),
-      home: const LoginScreen(),
+      home: const MainScreen(),
     );
   }
 }
