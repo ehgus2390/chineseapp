@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/storage_service.dart';
+import '../../utils/auth_guard.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -82,8 +83,9 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       if (!mounted) return;
+      final t = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).save)),
+        SnackBar(content: Text(t?.save ?? 'Save')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -103,7 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
               // ???�어?�정
               ListTile(
                 leading: const Icon(Icons.language),
-                title: Text(t.language),
+                title: Text(t?.language ?? 'Language'),
                 onTap: () {
                   Navigator.pop(context);
                   _openLanguageSheet(context, myUid);
@@ -115,7 +117,7 @@ class _ProfilePageState extends State<ProfilePage> {
               // ?�️ ???�로?�에?�는 ?�고/차단??막아?�는 �??�전??
               ListTile(
                 leading: const Icon(Icons.report_outlined),
-                title: Text(t.report),
+                title: Text(t?.report ?? 'Report'),
                 subtitle: const Text(''),
                 onTap: () {
                   Navigator.pop(context);
@@ -126,7 +128,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.block_outlined),
-                title: Text(t.block),
+                title: Text(t?.block ?? 'Block'),
                 subtitle: const Text(''),
                 onTap: () {
                   Navigator.pop(context);
@@ -194,7 +196,7 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            '로그인 후 이용 가능한 기능입니다',
+            'Login required to use profile features',
             textAlign: TextAlign.center,
           ),
         ),
@@ -220,7 +222,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(t.profile),
+            title: Text(t?.profile ?? 'Profile'),
             actions: [
               IconButton(
                 icon: const Icon(Icons.settings),
@@ -296,7 +298,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: _saving ? null : () => _saveProfile(auth, uid, data),
+                  onPressed: _saving
+                      ? null
+                      : () async {
+                          if (!await requireEmailLogin(
+                              context, t?.profile ?? 'Profile')) {
+                            return;
+                          }
+                          await _saveProfile(auth, uid, data);
+                        },
                   icon: _saving
                       ? const SizedBox(
                           width: 16,
@@ -304,7 +314,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.save),
-                  label: Text(t.save),
+                  label: Text(t?.save ?? 'Save'),
                 ),
               ],
             ),

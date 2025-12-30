@@ -21,7 +21,7 @@ class ChatPage extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            '로그인 후 이용 가능한 기능입니다',
+            'Login required to participate in chat',
             textAlign: TextAlign.center,
           ),
         ),

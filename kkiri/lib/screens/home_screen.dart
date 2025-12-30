@@ -64,15 +64,16 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: _onTap,
         items: [
           BottomNavigationBarItem(
-              icon: const Icon(Icons.person), label: t.profile),
+              icon: const Icon(Icons.person), label: t?.profile ?? 'Profile'),
           BottomNavigationBarItem(
-              icon: const Icon(Icons.group), label: t.friends),
-          BottomNavigationBarItem(icon: const Icon(Icons.chat), label: t.chat),
-          BottomNavigationBarItem(icon: const Icon(Icons.map), label: t.map),
+              icon: const Icon(Icons.group), label: t?.friends ?? 'Friends'),
           BottomNavigationBarItem(
-              icon: const Icon(Icons.article), label: t.board),
+              icon: const Icon(Icons.chat), label: t?.chat ?? 'Chat'),
+          BottomNavigationBarItem(icon: const Icon(Icons.map), label: t?.map ?? 'Map'),
           BottomNavigationBarItem(
-              icon: const Icon(Icons.settings), label: t.settings),
+              icon: const Icon(Icons.article), label: t?.board ?? 'Board'),
+          BottomNavigationBarItem(
+              icon: const Icon(Icons.settings), label: t?.settings ?? 'Settings'),
         ],
       ),
     );

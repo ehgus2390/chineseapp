@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../services/post_service.dart';
+import '../../utils/auth_guard.dart';
 import '../../widgets/post_tile.dart';
 import '../../providers/auth_provider.dart';
 
@@ -13,6 +15,8 @@ class BoardScreen extends StatelessWidget {
     final controller = TextEditingController();
     final postService = context.read<PostService>();
     final auth = context.read<AuthProvider>();
+    final t = AppLocalizations.of(context);
+    if (!await requireEmailLogin(context, t?.post ?? 'Post')) return;
     final user = auth.currentUser;
     if (user == null) return;
 

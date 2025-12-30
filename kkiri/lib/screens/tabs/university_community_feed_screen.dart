@@ -40,16 +40,18 @@ class _UniversityCommunityFeedView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.universityCommunityTitle),
+        title: Text(t?.universityCommunityTitle ?? 'University community'),
       ),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: _CommunityHeader(
-              subtitle: t.universityCommunitySubtitle,
+              subtitle: t?.universityCommunitySubtitle ?? 'Only for your campus',
               fallbackName:
-                  provider.hasUniversityCommunity ? t.homeCampusFallback : '전체 커뮤니티',
+                  provider.hasUniversityCommunity
+                      ? (t?.homeCampusFallback ?? 'Campus')
+                      : '전체 커뮤니티',
               communityStream: provider.universityCommunityStream(),
             ),
           ),
@@ -58,8 +60,10 @@ class _UniversityCommunityFeedView extends StatelessWidget {
               isLoading: provider.isLoading,
               error: provider.error,
               hasCommunity: provider.hasUniversityCommunity,
-              emptyMessage: t.universityCommunityEmpty,
-              missingMessage: t.universityCommunityMissing,
+              emptyMessage:
+                  t?.universityCommunityEmpty ?? 'No posts yet in your campus community.',
+              missingMessage: t?.universityCommunityMissing ??
+                  'We could not find your university community.',
               postsStream: provider.universityPostsStream(),
             ),
           ),
@@ -192,7 +196,7 @@ class _CommunityPostList extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  t.anonymous,
+                  t?.anonymous ?? 'Anonymous',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Colors.black54,
@@ -244,14 +248,20 @@ class _CommunityPostList extends StatelessWidget {
     return 0;
   }
 
-  String _relativeTime(AppLocalizations t, Timestamp? timestamp) {
-    if (timestamp == null) return t.justNow;
+  String _relativeTime(AppLocalizations? t, Timestamp? timestamp) {
+    if (timestamp == null) {
+      return t?.justNow ?? 'Just now';
+    }
     final now = DateTime.now();
     final diff = now.difference(timestamp.toDate());
 
-    if (diff.inMinutes < 1) return t.justNow;
-    if (diff.inMinutes < 60) return t.minutesAgo(diff.inMinutes);
-    if (diff.inHours < 24) return t.hoursAgo(diff.inHours);
-    return t.daysAgo(diff.inDays);
+    if (diff.inMinutes < 1) return t?.justNow ?? 'Just now';
+    if (diff.inMinutes < 60) {
+      return t?.minutesAgo(diff.inMinutes) ?? '${diff.inMinutes} min ago';
+    }
+    if (diff.inHours < 24) {
+      return t?.hoursAgo(diff.inHours) ?? '${diff.inHours} hours ago';
+    }
+    return t?.daysAgo(diff.inDays) ?? '${diff.inDays} days ago';
   }
 }

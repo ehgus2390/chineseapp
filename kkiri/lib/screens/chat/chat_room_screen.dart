@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../utils/auth_guard.dart';
 import '../../widgets/chat_bubble.dart';
 
 class ChatRoomScreen extends StatefulWidget {
@@ -123,6 +124,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       ) async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+
+    if (!await requireEmailLogin(context, 'Chat')) return;
 
     await chat.sendRoomMessage(
       uid: myId,

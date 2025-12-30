@@ -16,20 +16,23 @@ Future<bool> requireEmailLogin(
     return true;
   }
 
-  final t = AppLocalizations.of(context)!;
+  final t = AppLocalizations.of(context);
   final shouldLogin = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(t.requireEmailLoginTitle),
-      content: Text(t.requireEmailLoginMessage(featureName)),
+      title: Text(t?.requireEmailLoginTitle ?? 'Login required'),
+      content: Text(
+        t?.requireEmailLoginMessage(featureName) ??
+            'Login required to use $featureName.',
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: Text(t.cancel),
+          child: Text(t?.cancel ?? 'Cancel'),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(dialogContext, true),
-          child: Text(t.login),
+          child: Text(t?.login ?? 'Login'),
         ),
       ],
     ),

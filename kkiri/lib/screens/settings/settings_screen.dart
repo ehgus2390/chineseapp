@@ -54,14 +54,14 @@ class SettingsScreen extends StatelessWidget {
             : true;
 
         return Scaffold(
-          appBar: AppBar(title: Text(t.settings)),
+          appBar: AppBar(title: Text(t?.settings ?? 'Settings')),
           // appBar: AppBar(title: const Text('설정')),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
               /// 🌍 Language
               Text(
-                t.language,
+                t?.language ?? 'Language',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               // Text(
@@ -107,8 +107,9 @@ class SettingsScreen extends StatelessWidget {
 
               /// 📍 Location
               SwitchListTile(
-                title: Text(t.shareLocation),
-                subtitle: Text(t.shareLocationDesc),
+                title: Text(t?.shareLocation ?? 'Share location'),
+                subtitle:
+                    Text(t?.shareLocationDesc ?? 'Used for nearby friend recommendations'),
                 // title: const Text('위치 공유 허용'),
                 // subtitle: const Text('근처 친구 추천에 사용됩니다'),
                 value: shareLocation,
