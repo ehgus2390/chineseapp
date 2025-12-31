@@ -17,6 +17,8 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = Radius.circular(16);
+    final url = photoUrl;
+    final hasUrl = url != null && url.startsWith('http');
 
     return Row(
       mainAxisAlignment:
@@ -26,8 +28,8 @@ class ChatBubble extends StatelessWidget {
         if (!isMe)
           CircleAvatar(
             radius: 16,
-            backgroundImage: (photoUrl != null && photoUrl!.startsWith('http'))
-                ? NetworkImage(photoUrl!)
+            backgroundImage: hasUrl
+                ? NetworkImage(url)
                 : const AssetImage('assets/images/logo.png') as ImageProvider,
           ),
         const SizedBox(width: 6),

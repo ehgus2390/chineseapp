@@ -84,7 +84,7 @@ class _LanguageSettingScreenState extends State<LanguageSettingScreen> {
           );
         }
 
-        final data = snapshot.data!.data() ?? {};
+        final data = snapshot.data?.data() ?? {};
         final serverLanguages =
         List<String>.from(data['languages'] ?? const <String>[]);
         final serverMain = data['mainLanguage'] as String?;
@@ -113,24 +113,29 @@ class _LanguageSettingScreenState extends State<LanguageSettingScreen> {
             ],
           ),
           body: ListView(
-            children: supportedLanguages.map((lang) {
-              final code = lang['code']!;
-              final label = lang['label']!;
-              final selected = _languages.contains(code);
+            children: supportedLanguages
+                .map((lang) {
+                  final code = lang['code'];
+                  final label = lang['label'];
+                  if (code is! String || label is! String) {
+                    return const SizedBox.shrink();
+                  }
+                  final selected = _languages.contains(code);
 
-              return CheckboxListTile(
-                title: Text(label),
-                value: selected,
-                onChanged: (v) => _toggle(code, v ?? false),
-                secondary: Radio<String>(
-                  value: code,
-                  groupValue: _mainLanguage,
-                  onChanged: selected
-                      ? (v) => setState(() => _mainLanguage = v)
-                      : null,
-                ),
-              );
-            }).toList(),
+                  return CheckboxListTile(
+                    title: Text(label),
+                    value: selected,
+                    onChanged: (v) => _toggle(code, v ?? false),
+                    secondary: Radio<String>(
+                      value: code,
+                      groupValue: _mainLanguage,
+                      onChanged:
+                          selected ? (v) => setState(() => _mainLanguage = v) : null,
+                    ),
+                  );
+                })
+                .where((w) => w is! SizedBox)
+                .toList(),
           ),
         );
       },

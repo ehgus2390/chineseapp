@@ -16,6 +16,8 @@ class UserMarkerPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final url = photoUrl;
+
     return Container(
       padding: const EdgeInsets.all(16),
       height: 220,
@@ -23,8 +25,8 @@ class UserMarkerPopup extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 35,
-            backgroundImage: photoUrl != null ? NetworkImage(photoUrl!) : null,
-            child: photoUrl == null ? const Icon(Icons.person, size: 40) : null,
+            backgroundImage: url != null ? NetworkImage(url) : null,
+            child: url == null ? const Icon(Icons.person, size: 40) : null,
           ),
           const SizedBox(height: 10),
           Text(displayName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

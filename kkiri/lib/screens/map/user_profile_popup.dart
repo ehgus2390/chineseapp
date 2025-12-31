@@ -33,6 +33,9 @@ class UserProfilePopup extends StatelessWidget {
       future: _fetchProfile(),
       builder: (context, snapshot) {
         final data = snapshot.data;
+        final photo = data?['photoUrl']?.toString();
+        final hasPhoto = photo != null && photo.startsWith('http');
+        final bio = data?['bio']?.toString();
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -49,11 +52,8 @@ class UserProfilePopup extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 45,
-                backgroundImage: (data?['photoUrl'] != null &&
-                    data!['photoUrl']
-                        .toString()
-                        .startsWith('http'))
-                    ? NetworkImage(data['photoUrl'])
+                backgroundImage: hasPhoto
+                    ? NetworkImage(photo)
                     : const AssetImage('assets/images/logo.png')
                 as ImageProvider,
               ),
@@ -65,10 +65,10 @@ class UserProfilePopup extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              if (data?['bio'] != null) ...[
+              if (bio != null) ...[
                 const SizedBox(height: 6),
                 Text(
-                  data!['bio'],
+                  bio,
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.grey),
                 ),

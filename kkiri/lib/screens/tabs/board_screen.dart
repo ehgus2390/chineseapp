@@ -63,7 +63,7 @@ class BoardScreen extends StatelessWidget {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.data?.docs ?? const [];
           if (docs.isEmpty) {
             return const Center(child: Text('게시글이 없습니다.'));
           }

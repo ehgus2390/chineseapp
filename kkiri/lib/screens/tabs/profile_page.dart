@@ -56,8 +56,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<String?> _uploadPhoto(String uid) async {
-    if (_pickedImage == null) return null;
-    return StorageService().uploadProfileImage(uid: uid, file: _pickedImage!);
+    final imageFile = _pickedImage;
+    if (imageFile == null) return null;
+    return StorageService().uploadProfileImage(uid: uid, file: imageFile);
   }
 
   Future<void> _saveProfile(
@@ -218,6 +219,13 @@ class _ProfilePageState extends State<ProfilePage> {
         }
 
         final photoUrl = _pickedImage != null ? null : data?['photoUrl'];
+        final imageFile = _pickedImage;
+        final ImageProvider avatarImage = imageFile != null
+            ? FileImage(imageFile)
+            : (photoUrl != null
+                    ? NetworkImage(photoUrl)
+                    : const AssetImage('assets/images/logo.png'))
+                as ImageProvider;
 
         return Scaffold(
           appBar: AppBar(
@@ -235,12 +243,7 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 CircleAvatar(
                   radius: 56,
-                  backgroundImage: _pickedImage != null
-                      ? FileImage(_pickedImage!)
-                      : (photoUrl != null
-                              ? NetworkImage(photoUrl)
-                              : const AssetImage('assets/images/logo.png'))
-                          as ImageProvider,
+                  backgroundImage: avatarImage,
                 ),
                 TextButton.icon(
                   onPressed: _pickImage,

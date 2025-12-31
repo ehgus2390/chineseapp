@@ -110,7 +110,10 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
           .endRecording()
           .toImage((radius * 2).toInt(), (radius * 2).toInt());
       final data = await img.toByteData(format: ui.ImageByteFormat.png);
-      return BitmapDescriptor.fromBytes(Uint8List.view(data!.buffer));
+      if (data == null) {
+        return BitmapDescriptor.defaultMarker;
+      }
+      return BitmapDescriptor.fromBytes(Uint8List.view(data.buffer));
     } catch (_) {
       return BitmapDescriptor.defaultMarker; // 실패 시 기본 마커
     }
@@ -190,8 +193,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
   /// 🔵 내 위치 펄스 서클
   Set<Circle> _buildPulseCircle() {
     final loc = context.read<LocationProvider>();
-    if (loc.position == null) return {};
-    final myCenter = LatLng(loc.position!.latitude, loc.position!.longitude);
+    final pos = loc.position;
+    if (pos == null) return {};
+    final myCenter = LatLng(pos.latitude, pos.longitude);
     final radiusMeters = _pulse.value;
 
     return {
@@ -209,8 +213,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
   @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocationProvider>();
+    final errorMessage = loc.errorMessage;
 
-    if (loc.errorMessage != null) {
+    if (errorMessage != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('주변 사용자')),
         body: Center(
@@ -220,7 +225,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  loc.errorMessage!,
+                  errorMessage,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
@@ -245,13 +250,14 @@ class _NearbyMapScreenState extends State<NearbyMapScreen>
       );
     }
 
-    if (loc.position == null) {
+    final pos = loc.position;
+    if (pos == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final myPos = LatLng(loc.position!.latitude, loc.position!.longitude);
+    final myPos = LatLng(pos.latitude, pos.longitude);
 
     return AnimatedBuilder(
       animation: _pulse,

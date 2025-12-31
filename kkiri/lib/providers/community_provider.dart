@@ -17,7 +17,7 @@ class CommunityProvider extends ChangeNotifier {
 
   /// 🔑 익명 / 로그인 모두 안전
   bool get hasUniversityCommunity =>
-      _universityCommunityId != null && _universityCommunityId!.isNotEmpty;
+      (_universityCommunityId ?? '').isNotEmpty;
 
   bool get isLoading => _isLoading;
   String? get error => _error;

@@ -72,7 +72,8 @@ class ChatProvider with ChangeNotifier {
       final fresh = await txn.get(doc.reference);
       if (!fresh.exists) return null;
 
-      final data = fresh.data()!;
+      final data = fresh.data();
+      if (data == null) return null;
       final members =
       Map<String, dynamic>.from(data['members'] ?? <String, dynamic>{});
       final memberCount =
@@ -127,7 +128,8 @@ class ChatProvider with ChangeNotifier {
       final snap = await txn.get(ref);
       if (!snap.exists) return;
 
-      final data = snap.data()!;
+      final data = snap.data();
+      if (data == null) return;
       final members =
       Map<String, dynamic>.from(data['members'] ?? {});
       if (!members.containsKey(uid)) return;

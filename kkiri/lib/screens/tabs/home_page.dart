@@ -87,7 +87,7 @@ class HomePage extends StatelessWidget {
                       );
                     }
 
-                    final docs = snapshot.data!.docs;
+                    final docs = snapshot.data?.docs ?? const [];
                     if (docs.isEmpty) {
                       return Center(
                         child: Text(

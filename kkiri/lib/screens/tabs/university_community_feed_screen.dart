@@ -176,7 +176,7 @@ class _CommunityPostList extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final docs = snapshot.data!.docs;
+        final docs = snapshot.data?.docs ?? const [];
         if (docs.isEmpty) {
           return Center(child: Text(emptyMessage));
         }

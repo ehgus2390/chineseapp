@@ -59,7 +59,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final docs = snap.data!.docs;
+                final docs = snap.data?.docs ?? const [];
 
                 return ListView.builder(
                   controller: _scrollCtrl,

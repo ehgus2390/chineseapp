@@ -46,7 +46,7 @@ class SettingsScreen extends StatelessWidget {
           );
         }
 
-        final data = snapshot.data!.data() ?? {};
+        final data = snapshot.data?.data() ?? {};
 
         // ✅ shareLocation 필드가 없거나 타입이 꼬였을 때도 안전하게 처리
         final shareLocation = (data['shareLocation'] is bool)
@@ -76,12 +76,18 @@ class SettingsScreen extends StatelessWidget {
                   border: OutlineInputBorder(),
                 ),
                 items: languageOptions
-                    .map(
-                      (lang) => DropdownMenuItem<Locale>(
-                        value: Locale(lang['code']!),
-                        child: Text(lang['label']!),
-                      ),
-                    )
+                    .map((lang) {
+                      final code = lang['code'];
+                      final label = lang['label'];
+                      if (code is! String || label is! String) {
+                        return null;
+                      }
+                      return DropdownMenuItem<Locale>(
+                        value: Locale(code),
+                        child: Text(label),
+                      );
+                    })
+                    .whereType<DropdownMenuItem<Locale>>()
                     .toList(),
                 onChanged: (locale) async {
                   if (locale == null) return;

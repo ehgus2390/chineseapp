@@ -26,7 +26,7 @@ class FriendsScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final friends = snap.data!;
+          final friends = snap.data ?? const <Map<String, dynamic>>[];
           if (friends.isEmpty) {
             return const Center(child: Text('친구가 없습니다.'));
           }
