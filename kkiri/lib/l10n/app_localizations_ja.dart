@@ -156,7 +156,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareLocation => '位置情報共有';
 
   @override
-  String get shareLocationDesc => '내 주변 친구 추천에 사용됩니다';
+  String get shareLocationDesc => '近くの人を見つけやすくするために、位置情報を共有しましょう。';
 
   @override
   String get logout => 'ログアウト';
