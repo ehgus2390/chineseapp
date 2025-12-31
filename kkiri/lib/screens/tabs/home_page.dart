@@ -17,7 +17,9 @@ class HomePage extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final t = AppLocalizations.of(context);
 
+    // 🔐 로그인 강제 (익명은 여기서 컷)
     if (!await requireEmailLogin(context, t?.post ?? 'Post')) return;
+
     final user = auth.currentUser;
     if (user == null) return;
 
@@ -29,7 +31,10 @@ class HomePage extends StatelessWidget {
           controller: controller,
           maxLines: 5,
           autofocus: true,
-          decoration: InputDecoration(hintText: t?.writePostHint ?? "Share what's happening on your campus"),
+          decoration: InputDecoration(
+            hintText:
+                t?.writePostHint ?? "Share what's happening on your campus",
+          ),
         ),
         actions: [
           TextButton(
@@ -38,7 +43,7 @@ class HomePage extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: Text(t?.submitPost ?? 'Submit Post'),
+            child: Text(t?.submitPost ?? 'Submit'),
           ),
         ],
       ),
@@ -60,80 +65,100 @@ class HomePage extends StatelessWidget {
 
     final uid = auth.currentUser?.uid;
 
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openWritePostDialog(context),
-        child: const Icon(Icons.edit),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: _CampusSelector(uid: uid, label: t?.homeCampusLabel ?? 'Campus'),
-            ),
-            Expanded(
-              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: postService.listenLatestPosts(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final docs = snapshot.data!.docs;
-                  if (docs.isEmpty) {
-                    return Center(child: Text(t?.homeFeedEmpty ?? 'No posts in your feed yet.'));
-                  }
-
-                  return ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: docs.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final doc = docs[index];
-                      return PostTile(
-                        postId: doc.id,
-                        data: doc.data(),
-                        showComments: false,
-                      );
-                    },
-                  );
-                },
+    return Stack(
+      children: [
+        SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: _CampusSelector(
+                  uid: uid,
+                  label: t?.homeCampusLabel ?? 'Campus',
+                ),
               ),
-            ),
-            _CategoryShortcuts(
-              categories: [
-                _CategoryItem(
-                  icon: Icons.restaurant_menu,
-                  label: t?.categoryFood ?? 'Food',
+              Expanded(
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: postService.listenLatestPosts(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    final docs = snapshot.data!.docs;
+                    if (docs.isEmpty) {
+                      return Center(
+                        child: Text(
+                          t?.homeFeedEmpty ?? 'No posts in your feed yet.',
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final doc = docs[index];
+                        return PostTile(
+                          postId: doc.id,
+                          data: doc.data(),
+                          showComments: false,
+                        );
+                      },
+                    );
+                  },
                 ),
-                _CategoryItem(
-                  icon: Icons.school,
-                  label: t?.categoryClasses ?? 'Classes',
-                ),
-                _CategoryItem(
-                  icon: Icons.group,
-                  label: t?.friends ?? 'Friends',
-                ),
-                _CategoryItem(
-                  icon: Icons.home_work_outlined,
-                  label: t?.categoryHousing ?? 'Housing',
-                ),
-                _CategoryItem(
-                  icon: Icons.public,
-                  label: t?.categoryLifeInKorea ?? 'Life in Korea',
-                ),
-              ],
-            ),
-          ],
+              ),
+              _CategoryShortcuts(
+                categories: [
+                  _CategoryItem(
+                    icon: Icons.restaurant_menu,
+                    label: t?.categoryFood ?? 'Food',
+                  ),
+                  _CategoryItem(
+                    icon: Icons.school,
+                    label: t?.categoryClasses ?? 'Classes',
+                  ),
+                  _CategoryItem(
+                    icon: Icons.group,
+                    label: t?.friends ?? 'Friends',
+                  ),
+                  _CategoryItem(
+                    icon: Icons.home_work_outlined,
+                    label: t?.categoryHousing ?? 'Housing',
+                  ),
+                  _CategoryItem(
+                    icon: Icons.public,
+                    label: t?.categoryLifeInKorea ?? 'Life in Korea',
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
+
+        /// ✏️ Floating Write Button (Shell Scaffold 위에 얹음)
+        Positioned(
+          right: 20,
+          bottom: 80, // BottomNavigationBar 피하기
+          child: FloatingActionButton(
+            onPressed: () => _openWritePostDialog(context),
+            child: const Icon(Icons.edit),
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _CampusSelector extends StatelessWidget {
-  const _CampusSelector({required this.uid, required this.label});
+  const _CampusSelector({
+    required this.uid,
+    required this.label,
+  });
 
   final String? uid;
   final String label;
@@ -144,7 +169,7 @@ class _CampusSelector extends StatelessWidget {
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: uid == null
-          ? const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty()
+          ? const Stream.empty()
           : FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
       builder: (context, snapshot) {
         final data = snapshot.data?.data();
@@ -211,6 +236,8 @@ class _CategoryShortcuts extends StatelessWidget {
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
+          itemCount: categories.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
           itemBuilder: (context, index) {
             final item = categories[index];
             return Container(
@@ -235,8 +262,6 @@ class _CategoryShortcuts extends StatelessWidget {
               ),
             );
           },
-          separatorBuilder: (_, __) => const SizedBox(width: 10),
-          itemCount: categories.length,
         ),
       ),
     );
@@ -244,7 +269,10 @@ class _CategoryShortcuts extends StatelessWidget {
 }
 
 class _CategoryItem {
-  const _CategoryItem({required this.icon, required this.label});
+  const _CategoryItem({
+    required this.icon,
+    required this.label,
+  });
 
   final IconData icon;
   final String label;

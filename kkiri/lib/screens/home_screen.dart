@@ -1,79 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../providers/location_provider.dart';
-import 'package:provider/provider.dart';
-import '../l10n/app_localizations.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   final Widget child;
   const HomeScreen({super.key, required this.child});
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  static const _tabs = <String>[
-    '/home/profile',
-    '/home/friends',
+  static const _tabs = [
+    '/home/home',
+    '/home/community',
     '/home/chat',
-    '/home/map',
-    '/home/board',
-    '/home/settings',
+    '/home/profile',
   ];
 
-  void _onTap(int index) {
-    if (index < 0 || index >= _tabs.length) return;
-    final target = _tabs[index];
-
-    final current =
-        GoRouter.of(context).routeInformationProvider.value.uri.toString();
-
-    if (current != target) {
-      context.go(target);
-    }
-  }
-
-  int _locationToIndex(String location) {
-    final matchIndex = _tabs.indexWhere((path) => location.startsWith(path));
-    return matchIndex == -1 ? 2 : matchIndex;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(() {
-      context.read<LocationProvider>().init();
-    });
+  int _indexFromLocation(BuildContext context) {
+    final loc = GoRouterState.of(context).uri.toString();
+    final idx = _tabs.indexWhere((e) => loc.startsWith(e));
+    return idx < 0 ? 0 : idx;
   }
 
   @override
   Widget build(BuildContext context) {
-    final location =
-        GoRouter.of(context).routeInformationProvider.value.uri.toString();
-    final currentIndex = _locationToIndex(location);
-    final t = AppLocalizations.of(context);
+    final index = _indexFromLocation(context);
 
     return Scaffold(
-      body: widget.child,
+      body: child,
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        onTap: _onTap,
-        items: [
-          BottomNavigationBarItem(
-              icon: const Icon(Icons.person), label: t?.profile ?? 'Profile'),
-          BottomNavigationBarItem(
-              icon: const Icon(Icons.group), label: t?.friends ?? 'Friends'),
-          BottomNavigationBarItem(
-              icon: const Icon(Icons.chat), label: t?.chat ?? 'Chat'),
-          BottomNavigationBarItem(icon: const Icon(Icons.map), label: t?.map ?? 'Map'),
-          BottomNavigationBarItem(
-              icon: const Icon(Icons.article), label: t?.board ?? 'Board'),
-          BottomNavigationBarItem(
-              icon: const Icon(Icons.settings), label: t?.settings ?? 'Settings'),
+        currentIndex: index,
+        onTap: (i) => context.go(_tabs[i]),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.forum), label: 'Community'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );

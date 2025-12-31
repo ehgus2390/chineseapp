@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 // 🔴 핵심: alias 사용
 import '../../providers/auth_provider.dart' as app_auth;
 import '../../state/app_state.dart';
-import '../main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -58,10 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (success && mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-      );
+      Navigator.pop(context, true);
     }
   }
 
@@ -92,11 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               .read<app_auth.AuthProvider>()
                               .signInAnonymously();
                           if (!mounted) return;
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const MainScreen()),
-                          );
+                          Navigator.pop(context, true);
                         } finally {
                           if (mounted) setState(() => _isSubmitting = false);
                         }

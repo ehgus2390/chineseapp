@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../utils/auth_guard.dart';
 import '../chat/chat_room_screen.dart';
 
 class ChatPage extends StatelessWidget {
@@ -49,8 +50,12 @@ class ChatPage extends StatelessWidget {
             onPressed: chat.isJoining
                 ? null
                 : () async {
-                    if (uid == null) return;
-                    await chat.joinRandomRoom(uid);
+                    if (!await requireEmailLogin(
+                        context, 'Chat')) return;
+                    final updatedUid =
+                        context.read<AuthProvider>().currentUser?.uid;
+                    if (updatedUid == null) return;
+                    await chat.joinRandomRoom(updatedUid);
                   },
           ),
         ],

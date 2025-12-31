@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../screens/auth/login_screen.dart';
 
@@ -16,23 +15,18 @@ Future<bool> requireEmailLogin(
     return true;
   }
 
-  final t = AppLocalizations.of(context);
   final shouldLogin = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(t?.requireEmailLoginTitle ?? 'Login required'),
-      content: Text(
-        t?.requireEmailLoginMessage(featureName) ??
-            'Login required to use $featureName.',
-      ),
+      content: const Text('This feature requires login'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: Text(t?.cancel ?? 'Cancel'),
+          child: const Text('Cancel'),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(dialogContext, true),
-          child: Text(t?.login ?? 'Login'),
+          child: const Text('Login with Email'),
         ),
       ],
     ),
@@ -46,5 +40,6 @@ Future<bool> requireEmailLogin(
     );
   }
 
-  return false;
+  final updatedUser = auth.currentUser;
+  return updatedUser != null && !updatedUser.isAnonymous;
 }

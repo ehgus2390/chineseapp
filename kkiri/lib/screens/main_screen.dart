@@ -1,68 +1,77 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../state/app_state.dart';
-import 'tabs/chat_page.dart';
-import 'tabs/community_page.dart';
-import 'tabs/home_page.dart';
-import 'tabs/profile_page.dart';
+import '../firebase_options.dart';
+import '../providers/auth_provider.dart';
+import '../providers/chat_provider.dart';
+import '../providers/location_provider.dart';
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+import '../../screens/home_screen.dart';
+import '../../screens/tabs/home_page.dart';
+import '../../screens/tabs/community_page.dart';
+import '../../screens/tabs/chat_page.dart';
+import '../../screens/tabs/profile_page.dart';
 
-  @override
-  State<MainScreen> createState() => _MainScreenState();
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
+      ],
+      child: const KkiriApp(),
+    ),
+  );
 }
 
-class _MainScreenState extends State<MainScreen> {
-  int _index = 0;
-
-  static final List<Widget> _pages = <Widget>[
-    const ChatPage(),
-    const CommunityPage(),
-    const HomePage(),
-    const ProfilePage(),
-  ];
+class KkiriApp extends StatelessWidget {
+  const KkiriApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kkiri'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () => context.read<AppState>().signOut(),
-          ),
-        ],
+    final router = GoRouter(
+      initialLocation: '/home/home',
+      routes: [
+        ShellRoute(
+          builder: (_, __, child) => HomeScreen(child: child),
+          routes: [
+            GoRoute(
+              path: '/home/home',
+              builder: (_, __) => const HomePage(),
+            ),
+            GoRoute(
+              path: '/home/community',
+              builder: (_, __) => const CommunityPage(),
+            ),
+            GoRoute(
+              path: '/home/chat',
+              builder: (_, __) => const ChatPage(),
+            ),
+            GoRoute(
+              path: '/home/profile',
+              builder: (_, __) => const ProfilePage(),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      title: 'Kkiri',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
       ),
-      body: IndexedStack(
-        index: _index,
-        children: _pages,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: (newIndex) => setState(() => _index = newIndex),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Chat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.star),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+      routerConfig: router,
     );
   }
 }
