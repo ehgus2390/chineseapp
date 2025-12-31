@@ -1,21 +1,30 @@
-﻿import 'package:flutter/material.dart';
+﻿// lib/screens/tabs/chat_page.dart
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
-import '../../utils/auth_guard.dart';
+import '../../state/app_state.dart';
 import '../chat/chat_room_screen.dart';
 
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
 
+  void _showEmailOnlySnackBar(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Email login required to send messages.'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
     final chat = context.watch<ChatProvider>();
+    final authState = context.watch<AppState>();
 
-    final user = auth.currentUser;
+    final user = authState.user;
     final uid = user?.uid;
+    final isEmailUser = user != null && !user.isAnonymous;
 
     if (user == null) {
       return const Center(
@@ -30,6 +39,17 @@ class ChatPage extends StatelessWidget {
     }
 
     if (chat.isInRoom) {
+      if (!isEmailUser) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Email login required to send messages.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        );
+      }
       return const ChatRoomScreen();
     }
 
@@ -50,12 +70,12 @@ class ChatPage extends StatelessWidget {
             onPressed: chat.isJoining
                 ? null
                 : () async {
-                    if (!await requireEmailLogin(
-                        context, 'Chat')) return;
-                    final updatedUid =
-                        context.read<AuthProvider>().currentUser?.uid;
-                    if (updatedUid == null) return;
-                    await chat.joinRandomRoom(updatedUid);
+                    if (!isEmailUser) {
+                      _showEmailOnlySnackBar(context);
+                      return;
+                    }
+                    if (uid == null) return;
+                    await chat.joinRandomRoom(uid);
                   },
           ),
         ],

@@ -31,6 +31,14 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>
+	<key>NSCameraUsageDescription</key>
+	<string>Profile photo upload</string>
+
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Upload profile image</string>
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Campus-based community features</string>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
