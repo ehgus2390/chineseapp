@@ -1,9 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/auth_provider.dart';
-import '../providers/locale_provider.dart';
-import '../services/post_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/locale_provider.dart';
+import '../../services/post_service.dart';
 
 class PostTile extends StatelessWidget {
   const PostTile({

@@ -1,3 +1,4 @@
+// lib/providers/auth_provider.dart
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,24 +17,25 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProvider() {
     currentUser = _auth.currentUser;
-    _authSub = _auth.authStateChanges().listen((u) async {
-      currentUser = u;
-      if (u != null) {
-        await _migrateLanguageFields(u.uid);
+    _authSub = _auth.authStateChanges().listen(_onAuthChanged);
+  }
 
-        final snap = await _db.collection('users').doc(u.uid).get();
-        final mainLanguage = snap.data()?['mainLanguage'];
+  void _onAuthChanged(fb.User? user) {
+    currentUser = user;
+    _schedulePostAuthWork(user);
+    notifyListeners();
+  }
 
-        if (mainLanguage is String) {
-          // 🔥 여기서 UI 언어 자동 설정
-          // context 못 쓰므로, 나중에 main.dart에서 처리
-        }
-      }
-      notifyListeners();
+  void _schedulePostAuthWork(fb.User? user) {
+    final uid = user?.uid;
+    if (uid == null || uid.isEmpty) return;
+
+    Future(() async {
+      await _migrateLanguageFields(uid);
     });
   }
 
-  /// ───────── 언어 필드 마이그레이션 (1회성) ─────────
+  /// 사용자 언어 필드 마이그레이션
   Future<void> _migrateLanguageFields(String uid) async {
     final ref = _db.collection('users').doc(uid);
     final snap = await ref.get();
@@ -41,7 +43,7 @@ class AuthProvider extends ChangeNotifier {
 
     final data = snap.data() ?? {};
 
-    // 이미 새 구조면 스킵
+    // 기존 필드가 존재하면 마이그레이션 건너뜀
     if (data.containsKey('languages') && data.containsKey('mainLanguage')) {
       return;
     }
@@ -56,7 +58,7 @@ class AuthProvider extends ChangeNotifier {
     } else if (lang is String && lang.isNotEmpty) {
       languages.add(lang);
     } else {
-      languages.add('ko'); // 기본값
+      languages.add('ko'); // 기본 언어
     }
 
     final mainLanguage = languages.first;
@@ -67,7 +69,7 @@ class AuthProvider extends ChangeNotifier {
     }, SetOptions(merge: true));
   }
 
-  /// 기존 코드 호환
+  /// 익명 로그인
   Future<bool> signInAnonymously() async {
     final u = await signInAnonymouslyUser();
     return u != null;
@@ -124,7 +126,7 @@ class AuthProvider extends ChangeNotifier {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '$featureName 기능을 사용하려면 이메일 인증이 필요합니다.\n프로필에서 인증을 완료해주세요.',
+          '$featureName 기능은 이메일 인증이 필요합니다. 이메일 인증 후 다시 시도해주세요.',
         ),
       ),
     );

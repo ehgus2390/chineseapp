@@ -1,33 +1,35 @@
 // lib/state/app_state.dart
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 import '../services/auth_service.dart';
 
+class AppUser {
+  const AppUser({required this.uid, required this.isAnonymous});
+
+  final String uid;
+  final bool isAnonymous;
+}
+
 class AppState extends ChangeNotifier {
   AppState({AuthService? authService})
-      : _authService = authService ?? AuthService() {
-    _subscription = _authService.onAuthChanged().listen((fb.User? authUser) {
-      user = authUser;
-      isLoading = false;
-      notifyListeners();
-    });
-  }
+      : _authService = authService ?? AuthService();
 
   final AuthService _authService;
-  StreamSubscription<fb.User?>? _subscription;
 
-  fb.User? user;
-  bool isLoading = true;
+  AppUser? _user;
+  AppUser? get user => _user;
 
-  // ✅ 피드 언어 필터
+  bool isLoading = false;
+
+  // 피드 언어 필터링
   bool showOnlyMyLanguages = true;
 
-  // 필요하면 외부에서 직접 user를 세팅할 때 사용
-  void setUser(fb.User? newUser) {
-    user = newUser;
+  void setAuthUser(AppUser? user) {
+    final current = _user;
+    final sameUid = current?.uid == user?.uid;
+    final sameAnon = current?.isAnonymous == user?.isAnonymous;
+    if (sameUid && sameAnon) return;
+    _user = user;
     notifyListeners();
   }
 
@@ -40,7 +42,7 @@ class AppState extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      user = await _authService.signInWithEmail(email, password);
+      await _authService.signInWithEmail(email, password);
     } finally {
       isLoading = false;
       notifyListeners();
@@ -51,7 +53,7 @@ class AppState extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      user = await _authService.registerWithEmail(email, password);
+      await _authService.registerWithEmail(email, password);
     } finally {
       isLoading = false;
       notifyListeners();
@@ -63,7 +65,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       await _authService.signOut();
-      user = null;
     } finally {
       isLoading = false;
       notifyListeners();
@@ -75,13 +76,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> refreshUser() async {
-    user = await _authService.reloadUser();
-    notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
+    await _authService.reloadUser();
   }
 }

@@ -22,10 +22,21 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => AuthProvider()),
-        ChangeNotifierProvider(create: (context) => ChatProvider()),
-        ChangeNotifierProvider(create: (context) => LocationProvider()),
-        ChangeNotifierProvider(create: (context) => AppState()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, AppState>(
+          create: (_) => AppState(),
+          update: (_, auth, state) {
+            final nextState = state ?? AppState();
+            final fbUser = auth.currentUser;
+            final appUser = fbUser == null
+                ? null
+                : AppUser(uid: fbUser.uid, isAnonymous: fbUser.isAnonymous);
+            nextState.setAuthUser(appUser);
+            return nextState;
+          },
+        ),
       ],
       child: const MyApp(),
     ),
