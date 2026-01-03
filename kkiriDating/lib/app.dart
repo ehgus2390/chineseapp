@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'l10n/app_localizations.dart';
-import 'screens/onboarding_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/discover_screen.dart';
 import 'screens/chat_list_screen.dart';
@@ -26,18 +25,13 @@ class KkiriApp extends StatelessWidget {
       refreshListenable: state,
       redirect: (context, routerState) {
         final bool loggedIn = state.isLoggedIn;
-        final bool onboarded = state.isOnboarded;
         final String location = routerState.matchedLocation;
         final bool loggingIn = location == '/login';
-        final bool onboarding = location == '/onboarding';
 
         if (!loggedIn) {
           return loggingIn ? null : '/login';
         }
-        if (!onboarded) {
-          return onboarding ? null : '/onboarding';
-        }
-        if (loggingIn || onboarding) {
+        if (loggingIn) {
           return '/home/discover';
         }
         return null;
@@ -46,10 +40,6 @@ class KkiriApp extends StatelessWidget {
         GoRoute(
           path: '/login',
           builder: (_, __) => const AuthScreen(),
-        ),
-        GoRoute(
-          path: '/onboarding',
-          builder: (_, __) => const OnboardingScreen(),
         ),
         ShellRoute(
           builder: (context, state, child) {

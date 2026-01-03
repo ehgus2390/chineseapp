@@ -46,7 +46,7 @@ class AppState extends ChangeNotifier {
   static const String _preferredLanguagesKey = 'preferred_languages';
 
   User? get user => _auth.currentUser;
-  bool get isLoggedIn => user != null;
+  bool get isLoggedIn => user != null && !user!.isAnonymous;
 
   bool get isOnboarded => _isOnboarded;
   Profile get me => _me!;
@@ -63,7 +63,10 @@ class AppState extends ChangeNotifier {
   }
   
   Future<void> _handleAuthChanged(User? user) async {
-    if (user == null) {
+    if (user == null || user.isAnonymous) {
+      if (user?.isAnonymous == true) {
+        await _auth.signOut();
+      }
       _me = null;
       _profiles.clear();
       _matches.clear();
@@ -203,6 +206,7 @@ class AppState extends ChangeNotifier {
           .where((p) =>
               p.id != meProfile.id &&
               p.gender == targetGender &&
+              _sharesInterests(meProfile, p) &&
               !_likedIds.contains(p.id) &&
               !_passedIds.contains(p.id) &&
               !matchesIds.contains(p.id))
@@ -217,6 +221,12 @@ class AppState extends ChangeNotifier {
       });
       return filtered;
     });
+  }
+
+  bool _sharesInterests(Profile meProfile, Profile other) {
+    if (meProfile.interests.isEmpty) return true;
+    if (other.interests.isEmpty) return false;
+    return other.interests.any(meProfile.interests.contains);
   }
 
   bool _withinDistance(Profile other, Profile meProfile) {
@@ -384,6 +394,18 @@ class AppState extends ChangeNotifier {
       'gender': gender,
       'languages': languages,
       'bio': bio,
+      'distanceKm': distanceKm,
+      'location': location,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateMatchPreferences({
+    required double distanceKm,
+    required GeoPoint? location,
+  }) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    await _db.collection('users').doc(meProfile.id).set(<String, dynamic>{
       'distanceKm': distanceKm,
       'location': location,
     }, SetOptions(merge: true));

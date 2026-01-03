@@ -2,8 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import '../state/app_state.dart';
 import '../state/locale_state.dart';
 import '../l10n/app_localizations.dart';
@@ -34,14 +32,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final occupationCtrl = TextEditingController();
   final countryCtrl = TextEditingController();
   final bioCtrl = TextEditingController();
-  final latCtrl = TextEditingController();
-  final lngCtrl = TextEditingController();
-
   bool _seeded = false;
   bool _uploading = false;
   int _avatarVersion = 0;
   String _gender = 'male';
-  double _distanceKm = 30;
   final Set<String> _languages = <String>{};
   final Set<String> _interests = <String>{};
   final ImagePicker _picker = ImagePicker();
@@ -53,8 +47,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     occupationCtrl.dispose();
     countryCtrl.dispose();
     bioCtrl.dispose();
-    latCtrl.dispose();
-    lngCtrl.dispose();
     super.dispose();
   }
 
@@ -69,17 +61,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     countryCtrl.text = me.country;
     bioCtrl.text = me.bio;
     _gender = me.gender;
-    _distanceKm = me.distanceKm;
     _languages
       ..clear()
       ..addAll(me.languages);
     _interests
       ..clear()
       ..addAll(me.interests);
-    if (me.location != null) {
-      latCtrl.text = me.location!.latitude.toStringAsFixed(6);
-      lngCtrl.text = me.location!.longitude.toStringAsFixed(6);
-    }
   }
 
   String _cacheBustedUrl(String url) {
@@ -111,48 +98,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _uploading = false);
   }
 
-  Future<void> _useCurrentLocation(AppState state) async {
-    final hasService = await Geolocator.isLocationServiceEnabled();
-    if (!hasService) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).locationServiceOff)),
-      );
-      return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).locationPermissionDenied)),
-      );
-      return;
-    }
-
-    final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-    latCtrl.text = position.latitude.toStringAsFixed(6);
-    lngCtrl.text = position.longitude.toStringAsFixed(6);
-
-    if (countryCtrl.text.trim().isEmpty) {
-      final placemarks =
-          await placemarkFromCoordinates(position.latitude, position.longitude);
-      if (placemarks.isNotEmpty) {
-        countryCtrl.text = placemarks.first.country ?? '';
-      }
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context).locationUpdated)),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -315,43 +260,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: InputDecoration(labelText: l.bio),
           maxLines: 3,
         ),
-        const SizedBox(height: 24),
-        Text(l.distance, style: Theme.of(context).textTheme.titleMedium),
-        Text(l.distanceHint),
-        Slider(
-          min: 1,
-          max: 200,
-          value: _distanceKm.clamp(1, 200),
-          label: '${_distanceKm.toStringAsFixed(0)} km',
-          onChanged: (value) => setState(() => _distanceKm = value),
-        ),
-        const SizedBox(height: 12),
-        Text(l.location, style: Theme.of(context).textTheme.titleMedium),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: latCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: l.latitude),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: lngCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: l.longitude),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        FilledButton.tonal(
-          onPressed: () => _useCurrentLocation(state),
-          child: Text(l.useCurrentLocation),
-        ),
-        const SizedBox(height: 24),
         Text(l.preferences, style: Theme.of(context).textTheme.titleMedium),
         Text(l.prefTarget),
         Wrap(
@@ -371,12 +279,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         FilledButton(
           onPressed: () async {
             final int age = int.tryParse(ageCtrl.text.trim()) ?? 0;
-            GeoPoint? location;
-            final double? lat = double.tryParse(latCtrl.text.trim());
-            final double? lng = double.tryParse(lngCtrl.text.trim());
-            if (lat != null && lng != null) {
-              location = GeoPoint(lat, lng);
-            }
             await state.saveProfile(
               name: nameCtrl.text.trim(),
               age: age,
@@ -386,8 +288,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               gender: _gender,
               languages: _languages.toList(),
               bio: bioCtrl.text.trim(),
-              distanceKm: _distanceKm,
-              location: location,
+              distanceKm: me.distanceKm,
+              location: me.location,
             );
           },
           child: Text(l.save),
