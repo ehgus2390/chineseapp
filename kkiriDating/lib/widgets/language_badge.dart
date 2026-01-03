@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
-
 class LanguageBadge extends StatelessWidget {
   final String code; // 'ko','en','ja','zh'...
   const LanguageBadge({super.key, required this.code});
 
-  String get label {
+  String labelFor(BuildContext context) {
     switch (code) {
-      case 'ko': return '한국어';
-      case 'en': return 'English';
-      case 'ja': return '日本語';
-      case 'zh': return '中文';
-      default: return code.toUpperCase();
+      case 'ko':
+        return 'Korean';
+      case 'en':
+        return 'English';
+      case 'ja':
+        return 'Japanese';
+      case 'zh':
+        return 'Chinese';
+      default:
+        return code.toUpperCase();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Chip(label: Text(label));
+    return Chip(label: Text(labelFor(context)));
   }
 }

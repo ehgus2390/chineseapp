@@ -1,4 +1,5 @@
-import 'dart:collection';
+import 'dart:async';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,7 +15,9 @@ import '../services/match_service.dart';
 import '../services/preferences_storage.dart';
 
 class AppState extends ChangeNotifier {
-  AppState();
+  AppState() {
+    chat = ChatService(_db);
+  }
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -22,16 +25,20 @@ class AppState extends ChangeNotifier {
   final MatchService _matchService = MatchService();
   final PreferencesStorage _preferences = PreferencesStorage.instance;
 
-  final ChatService chat = ChatService();
+  late final ChatService chat;
 
   Profile? _me;
   final Map<String, Profile> _profiles = <String, Profile>{};
-  final List<Profile> _candidates = <Profile>[];
   final List<MatchPair> _matches = <MatchPair>[];
   final List<String> _preferredLanguages = <String>[];
+  final Set<String> _likedIds = <String>{};
+  final Set<String> _passedIds = <String>{};
 
   bool _isOnboarded = false;
   bool _initialized = false;
+
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchesSub;
 
   static const String _onboardingKey = 'onboarding_complete';
   static const String _preferredLanguagesKey = 'preferred_languages';
@@ -41,71 +48,98 @@ class AppState extends ChangeNotifier {
 
   bool get isOnboarded => _isOnboarded;
   Profile get me => _me!;
-  UnmodifiableListView<MatchPair> get matches =>
-      UnmodifiableListView<MatchPair>(_matches);
-  UnmodifiableListView<String> get myPreferredLanguages =>
-      UnmodifiableListView<String>(_preferredLanguages);
+  Profile? get meOrNull => _me;
+  List<MatchPair> get matches => List<MatchPair>.unmodifiable(_matches);
+  List<String> get myPreferredLanguages =>
+      List<String>.unmodifiable(_preferredLanguages);
 
   Future<void> bootstrap() async {
     if (_initialized) return;
     _initialized = true;
-    _seedMockData();
+
+    await _signInIfNeeded();
+    await _ensureProfile();
+    await _loadMeOnce();
     await _restorePersistentState();
+    await _loadMyDecisions();
+
+    _watchMyProfile();
+    _watchMatches();
   }
 
-  void _seedMockData() {
-    if (_me != null) {
-      return;
-    }
+  Future<void> _signInIfNeeded() async {
+    if (_auth.currentUser != null) return;
+    await _auth.signInAnonymously();
+  }
 
-    final Profile meProfile = Profile(
-      id: 'me',
-      name: '민준',
-      nationality: 'KR',
-      languages: const <String>['ko', 'en'],
-      bio: 'Coffee lover looking for global friends in Seoul.',
-      avatarUrl: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
-    );
+  Future<void> _ensureProfile() async {
+    final User? currentUser = _auth.currentUser;
+    if (currentUser == null) return;
 
-    final List<Profile> others = <Profile>[
-      Profile(
-        id: 'ari',
-        name: 'Ari',
-        nationality: 'JP',
-        languages: const <String>['ja', 'en'],
-        bio: 'Planning a language exchange trip to Korea this spring.',
-        avatarUrl: 'https://images.unsplash.com/photo-1544723795-3fb6469f5b39',
-      ),
-      Profile(
-        id: 'lucas',
-        name: 'Lucas',
-        nationality: 'US',
-        languages: const <String>['en', 'es'],
-        bio: 'Foodie who wants to practice Korean before visiting Seoul.',
-        avatarUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1',
-      ),
-      Profile(
-        id: 'yuna',
-        name: 'Yuna',
-        nationality: 'KR',
-        languages: const <String>['ko', 'zh'],
-        bio: 'Looking for a buddy to explore new cafés and learn Chinese.',
-        avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
-      ),
-    ];
+    final doc = _db.collection('users').doc(currentUser.uid);
+    final snapshot = await doc.get();
+    if (snapshot.exists) return;
 
-    _me = meProfile;
-    _profiles[meProfile.id] = meProfile;
+    await doc.set(<String, dynamic>{
+      'name': currentUser.displayName ?? 'New user',
+      'age': 0,
+      'occupation': '',
+      'country': '',
+      'interests': <String>[],
+      'gender': 'male',
+      'languages': <String>['ko'],
+      'bio': '',
+      'avatarUrl': currentUser.photoURL ?? '',
+      'distanceKm': 30,
+      'location': null,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _loadMeOnce() async {
+    final User? currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+    final doc = await _db.collection('users').doc(currentUser.uid).get();
+    if (!doc.exists) return;
+    _me = Profile.fromDoc(doc);
+    _profiles[_me!.id] = _me!;
     if (_preferredLanguages.isEmpty) {
       _preferredLanguages
         ..clear()
-        ..addAll(meProfile.languages);
+        ..addAll(_me!.languages);
     }
+    notifyListeners();
+  }
 
-    for (final Profile profile in others) {
-      _profiles[profile.id] = profile;
-      _candidates.add(profile);
-    }
+  void _watchMyProfile() {
+    final User? currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+    _meSub?.cancel();
+    _meSub = _db.collection('users').doc(currentUser.uid).snapshots().listen(
+      (doc) {
+        _me = Profile.fromDoc(doc);
+        _profiles[_me!.id] = _me!;
+        notifyListeners();
+      },
+    );
+  }
+
+  void _watchMatches() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    _matchesSub?.cancel();
+    _matchesSub = _db
+        .collection('matches')
+        .where('userIds', arrayContains: meProfile.id)
+        .orderBy('lastMessageAt', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+      _matches
+        ..clear()
+        ..addAll(snapshot.docs.map(MatchPair.fromDoc));
+      notifyListeners();
+    });
   }
 
   Future<void> _restorePersistentState() async {
@@ -124,56 +158,138 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<Profile> sortedCandidates() {
-    if (_me == null) {
-      return <Profile>[];
-    }
+  Future<void> _loadMyDecisions() async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    final likesSnap =
+        await _db.collection('users').doc(meProfile.id).collection('likes').get();
+    _likedIds
+      ..clear()
+      ..addAll(likesSnap.docs.map((doc) => doc.id));
 
-    final List<Profile> ranked = List<Profile>.from(_candidates);
-    ranked.sort((Profile a, Profile b) {
-      final double scoreB = _matchService.score(me, b, _preferredLanguages);
-      final double scoreA = _matchService.score(me, a, _preferredLanguages);
-      return scoreB.compareTo(scoreA);
+    final passesSnap =
+        await _db.collection('users').doc(meProfile.id).collection('passes').get();
+    _passedIds
+      ..clear()
+      ..addAll(passesSnap.docs.map((doc) => doc.id));
+    notifyListeners();
+  }
+
+  Stream<List<Profile>> watchCandidates() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      return const Stream<List<Profile>>.empty();
+    }
+    final String targetGender =
+        meProfile.gender == 'female' ? 'male' : 'female';
+    return _db
+        .collection('users')
+        .where('gender', isEqualTo: targetGender)
+        .snapshots()
+        .map((snapshot) {
+      final matchesIds = _matches.expand((m) => m.userIds).toSet();
+      final List<Profile> list = snapshot.docs
+          .map(Profile.fromDoc)
+          .where((p) =>
+              p.id != meProfile.id &&
+              !_likedIds.contains(p.id) &&
+              !_passedIds.contains(p.id) &&
+              !matchesIds.contains(p.id))
+          .where(_withinDistance)
+          .toList();
+      list.sort((a, b) {
+        final double scoreB =
+            _matchService.score(meProfile, b, _preferredLanguages);
+        final double scoreA =
+            _matchService.score(meProfile, a, _preferredLanguages);
+        return scoreB.compareTo(scoreA);
+      });
+      return list;
     });
-    return ranked;
   }
 
-  void like(Profile profile) {
-    final int index = _candidates.indexWhere((Profile p) => p.id == profile.id);
-    if (index == -1) {
-      return;
+  bool _withinDistance(Profile other) {
+    if (_me == null) return true;
+    if (_me!.location == null || other.location == null) return true;
+    final double limit = _me!.distanceKm <= 0 ? double.infinity : _me!.distanceKm;
+    final double distance = _distanceKm(_me!.location!, other.location!);
+    return distance <= limit;
+  }
+
+  double _distanceKm(GeoPoint a, GeoPoint b) {
+    const double radius = 6371;
+    final double dLat = _deg2rad(b.latitude - a.latitude);
+    final double dLon = _deg2rad(b.longitude - a.longitude);
+    final double lat1 = _deg2rad(a.latitude);
+    final double lat2 = _deg2rad(b.latitude);
+    final double h = pow(sin(dLat / 2), 2) +
+        cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2);
+    return radius * 2 * asin(sqrt(h));
+  }
+
+  double _deg2rad(double deg) => deg * (pi / 180.0);
+
+  Future<void> like(Profile profile) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+
+    _likedIds.add(profile.id);
+    await _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('likes')
+        .doc(profile.id)
+        .set(<String, dynamic>{'createdAt': FieldValue.serverTimestamp()});
+
+    final reciprocal = await _db
+        .collection('users')
+        .doc(profile.id)
+        .collection('likes')
+        .doc(meProfile.id)
+        .get();
+    if (reciprocal.exists) {
+      await _createMatch(meProfile.id, profile.id);
     }
 
-    _candidates.removeAt(index);
-    final MatchPair match = _matchService.createMatch(me.id, profile.id);
-    _matches.add(match);
     notifyListeners();
   }
 
-  void pass(Profile profile) {
-    final int index = _candidates.indexWhere((Profile p) => p.id == profile.id);
-    if (index == -1) {
-      return;
-    }
+  Future<void> pass(Profile profile) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
 
-    final Profile removed = _candidates.removeAt(index);
-    _candidates.add(removed);
+    _passedIds.add(profile.id);
+    await _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('passes')
+        .doc(profile.id)
+        .set(<String, dynamic>{'createdAt': FieldValue.serverTimestamp()});
     notifyListeners();
   }
 
-  Profile getById(String id) {
-    final Profile? profile = _profiles[id];
-    if (profile == null) {
-      throw StateError('Profile $id not found');
-    }
+  Future<void> _createMatch(String meId, String otherId) async {
+    final List<String> ids = <String>[meId, otherId]..sort();
+    final String matchId = ids.join('_');
+    await _db.collection('matches').doc(matchId).set(<String, dynamic>{
+      'userIds': ids,
+      'createdAt': FieldValue.serverTimestamp(),
+      'lastMessage': '',
+      'lastMessageAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<Profile?> fetchProfile(String id) async {
+    if (_profiles.containsKey(id)) return _profiles[id];
+    final doc = await _db.collection('users').doc(id).get();
+    if (!doc.exists) return null;
+    final profile = Profile.fromDoc(doc);
+    _profiles[id] = profile;
     return profile;
   }
 
   Future<void> completeOnboarding() async {
-    if (_isOnboarded) {
-      return;
-    }
-
+    if (_isOnboarded) return;
     _isOnboarded = true;
     await _preferences.writeBool(_onboardingKey, true);
     notifyListeners();
@@ -199,9 +315,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> signInWithGoogle() async {
     final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-    if (googleUser == null) {
-      return;
-    }
+    if (googleUser == null) return;
 
     final GoogleSignInAuthentication googleAuth =
         await googleUser.authentication;
@@ -211,6 +325,11 @@ class AppState extends ChangeNotifier {
     );
 
     await _auth.signInWithCredential(credential);
+    await _ensureProfile();
+    await _loadMeOnce();
+    await _loadMyDecisions();
+    _watchMyProfile();
+    _watchMatches();
     notifyListeners();
   }
 
@@ -218,6 +337,34 @@ class AppState extends ChangeNotifier {
     await _auth.signOut();
     await GoogleSignIn().signOut();
     notifyListeners();
+  }
+
+  Future<void> saveProfile({
+    required String name,
+    required int age,
+    required String occupation,
+    required String country,
+    required List<String> interests,
+    required String gender,
+    required List<String> languages,
+    required String bio,
+    required double distanceKm,
+    required GeoPoint? location,
+  }) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    await _db.collection('users').doc(meProfile.id).set(<String, dynamic>{
+      'name': name,
+      'age': age,
+      'occupation': occupation,
+      'country': country,
+      'interests': interests,
+      'gender': gender,
+      'languages': languages,
+      'bio': bio,
+      'distanceKm': distanceKm,
+      'location': location,
+    }, SetOptions(merge: true));
   }
 
   Future<void> uploadAvatar(Uint8List data) async {
@@ -232,5 +379,12 @@ class AppState extends ChangeNotifier {
     await _db.collection('users').doc(currentUser.uid).update(<String, Object?>{
       'avatarUrl': url,
     });
+  }
+
+  @override
+  void dispose() {
+    _meSub?.cancel();
+    _matchesSub?.cancel();
+    super.dispose();
   }
 }

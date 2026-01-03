@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../widgets/profile_card.dart';
 import '../l10n/app_localizations.dart';
+import '../models/profile.dart';
 
 class DiscoverScreen extends StatelessWidget {
   const DiscoverScreen({super.key});
@@ -11,17 +12,23 @@ class DiscoverScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final state = context.watch<AppState>();
-    final list = state.sortedCandidates();
-
-    if (list.isEmpty) {
-      return Center(child: Text(l.discoverEmpty));
-    }
-
-    final p = list.first;
-    return ProfileCard(
-      profile: p,
-      onLike: () => state.like(p),
-      onPass: () => state.pass(p),
+    return StreamBuilder(
+      stream: state.watchCandidates(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final list = snapshot.data ?? <Profile>[];
+        if (list.isEmpty) {
+          return Center(child: Text(l.discoverEmpty));
+        }
+        final p = list.first;
+        return ProfileCard(
+          profile: p,
+          onLike: () => state.like(p),
+          onPass: () => state.pass(p),
+        );
+      },
     );
   }
 }

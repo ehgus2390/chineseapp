@@ -15,32 +15,43 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final ctrl = TextEditingController();
 
   @override
+  void dispose() {
+    ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final msgs = state.chat.getMessages(widget.matchId);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Chat')),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              reverse: true,
-              itemCount: msgs.length,
-              itemBuilder: (_, i) {
-                final Message m = msgs[msgs.length - 1 - i];
-                final isMe = m.senderId == state.me.id;
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.all(8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isMe ? Colors.pink.shade50 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(m.text),
-                  ),
+            child: StreamBuilder<List<Message>>(
+              stream: state.chat.watchMessages(widget.matchId),
+              builder: (context, snapshot) {
+                final msgs = snapshot.data ?? <Message>[];
+                return ListView.builder(
+                  reverse: true,
+                  itemCount: msgs.length,
+                  itemBuilder: (_, i) {
+                    final Message m = msgs[msgs.length - 1 - i];
+                    final isMe = m.senderId == state.me.id;
+                    return Align(
+                      alignment:
+                          isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.pink.shade50 : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(m.text),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -52,19 +63,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   child: TextField(
                     controller: ctrl,
                     decoration: const InputDecoration(
-                      hintText: '메시지를 입력하세요',
+                      hintText: 'Type a message',
                       contentPadding: EdgeInsets.all(12),
                     ),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: () {
+                  onPressed: () async {
                     final text = ctrl.text.trim();
                     if (text.isEmpty) return;
-                    state.chat.send(widget.matchId, state.me.id, text);
+                    await state.chat.send(widget.matchId, state.me.id, text);
                     ctrl.clear();
-                    setState(() {});
                   },
                 )
               ],

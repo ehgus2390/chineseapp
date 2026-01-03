@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/profile.dart';
 import 'language_badge.dart';
+import '../l10n/app_localizations.dart';
 
 class ProfileCard extends StatelessWidget {
   final Profile profile;
@@ -16,6 +17,7 @@ class ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.all(16),
       clipBehavior: Clip.antiAlias,
@@ -23,15 +25,25 @@ class ProfileCard extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: 1,
-            child: Image.network(profile.avatarUrl, fit: BoxFit.cover),
+            child: profile.avatarUrl.isEmpty
+                ? Container(
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.person, size: 64),
+                  )
+                : Image.network(profile.avatarUrl, fit: BoxFit.cover),
           ),
           ListTile(
-            title: Text('${profile.name} • ${profile.nationality}'),
+            title: Text(
+              profile.country.isEmpty
+                  ? '${profile.name} · ${profile.age}'
+                  : '${profile.name} · ${profile.age} · ${profile.country}',
+            ),
             subtitle: Text(profile.bio),
           ),
           Wrap(
             spacing: 8,
-            children: profile.languages.map((c) => LanguageBadge(code: c)).toList(),
+            children:
+                profile.languages.map((c) => LanguageBadge(code: c)).toList(),
           ),
           const SizedBox(height: 12),
           Row(
@@ -39,11 +51,11 @@ class ProfileCard extends StatelessWidget {
             children: [
               FilledButton.tonal(
                 onPressed: onPass,
-                child: const Icon(Icons.close),
+                child: Text(l.pass),
               ),
               FilledButton(
                 onPressed: onLike,
-                child: const Icon(Icons.favorite),
+                child: Text(l.like),
               ),
             ],
           ),

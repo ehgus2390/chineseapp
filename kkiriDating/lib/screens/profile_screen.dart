@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../widgets/language_badge.dart';
 import '../l10n/app_localizations.dart';
-import '../state/locale_state.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -31,10 +30,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundImage: NetworkImage(me.avatarUrl),
             ),
             const SizedBox(width: 16),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(me.name, style: Theme.of(context).textTheme.titleLarge),
-              Text('${l.nationality}: ${me.nationality}')
-            ]),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(me.name, style: Theme.of(context).textTheme.titleLarge),
+                Text('${l.location}: ${me.location}'),
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 16),

@@ -6,7 +6,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/discover_screen.dart';
-import 'screens/matches_screen.dart';
 import 'screens/chat_list_screen.dart';
 import 'screens/chat_room_screen.dart';
 import 'screens/profile_screen.dart';
@@ -41,10 +40,6 @@ class KkiriApp extends StatelessWidget {
               builder: (_, __) => const DiscoverScreen(),
             ),
             GoRoute(
-              path: '/home/matches',
-              builder: (_, __) => const MatchesScreen(),
-            ),
-            GoRoute(
               path: '/home/chat',
               builder: (_, __) => const ChatListScreen(),
               routes: [
@@ -67,7 +62,7 @@ class KkiriApp extends StatelessWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-      title: 'Kkiri',
+      title: 'Kkiri Dating',
       locale: locale,
       theme: ThemeData(
         colorSchemeSeed: Colors.pink,
@@ -79,7 +74,7 @@ class KkiriApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [Locale('ko'), Locale('en')],
+      supportedLocales: const [Locale('ko'), Locale('en'), Locale('ja')],
     );
   }
 }
@@ -91,9 +86,8 @@ class _BottomNav extends StatelessWidget {
     final location = GoRouterState.of(context).uri.toString();
 
     int currentIndex = 0;
-    if (location.startsWith('/home/matches')) currentIndex = 1;
-    if (location.startsWith('/home/chat')) currentIndex = 2;
-    if (location.startsWith('/home/profile')) currentIndex = 3;
+    if (location.startsWith('/home/chat')) currentIndex = 1;
+    if (location.startsWith('/home/profile')) currentIndex = 2;
 
     return NavigationBar(
       selectedIndex: currentIndex,
@@ -103,19 +97,15 @@ class _BottomNav extends StatelessWidget {
             context.go('/home/discover');
             break;
           case 1:
-            context.go('/home/matches');
-            break;
-          case 2:
             context.go('/home/chat');
             break;
-          case 3:
+          case 2:
             context.go('/home/profile');
             break;
         }
       },
       destinations: [
         NavigationDestination(icon: const Icon(Icons.explore), label: l.tabDiscover),
-        NavigationDestination(icon: const Icon(Icons.favorite), label: l.tabMatches),
         NavigationDestination(icon: const Icon(Icons.chat_bubble), label: l.tabChat),
         NavigationDestination(icon: const Icon(Icons.person), label: l.tabProfile),
       ],

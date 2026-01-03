@@ -6,7 +6,6 @@ class LocaleState extends ChangeNotifier {
   Locale? get locale => _locale;
   final PreferencesStorage _preferences = PreferencesStorage.instance;
 
-  /// 앱 시작 시 저장된 언어 복원 (기본: 시스템 언어)
   Future<void> load() async {
     final code = await _preferences.readString('app_locale_code');
     if (code != null && code.isNotEmpty) {
@@ -19,7 +18,7 @@ class LocaleState extends ChangeNotifier {
     _locale = locale;
     notifyListeners();
     if (locale == null) {
-      await _preferences.remove('app_locale_code'); // 시스템 기본으로
+      await _preferences.remove('app_locale_code');
     } else {
       await _preferences.writeString('app_locale_code', locale.languageCode);
     }
