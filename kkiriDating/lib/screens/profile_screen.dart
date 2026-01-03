@@ -1,7 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../state/app_state.dart';
-import '../widgets/language_badge.dart';
+import '../state/locale_state.dart';
 import '../l10n/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -12,45 +16,347 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const List<String> available = <String>['ko', 'en', 'ja', 'zh'];
+  static const List<String> availableLanguages = <String>['ko', 'ja', 'en'];
+  static const List<String> availableInterests = <String>[
+    'Sport',
+    'Movie',
+    'Dance',
+    'Music',
+    'Singing',
+    'Game',
+    'Travel',
+    'Cooking',
+    'Fitness',
+  ];
+
+  final nameCtrl = TextEditingController();
+  final ageCtrl = TextEditingController();
+  final occupationCtrl = TextEditingController();
+  final countryCtrl = TextEditingController();
+  final bioCtrl = TextEditingController();
+  final latCtrl = TextEditingController();
+  final lngCtrl = TextEditingController();
+
+  bool _seeded = false;
+  bool _uploading = false;
+  int _avatarVersion = 0;
+  String _gender = 'male';
+  double _distanceKm = 30;
+  final Set<String> _languages = <String>{};
+  final Set<String> _interests = <String>{};
+  final ImagePicker _picker = ImagePicker();
+
+  @override
+  void dispose() {
+    nameCtrl.dispose();
+    ageCtrl.dispose();
+    occupationCtrl.dispose();
+    countryCtrl.dispose();
+    bioCtrl.dispose();
+    latCtrl.dispose();
+    lngCtrl.dispose();
+    super.dispose();
+  }
+
+  void _seedFromProfile(AppState state) {
+    if (_seeded) return;
+    final me = state.meOrNull;
+    if (me == null) return;
+    _seeded = true;
+    nameCtrl.text = me.name;
+    ageCtrl.text = me.age == 0 ? '' : me.age.toString();
+    occupationCtrl.text = me.occupation;
+    countryCtrl.text = me.country;
+    bioCtrl.text = me.bio;
+    _gender = me.gender;
+    _distanceKm = me.distanceKm;
+    _languages
+      ..clear()
+      ..addAll(me.languages);
+    _interests
+      ..clear()
+      ..addAll(me.interests);
+    if (me.location != null) {
+      latCtrl.text = me.location!.latitude.toStringAsFixed(6);
+      lngCtrl.text = me.location!.longitude.toStringAsFixed(6);
+    }
+  }
+
+  String _cacheBustedUrl(String url) {
+    if (url.isEmpty) return url;
+    final separator = url.contains('?') ? '&' : '?';
+    return '$url${separator}v=$_avatarVersion';
+  }
+
+  Future<void> _pickAvatar(AppState state) async {
+    final XFile? file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1080,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+    setState(() => _uploading = true);
+    final bytes = await file.readAsBytes();
+    try {
+      await state.uploadAvatar(bytes);
+      _avatarVersion += 1;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+    if (!mounted) return;
+    setState(() => _uploading = false);
+  }
+
+  Future<void> _useCurrentLocation(AppState state) async {
+    final hasService = await Geolocator.isLocationServiceEnabled();
+    if (!hasService) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).locationServiceOff)),
+      );
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).locationPermissionDenied)),
+      );
+      return;
+    }
+
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+    latCtrl.text = position.latitude.toStringAsFixed(6);
+    lngCtrl.text = position.longitude.toStringAsFixed(6);
+
+    if (countryCtrl.text.trim().isEmpty) {
+      final placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
+      if (placemarks.isNotEmpty) {
+        countryCtrl.text = placemarks.first.country ?? '';
+      }
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context).locationUpdated)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final state = context.watch<AppState>();
-    final me = state.me;
+    final localeState = context.watch<LocaleState>();
+    _seedFromProfile(state);
+
+    final me = state.meOrNull;
+    if (me == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Row(
           children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundImage: NetworkImage(me.avatarUrl),
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: Colors.grey.shade300,
+                  child: me.avatarUrl.isEmpty
+                      ? const Icon(Icons.person)
+                      : ClipOval(
+                          child: Image.network(
+                            _cacheBustedUrl(me.avatarUrl),
+                            key: ValueKey('${me.avatarUrl}-$_avatarVersion'),
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                ),
+                if (_uploading)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
+                        borderRadius: BorderRadius.circular(36),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(me.name, style: Theme.of(context).textTheme.titleLarge),
-                Text('${l.location}: ${me.location}'),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    me.name.isEmpty ? l.profileTitle : me.name,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  Text('${l.country}: ${me.country}'),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.photo_camera),
+              onPressed: _uploading ? null : () => _pickAvatar(state),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        Text(l.yourLanguages, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 24),
+        Text(l.appLanguage, style: Theme.of(context).textTheme.titleMedium),
+        DropdownButton<Locale>(
+          value: localeState.locale ??
+              Locale(Localizations.localeOf(context).languageCode),
+          onChanged: (value) async {
+            await context.read<LocaleState>().setLocale(value);
+          },
+          items: const [
+            DropdownMenuItem(value: Locale('ko'), child: Text('Korean')),
+            DropdownMenuItem(value: Locale('ja'), child: Text('Japanese')),
+            DropdownMenuItem(value: Locale('en'), child: Text('English')),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Text(l.profileTitle, style: Theme.of(context).textTheme.titleMedium),
+        TextField(
+          controller: nameCtrl,
+          decoration: InputDecoration(labelText: l.name),
+        ),
+        TextField(
+          controller: ageCtrl,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(labelText: l.age),
+        ),
+        TextField(
+          controller: occupationCtrl,
+          decoration: InputDecoration(labelText: l.occupation),
+        ),
+        TextField(
+          controller: countryCtrl,
+          decoration: InputDecoration(labelText: l.country),
+        ),
+        const SizedBox(height: 12),
+        Text(l.interests),
         Wrap(
           spacing: 8,
-          children: me.languages.map((c) => LanguageBadge(code: c)).toList(),
+          children: availableInterests.map((String label) {
+            final bool selected = _interests.contains(label);
+            return FilterChip(
+              label: Text(label),
+              selected: selected,
+              onSelected: (bool value) {
+                setState(() {
+                  if (value) {
+                    _interests.add(label);
+                  } else {
+                    _interests.remove(label);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        Text(l.gender),
+        DropdownButton<String>(
+          value: _gender,
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _gender = value);
+          },
+          items: [
+            DropdownMenuItem(value: 'male', child: Text(l.male)),
+            DropdownMenuItem(value: 'female', child: Text(l.female)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(l.yourLanguages),
+        Wrap(
+          spacing: 8,
+          children: availableLanguages.map((String code) {
+            final bool selected = _languages.contains(code);
+            return FilterChip(
+              label: Text(code.toUpperCase()),
+              selected: selected,
+              onSelected: (bool value) {
+                setState(() {
+                  if (value) {
+                    _languages.add(code);
+                  } else {
+                    _languages.remove(code);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: bioCtrl,
+          decoration: InputDecoration(labelText: l.bio),
+          maxLines: 3,
+        ),
+        const SizedBox(height: 24),
+        Text(l.distance, style: Theme.of(context).textTheme.titleMedium),
+        Text(l.distanceHint),
+        Slider(
+          min: 1,
+          max: 200,
+          value: _distanceKm.clamp(1, 200),
+          label: '${_distanceKm.toStringAsFixed(0)} km',
+          onChanged: (value) => setState(() => _distanceKm = value),
+        ),
+        const SizedBox(height: 12),
+        Text(l.location, style: Theme.of(context).textTheme.titleMedium),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: latCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(labelText: l.latitude),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: lngCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(labelText: l.longitude),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        FilledButton.tonal(
+          onPressed: () => _useCurrentLocation(state),
+          child: Text(l.useCurrentLocation),
         ),
         const SizedBox(height: 24),
         Text(l.preferences, style: Theme.of(context).textTheme.titleMedium),
         Text(l.prefTarget),
         Wrap(
           spacing: 8,
-          children: available.map((String code) {
+          children: availableLanguages.map((String code) {
             final bool selected = state.myPreferredLanguages.contains(code);
             return FilterChip(
               label: Text(code.toUpperCase()),
@@ -64,7 +370,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 16),
         FilledButton(
           onPressed: () async {
-            await state.savePreferredLanguages();
+            final int age = int.tryParse(ageCtrl.text.trim()) ?? 0;
+            GeoPoint? location;
+            final double? lat = double.tryParse(latCtrl.text.trim());
+            final double? lng = double.tryParse(lngCtrl.text.trim());
+            if (lat != null && lng != null) {
+              location = GeoPoint(lat, lng);
+            }
+            await state.saveProfile(
+              name: nameCtrl.text.trim(),
+              age: age,
+              occupation: occupationCtrl.text.trim(),
+              country: countryCtrl.text.trim(),
+              interests: _interests.toList(),
+              gender: _gender,
+              languages: _languages.toList(),
+              bio: bioCtrl.text.trim(),
+              distanceKm: _distanceKm,
+              location: location,
+            );
           },
           child: Text(l.save),
         ),

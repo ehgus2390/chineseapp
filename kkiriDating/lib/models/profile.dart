@@ -55,7 +55,8 @@ class Profile {
       distanceKm: (data['distanceKm'] ?? 0) is num
           ? (data['distanceKm'] as num).toDouble()
           : 0,
-      location: data['location'] is GeoPoint ? data['location'] as GeoPoint : null,
+      location:
+          data['location'] is GeoPoint ? data['location'] as GeoPoint : null,
     );
   }
 

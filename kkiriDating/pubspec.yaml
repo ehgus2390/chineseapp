@@ -47,6 +47,11 @@ dependencies:
   google_sign_in: ^6.2.1
   provider: ^6.1.2
   go_router: ^14.2.0
+  google_maps_flutter: ^2.7.0
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+  http: ^1.2.0
+  image_picker: ^1.0.7
 
 
 #dependencies:

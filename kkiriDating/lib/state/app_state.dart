@@ -17,6 +17,7 @@ import '../services/preferences_storage.dart';
 class AppState extends ChangeNotifier {
   AppState() {
     chat = ChatService(_db);
+    _authSub = _auth.authStateChanges().listen(_handleAuthChanged);
   }
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -39,6 +40,7 @@ class AppState extends ChangeNotifier {
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchesSub;
+  StreamSubscription<User?>? _authSub;
 
   static const String _onboardingKey = 'onboarding_complete';
   static const String _preferredLanguagesKey = 'preferred_languages';
@@ -57,19 +59,27 @@ class AppState extends ChangeNotifier {
     if (_initialized) return;
     _initialized = true;
 
-    await _signInIfNeeded();
+    await _restorePersistentState();
+  }
+  
+  Future<void> _handleAuthChanged(User? user) async {
+    if (user == null) {
+      _me = null;
+      _profiles.clear();
+      _matches.clear();
+      _likedIds.clear();
+      _passedIds.clear();
+      await _meSub?.cancel();
+      await _matchesSub?.cancel();
+      notifyListeners();
+      return;
+    }
     await _ensureProfile();
     await _loadMeOnce();
-    await _restorePersistentState();
     await _loadMyDecisions();
-
     _watchMyProfile();
     _watchMatches();
-  }
-
-  Future<void> _signInIfNeeded() async {
-    if (_auth.currentUser != null) return;
-    await _auth.signInAnonymously();
+    notifyListeners();
   }
 
   Future<void> _ensureProfile() async {
@@ -182,38 +192,44 @@ class AppState extends ChangeNotifier {
     }
     final String targetGender =
         meProfile.gender == 'female' ? 'male' : 'female';
+    final matchesIds = _matches.expand((m) => m.userIds).toSet();
     return _db
         .collection('users')
         .where('gender', isEqualTo: targetGender)
         .snapshots()
-        .map((snapshot) {
-      final matchesIds = _matches.expand((m) => m.userIds).toSet();
-      final List<Profile> list = snapshot.docs
-          .map(Profile.fromDoc)
+        .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
+        .map((list) {
+      final filtered = list
           .where((p) =>
               p.id != meProfile.id &&
+              p.gender == targetGender &&
               !_likedIds.contains(p.id) &&
               !_passedIds.contains(p.id) &&
               !matchesIds.contains(p.id))
-          .where(_withinDistance)
+          .where((p) => _withinDistance(p, meProfile))
           .toList();
-      list.sort((a, b) {
+      filtered.sort((a, b) {
         final double scoreB =
             _matchService.score(meProfile, b, _preferredLanguages);
         final double scoreA =
             _matchService.score(meProfile, a, _preferredLanguages);
         return scoreB.compareTo(scoreA);
       });
-      return list;
+      return filtered;
     });
   }
 
-  bool _withinDistance(Profile other) {
-    if (_me == null) return true;
-    if (_me!.location == null || other.location == null) return true;
-    final double limit = _me!.distanceKm <= 0 ? double.infinity : _me!.distanceKm;
-    final double distance = _distanceKm(_me!.location!, other.location!);
+  bool _withinDistance(Profile other, Profile meProfile) {
+    if (meProfile.location == null || other.location == null) return true;
+    final double limit =
+        meProfile.distanceKm <= 0 ? double.infinity : meProfile.distanceKm;
+    final double distance = _distanceKm(meProfile.location!, other.location!);
     return distance <= limit;
+  }
+
+  double? distanceKmTo(Profile other) {
+    if (_me?.location == null || other.location == null) return null;
+    return _distanceKm(_me!.location!, other.location!);
   }
 
   double _distanceKm(GeoPoint a, GeoPoint b) {
@@ -325,12 +341,18 @@ class AppState extends ChangeNotifier {
     );
 
     await _auth.signInWithCredential(credential);
-    await _ensureProfile();
-    await _loadMeOnce();
-    await _loadMyDecisions();
-    _watchMyProfile();
-    _watchMatches();
     notifyListeners();
+  }
+
+  Future<void> signInWithEmail(String email, String password) async {
+    await _auth.signInWithEmailAndPassword(email: email, password: password);
+  }
+
+  Future<void> registerWithEmail(String email, String password) async {
+    await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
   Future<void> signOut() async {
@@ -385,6 +407,7 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _meSub?.cancel();
     _matchesSub?.cancel();
+    _authSub?.cancel();
     super.dispose();
   }
 }

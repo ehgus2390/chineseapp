@@ -24,7 +24,9 @@ class AppLocalizations {
 
   // sugar getters
   String get appTitle => t('appTitle');
-  String get tabDiscover => t('tabDiscover');
+  String get tabRecommend => t('tabRecommend');
+  String get tabNearby => t('tabNearby');
+  String get tabFeed => t('tabFeed');
   String get tabChat => t('tabChat');
   String get tabProfile => t('tabProfile');
   String get discoverEmpty => t('discoverEmpty');
@@ -39,6 +41,10 @@ class AppLocalizations {
   String get prefTarget => t('prefTarget');
   String get save => t('save');
   String get chatEmpty => t('chatEmpty');
+  String get chatTitle => t('chatTitle');
+  String get chatFilterAll => t('chatFilterAll');
+  String get chatFilterLikes => t('chatFilterLikes');
+  String get chatFilterNew => t('chatFilterNew');
   String get discoverTitle => t('discoverTitle');
   String get profileTitle => t('profileTitle');
   String get name => t('name');
@@ -53,11 +59,22 @@ class AppLocalizations {
   String get location => t('location');
   String get latitude => t('latitude');
   String get longitude => t('longitude');
+  String get useCurrentLocation => t('useCurrentLocation');
+  String get locationUpdated => t('locationUpdated');
+  String get locationServiceOff => t('locationServiceOff');
+  String get locationPermissionDenied => t('locationPermissionDenied');
   String get appLanguage => t('appLanguage');
   String get preferredLanguages => t('preferredLanguages');
   String get onboardingTitle => t('onboardingTitle');
   String get cont => t('continue');
-  String get nationality => t('nationality');
+  String get loginTitle => t('loginTitle');
+  String get loginSubtitle => t('loginSubtitle');
+  String get email => t('email');
+  String get password => t('password');
+  String get signIn => t('signIn');
+  String get signUp => t('signUp');
+  String get needAccount => t('needAccount');
+  String get haveAccount => t('haveAccount');
 }
 
 class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

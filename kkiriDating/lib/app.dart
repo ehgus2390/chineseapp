@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'l10n/app_localizations.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/auth_screen.dart';
 import 'screens/discover_screen.dart';
 import 'screens/chat_list_screen.dart';
 import 'screens/chat_room_screen.dart';
@@ -21,8 +22,31 @@ class KkiriApp extends StatelessWidget {
     final locale = context.watch<LocaleState>().locale;
 
     final router = GoRouter(
-      initialLocation: state.isOnboarded ? '/home/discover' : '/onboarding',
+      initialLocation: '/login',
+      refreshListenable: state,
+      redirect: (context, routerState) {
+        final bool loggedIn = state.isLoggedIn;
+        final bool onboarded = state.isOnboarded;
+        final String location = routerState.matchedLocation;
+        final bool loggingIn = location == '/login';
+        final bool onboarding = location == '/onboarding';
+
+        if (!loggedIn) {
+          return loggingIn ? null : '/login';
+        }
+        if (!onboarded) {
+          return onboarding ? null : '/onboarding';
+        }
+        if (loggingIn || onboarding) {
+          return '/home/discover';
+        }
+        return null;
+      },
       routes: [
+        GoRoute(
+          path: '/login',
+          builder: (_, __) => const AuthScreen(),
+        ),
         GoRoute(
           path: '/onboarding',
           builder: (_, __) => const OnboardingScreen(),
@@ -65,8 +89,9 @@ class KkiriApp extends StatelessWidget {
       title: 'Kkiri Dating',
       locale: locale,
       theme: ThemeData(
-        colorSchemeSeed: Colors.pink,
+        colorSchemeSeed: const Color(0xFFE94D8A),
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF7F3F4),
       ),
       localizationsDelegates: const [
         AppLocalizationsDelegate(),
@@ -105,7 +130,7 @@ class _BottomNav extends StatelessWidget {
         }
       },
       destinations: [
-        NavigationDestination(icon: const Icon(Icons.explore), label: l.tabDiscover),
+        NavigationDestination(icon: const Icon(Icons.explore), label: l.tabRecommend),
         NavigationDestination(icon: const Icon(Icons.chat_bubble), label: l.tabChat),
         NavigationDestination(icon: const Icon(Icons.person), label: l.tabProfile),
       ],
