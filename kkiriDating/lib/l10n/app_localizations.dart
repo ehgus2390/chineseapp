@@ -75,6 +75,7 @@ class AppLocalizations {
   String get signUp => t('signUp');
   String get needAccount => t('needAccount');
   String get haveAccount => t('haveAccount');
+  String get signOut => t('signOut');
 }
 
 class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -121,15 +121,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 CircleAvatar(
                   radius: 36,
                   backgroundColor: Colors.grey.shade300,
-                  child: me.avatarUrl.isEmpty
+                  child: me.photoUrl.isEmpty
                       ? const Icon(Icons.person)
                       : ClipOval(
                           child: Image.network(
-                            _cacheBustedUrl(me.avatarUrl),
-                            key: ValueKey('${me.avatarUrl}-$_avatarVersion'),
+                            _cacheBustedUrl(me.photoUrl),
+                            key: ValueKey('${me.photoUrl}-$_avatarVersion'),
                             width: 72,
                             height: 72,
                             fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.person),
                           ),
                         ),
                 ),
@@ -293,6 +295,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             );
           },
           child: Text(l.save),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: () async {
+            await state.signOut();
+          },
+          child: Text(l.signOut),
         ),
       ],
     );

@@ -78,6 +78,7 @@ class AppState extends ChangeNotifier {
       return;
     }
     await _ensureProfile();
+    await _syncAuthFields(user);
     await _loadMeOnce();
     await _loadMyDecisions();
     _watchMyProfile();
@@ -94,6 +95,8 @@ class AppState extends ChangeNotifier {
     if (snapshot.exists) return;
 
     await doc.set(<String, dynamic>{
+      'userId': currentUser.uid,
+      'email': currentUser.email ?? '',
       'name': currentUser.displayName ?? 'New user',
       'age': 0,
       'occupation': '',
@@ -102,12 +105,20 @@ class AppState extends ChangeNotifier {
       'gender': 'male',
       'languages': <String>['ko'],
       'bio': '',
-      'avatarUrl': currentUser.photoURL ?? '',
+      'photoUrl': currentUser.photoURL ?? '',
       'distanceKm': 30,
       'location': null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<void> _syncAuthFields(User user) async {
+    await _db.collection('users').doc(user.uid).set(<String, dynamic>{
+      'userId': user.uid,
+      'email': user.email ?? '',
+      'photoUrl': user.photoURL ?? '',
+    }, SetOptions(merge: true));
   }
 
   Future<void> _loadMeOnce() async {
@@ -417,12 +428,20 @@ class AppState extends ChangeNotifier {
       throw StateError('Cannot upload avatar without signing in.');
     }
 
-    final Reference ref = _storage.ref().child('avatars/${currentUser.uid}.jpg');
-    await ref.putData(data);
-    final String url = await ref.getDownloadURL();
-    await _db.collection('users').doc(currentUser.uid).update(<String, Object?>{
-      'avatarUrl': url,
-    });
+    final Reference ref =
+        _storage.ref().child('profile_images/${currentUser.uid}.jpg');
+    try {
+      final task = await ref.putData(
+        data,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      final String url = await task.ref.getDownloadURL();
+      await _db.collection('users').doc(currentUser.uid).update(<String, Object?>{
+        'photoUrl': url,
+      });
+    } on FirebaseException catch (e) {
+      throw StateError('Upload failed: ${e.code}');
+    }
   }
 
   @override

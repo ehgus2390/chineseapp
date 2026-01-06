@@ -51,5 +51,6 @@
   "signIn": "ログイン",
   "signUp": "アカウント作成",
   "needAccount": "新しいアカウントを作成",
-  "haveAccount": "すでにアカウントがあります"
+  "haveAccount": "すでにアカウントがあります",
+  "signOut": "ログアウト"
 }

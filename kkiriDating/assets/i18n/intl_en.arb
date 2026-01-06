@@ -51,5 +51,6 @@
   "signIn": "Sign in",
   "signUp": "Create account",
   "needAccount": "Create a new account",
-  "haveAccount": "I already have an account"
+  "haveAccount": "I already have an account",
+  "signOut": "Log out"
 }

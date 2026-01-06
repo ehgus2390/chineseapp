@@ -32,12 +32,12 @@ class ProfileCard extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: profile.avatarUrl.isEmpty
+              child: profile.photoUrl.isEmpty
                   ? Container(
                       color: Colors.grey.shade200,
                       child: const Icon(Icons.person, size: 64),
                     )
-                  : Image.network(profile.avatarUrl, fit: BoxFit.cover),
+                  : Image.network(profile.photoUrl, fit: BoxFit.cover),
             ),
             Positioned.fill(
               child: DecoratedBox(

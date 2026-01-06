@@ -10,7 +10,7 @@ class Profile {
   final String gender; // 'male' | 'female'
   final List<String> languages;
   final String bio;
-  final String avatarUrl;
+  final String photoUrl;
   final double distanceKm;
   final GeoPoint? location;
 
@@ -24,7 +24,7 @@ class Profile {
     required this.gender,
     required this.languages,
     required this.bio,
-    required this.avatarUrl,
+    required this.photoUrl,
     required this.distanceKm,
     required this.location,
   });
@@ -51,7 +51,7 @@ class Profile {
               .toList() ??
           <String>[],
       bio: (data['bio'] ?? '').toString(),
-      avatarUrl: (data['avatarUrl'] ?? '').toString(),
+      photoUrl: (data['photoUrl'] ?? '').toString(),
       distanceKm: (data['distanceKm'] ?? 0) is num
           ? (data['distanceKm'] as num).toDouble()
           : 0,
@@ -70,7 +70,7 @@ class Profile {
       'gender': gender,
       'languages': languages,
       'bio': bio,
-      'avatarUrl': avatarUrl,
+      'photoUrl': photoUrl,
       'distanceKm': distanceKm,
       'location': location,
       'updatedAt': FieldValue.serverTimestamp(),
