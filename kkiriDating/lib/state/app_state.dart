@@ -105,7 +105,6 @@ class AppState extends ChangeNotifier {
       'gender': 'male',
       'languages': <String>['ko'],
       'bio': '',
-      'photoUrl': currentUser.photoURL ?? '',
       'distanceKm': 30,
       'location': null,
       'createdAt': FieldValue.serverTimestamp(),
@@ -117,7 +116,6 @@ class AppState extends ChangeNotifier {
     await _db.collection('users').doc(user.uid).set(<String, dynamic>{
       'userId': user.uid,
       'email': user.email ?? '',
-      'photoUrl': user.photoURL ?? '',
     }, SetOptions(merge: true));
   }
 
@@ -213,6 +211,8 @@ class AppState extends ChangeNotifier {
         .snapshots()
         .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
         .map((list) {
+      // Distance filtering uses Haversine to compare GeoPoint coordinates
+      // against the user's selected distanceKm.
       final filtered = list
           .where((p) =>
               p.id != meProfile.id &&
@@ -232,6 +232,27 @@ class AppState extends ChangeNotifier {
       });
       return filtered;
     });
+  }
+
+  Stream<List<Profile>> watchNearbyUsers() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      return const Stream<List<Profile>>.empty();
+    }
+    final String targetGender =
+        meProfile.gender == 'female' ? 'male' : 'female';
+    return _db
+        .collection('users')
+        .where('gender', isEqualTo: targetGender)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
+        .map((list) {
+          // Distance is computed with Haversine using GeoPoint coordinates.
+          return list
+              .where((p) => p.id != meProfile.id && p.gender == targetGender)
+              .where((p) => _withinDistance(p, meProfile))
+              .toList();
+        });
   }
 
   bool _sharesInterests(Profile meProfile, Profile other) {
@@ -424,16 +445,20 @@ class AppState extends ChangeNotifier {
 
   Future<void> uploadAvatar(Uint8List data) async {
     final User? currentUser = user;
-    if (currentUser == null) {
+    if (currentUser == null || currentUser.isAnonymous) {
       throw StateError('Cannot upload avatar without signing in.');
     }
 
-    final Reference ref =
-        _storage.ref().child('profile_images/${currentUser.uid}.jpg');
+    final Reference ref = _storage
+        .ref()
+        .child('profile_images/${currentUser.uid}/profile.jpg');
     try {
       final task = await ref.putData(
         data,
-        SettableMetadata(contentType: 'image/jpeg'),
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          cacheControl: 'public,max-age=3600',
+        ),
       );
       final String url = await task.ref.getDownloadURL();
       await _db.collection('users').doc(currentUser.uid).update(<String, Object?>{

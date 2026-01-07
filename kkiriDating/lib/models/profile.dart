@@ -10,7 +10,7 @@ class Profile {
   final String gender; // 'male' | 'female'
   final List<String> languages;
   final String bio;
-  final String photoUrl;
+  final String? photoUrl;
   final double distanceKm;
   final GeoPoint? location;
 
@@ -35,6 +35,10 @@ class Profile {
   }
 
   factory Profile.fromMap(String id, Map<String, dynamic> data) {
+    final Object? photoValue = data['photoUrl'];
+    final String? photoUrl = photoValue is String && photoValue.trim().isNotEmpty
+        ? photoValue
+        : null;
     return Profile(
       id: id,
       name: (data['name'] ?? '').toString(),
@@ -51,7 +55,7 @@ class Profile {
               .toList() ??
           <String>[],
       bio: (data['bio'] ?? '').toString(),
-      photoUrl: (data['photoUrl'] ?? '').toString(),
+      photoUrl: photoUrl,
       distanceKm: (data['distanceKm'] ?? 0) is num
           ? (data['distanceKm'] as num).toDouble()
           : 0,

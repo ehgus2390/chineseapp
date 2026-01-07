@@ -121,11 +121,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 CircleAvatar(
                   radius: 36,
                   backgroundColor: Colors.grey.shade300,
-                  child: me.photoUrl.isEmpty
+                  child: (me.photoUrl == null || me.photoUrl!.isEmpty)
                       ? const Icon(Icons.person)
                       : ClipOval(
                           child: Image.network(
-                            _cacheBustedUrl(me.photoUrl),
+                            _cacheBustedUrl(me.photoUrl!),
                             key: ValueKey('${me.photoUrl}-$_avatarVersion'),
                             width: 72,
                             height: 72,

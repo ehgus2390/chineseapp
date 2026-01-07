@@ -5,7 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'l10n/app_localizations.dart';
 import 'screens/auth_screen.dart';
-import 'screens/discover_screen.dart';
+import 'screens/recommendation_screen.dart';
 import 'screens/chat_list_screen.dart';
 import 'screens/chat_room_screen.dart';
 import 'screens/profile_screen.dart';
@@ -51,7 +51,7 @@ class KkiriApp extends StatelessWidget {
           routes: [
             GoRoute(
               path: '/home/discover',
-              builder: (_, __) => const DiscoverScreen(),
+              builder: (_, __) => const RecommendationScreen(),
             ),
             GoRoute(
               path: '/home/chat',

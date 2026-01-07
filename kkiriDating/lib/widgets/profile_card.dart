@@ -32,12 +32,32 @@ class ProfileCard extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: profile.photoUrl.isEmpty
+              child: (profile.photoUrl == null || profile.photoUrl!.isEmpty)
                   ? Container(
                       color: Colors.grey.shade200,
                       child: const Icon(Icons.person, size: 64),
                     )
-                  : Image.network(profile.photoUrl, fit: BoxFit.cover),
+                  : Image.network(
+                      profile.photoUrl!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          color: Colors.grey.shade200,
+                          alignment: Alignment.center,
+                          child: const SizedBox(
+                            height: 32,
+                            width: 32,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey.shade200,
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.person, size: 64),
+                      ),
+                    ),
             ),
             Positioned.fill(
               child: DecoratedBox(
@@ -47,10 +67,23 @@ class ProfileCard extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.6),
+                      Colors.black.withOpacity(0.65),
                     ],
                   ),
                 ),
+              ),
+            ),
+            Positioned(
+              top: 16,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _Dot(active: true),
+                  _Dot(active: false),
+                  _Dot(active: false),
+                ],
               ),
             ),
             Positioned(
@@ -60,19 +93,6 @@ class ProfileCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade600,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Text(
-                      'ONLINE',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   Text(
                     profile.country.isEmpty
                         ? '${profile.name}, ${profile.age}'
@@ -118,7 +138,7 @@ class ProfileCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                   ],
                   Wrap(
                     spacing: 6,
@@ -154,6 +174,13 @@ class ProfileCard extends StatelessWidget {
                     background: const Color(0xFFE94D8A),
                     foreground: Colors.white,
                     label: l.like,
+                  ),
+                  _ActionButton(
+                    icon: Icons.chat_bubble,
+                    onPressed: () {},
+                    background: Colors.white.withOpacity(0.85),
+                    foreground: Colors.black87,
+                    label: l.tabChat,
                   ),
                 ],
               ),
@@ -207,6 +234,25 @@ class _ActionButton extends StatelessWidget {
           style: const TextStyle(color: Colors.white, fontSize: 12),
         ),
       ],
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  final bool active;
+
+  const _Dot({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      width: active ? 18 : 8,
+      height: 6,
+      decoration: BoxDecoration(
+        color: active ? Colors.white : Colors.white54,
+        borderRadius: BorderRadius.circular(999),
+      ),
     );
   }
 }
