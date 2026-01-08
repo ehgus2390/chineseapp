@@ -46,9 +46,15 @@ class ChatListScreen extends StatelessWidget {
             Expanded(
               child: StreamBuilder<List<Profile>>(
                 stream: state.watchNearbyUsers(),
+                initialData: const <Profile>[],
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        l.chatEmpty,
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                    );
                   }
                   final list = snapshot.data ?? <Profile>[];
                   if (list.isEmpty) {
