@@ -83,7 +83,11 @@ class ChatListScreen extends StatelessWidget {
                           '${p.age}$distanceLabel',
                           style: const TextStyle(color: Colors.black54),
                         ),
-                        onTap: () => context.go('/home/chat/room/${p.id}'),
+                        onTap: () async {
+                          final matchId = await state.ensureChatRoom(p.id);
+                          if (!context.mounted) return;
+                          context.go('/home/chat/room/$matchId');
+                        },
                       );
                     },
                   );

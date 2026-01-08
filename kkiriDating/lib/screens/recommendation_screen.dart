@@ -14,7 +14,16 @@ class RecommendationScreen extends StatefulWidget {
 }
 
 class _RecommendationScreenState extends State<RecommendationScreen> {
-  String? _lastDismissedId;
+  final Set<String> _dismissedIds = <String>{};
+
+  void _dismiss(Profile profile, bool liked) {
+    if (liked) {
+      context.read<AppState>().like(profile);
+    } else {
+      context.read<AppState>().pass(profile);
+    }
+    setState(() => _dismissedIds.add(profile.id));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,9 +83,8 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
               if (list.isEmpty) {
                 return Center(child: Text(l.discoverEmpty));
               }
-              final filtered = list
-                  .where((p) => p.id != _lastDismissedId)
-                  .toList();
+              final filtered =
+                  list.where((p) => !_dismissedIds.contains(p.id)).toList();
               if (filtered.isEmpty) {
                 return Center(child: Text(l.discoverEmpty));
               }
@@ -116,18 +124,16 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
                         alignment: Alignment.centerRight,
                       ),
                       onDismissed: (direction) {
-                        // Swipe decision flow: left = pass, right = like.
                         if (direction == DismissDirection.endToStart) {
-                          state.pass(top);
+                          _dismiss(top, false);
                         } else {
-                          state.like(top);
+                          _dismiss(top, true);
                         }
-                        setState(() => _lastDismissedId = top.id);
                       },
                       child: ProfileCard(
                         profile: top,
-                        onLike: () => state.like(top),
-                        onPass: () => state.pass(top),
+                        onLike: () => _dismiss(top, true),
+                        onPass: () => _dismiss(top, false),
                         distanceKm: state.distanceKmTo(top),
                       ),
                     ),

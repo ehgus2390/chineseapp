@@ -211,8 +211,6 @@ class AppState extends ChangeNotifier {
         .snapshots()
         .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
         .map((list) {
-      // Distance filtering uses Haversine to compare GeoPoint coordinates
-      // against the user's selected distanceKm.
       final filtered = list
           .where((p) =>
               p.id != meProfile.id &&
@@ -247,22 +245,27 @@ class AppState extends ChangeNotifier {
         .snapshots()
         .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
         .map((list) {
-          // Distance is computed with Haversine using GeoPoint coordinates.
           return list
-              .where((p) => p.id != meProfile.id && p.gender == targetGender)
+              .where((p) =>
+                  p.id != meProfile.id &&
+                  p.gender == targetGender &&
+                  _sharesInterests(meProfile, p))
               .where((p) => _withinDistance(p, meProfile))
               .toList();
         });
   }
 
   bool _sharesInterests(Profile meProfile, Profile other) {
-    if (meProfile.interests.isEmpty) return true;
-    if (other.interests.isEmpty) return false;
+    if (meProfile.interests.isEmpty || other.interests.isEmpty) {
+      return false;
+    }
     return other.interests.any(meProfile.interests.contains);
   }
 
   bool _withinDistance(Profile other, Profile meProfile) {
-    if (meProfile.location == null || other.location == null) return true;
+    if (meProfile.location == null || other.location == null) {
+      return false;
+    }
     final double limit =
         meProfile.distanceKm <= 0 ? double.infinity : meProfile.distanceKm;
     final double distance = _distanceKm(meProfile.location!, other.location!);
@@ -335,6 +338,25 @@ class AppState extends ChangeNotifier {
       'lastMessage': '',
       'lastMessageAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  Future<String> ensureChatRoom(String otherUserId) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      throw StateError('No signed-in user.');
+    }
+    final List<String> ids = <String>[meProfile.id, otherUserId]..sort();
+    final String matchId = ids.join('_');
+    final doc = await _db.collection('matches').doc(matchId).get();
+    if (!doc.exists) {
+      await _db.collection('matches').doc(matchId).set(<String, dynamic>{
+        'userIds': ids,
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastMessage': '',
+        'lastMessageAt': FieldValue.serverTimestamp(),
+      });
+    }
+    return matchId;
   }
 
   Future<Profile?> fetchProfile(String id) async {
