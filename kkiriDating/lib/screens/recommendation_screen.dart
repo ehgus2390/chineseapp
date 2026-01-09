@@ -78,7 +78,15 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
             initialData: const <Profile>[],
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Center(child: Text(l.discoverEmpty));
+                return Center(
+                  child: Text(
+                    '문제가 발생했습니다. 다시 시도해주세요.',
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                );
+              }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
               }
               final list = snapshot.data ?? <Profile>[];
               if (list.isEmpty) {

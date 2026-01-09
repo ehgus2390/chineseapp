@@ -39,6 +39,10 @@ class Profile {
     final String? photoUrl = photoValue is String && photoValue.trim().isNotEmpty
         ? photoValue
         : null;
+    final Object? distanceValue = data['distanceKm'];
+    final double distanceKm = distanceValue is num ? distanceValue.toDouble() : 30.0;
+    final Object? locationValue = data['location'];
+    final GeoPoint? location = locationValue is GeoPoint ? locationValue : null;
     return Profile(
       id: id,
       name: (data['name'] ?? '').toString(),
@@ -56,11 +60,8 @@ class Profile {
           <String>[],
       bio: (data['bio'] ?? '').toString(),
       photoUrl: photoUrl,
-      distanceKm: (data['distanceKm'] ?? 0) is num
-          ? (data['distanceKm'] as num).toDouble()
-          : 0,
-      location:
-          data['location'] is GeoPoint ? data['location'] as GeoPoint : null,
+      distanceKm: distanceKm,
+      location: location,
     );
   }
 

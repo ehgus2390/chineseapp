@@ -209,27 +209,28 @@ class AppState extends ChangeNotifier {
         .collection('users')
         .where('gender', isEqualTo: targetGender)
         .snapshots()
+        .handleError((error) => debugPrint('watchCandidates error: $error'))
         .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
         .map((list) {
-      final filtered = list
-          .where((p) =>
-              p.id != meProfile.id &&
-              p.gender == targetGender &&
-              _sharesInterests(meProfile, p) &&
-              !_likedIds.contains(p.id) &&
-              !_passedIds.contains(p.id) &&
-              !matchesIds.contains(p.id))
-          .where((p) => _withinDistance(p, meProfile))
-          .toList();
-      filtered.sort((a, b) {
-        final double scoreB =
-            _matchService.score(meProfile, b, _preferredLanguages);
-        final double scoreA =
-            _matchService.score(meProfile, a, _preferredLanguages);
-        return scoreB.compareTo(scoreA);
-      });
-      return filtered;
-    });
+          final filtered = list
+              .where((p) =>
+                  p.id != meProfile.id &&
+                  p.gender == targetGender &&
+                  _sharesInterests(meProfile, p) &&
+                  !_likedIds.contains(p.id) &&
+                  !_passedIds.contains(p.id) &&
+                  !matchesIds.contains(p.id))
+              .where((p) => _withinDistance(p, meProfile))
+              .toList();
+          filtered.sort((a, b) {
+            final double scoreB =
+                _matchService.score(meProfile, b, _preferredLanguages);
+            final double scoreA =
+                _matchService.score(meProfile, a, _preferredLanguages);
+            return scoreB.compareTo(scoreA);
+          });
+          return filtered;
+        });
   }
 
   Stream<List<Profile>> watchNearbyUsers() {
@@ -243,6 +244,7 @@ class AppState extends ChangeNotifier {
         .collection('users')
         .where('gender', isEqualTo: targetGender)
         .snapshots()
+        .handleError((error) => debugPrint('watchNearbyUsers error: $error'))
         .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
         .map((list) {
           return list
@@ -256,15 +258,12 @@ class AppState extends ChangeNotifier {
   }
 
   bool _sharesInterests(Profile meProfile, Profile other) {
-    if (meProfile.interests.isEmpty || other.interests.isEmpty) {
-      return false;
-    }
     return other.interests.any(meProfile.interests.contains);
   }
 
   bool _withinDistance(Profile other, Profile meProfile) {
     if (meProfile.location == null || other.location == null) {
-      return false;
+      return true;
     }
     final double limit =
         meProfile.distanceKm <= 0 ? double.infinity : meProfile.distanceKm;
