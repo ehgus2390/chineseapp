@@ -39,25 +39,29 @@ class Profile {
     final String? photoUrl = photoValue is String && photoValue.trim().isNotEmpty
         ? photoValue
         : null;
+    final Object? ageValue = data['age'];
+    final int age = ageValue is num ? ageValue.toInt() : 0;
     final Object? distanceValue = data['distanceKm'];
     final double distanceKm = distanceValue is num ? distanceValue.toDouble() : 30.0;
     final Object? locationValue = data['location'];
     final GeoPoint? location = locationValue is GeoPoint ? locationValue : null;
+    final Object? interestsValue = data['interests'];
+    final List<String> interests = interestsValue is List
+        ? interestsValue.map((e) => e.toString()).toList()
+        : <String>[];
+    final Object? languagesValue = data['languages'];
+    final List<String> languages = languagesValue is List
+        ? languagesValue.map((e) => e.toString()).toList()
+        : <String>[];
     return Profile(
       id: id,
       name: (data['name'] ?? '').toString(),
-      age: (data['age'] ?? 0) is num ? (data['age'] as num).toInt() : 0,
+      age: age,
       occupation: (data['occupation'] ?? '').toString(),
       country: (data['country'] ?? '').toString(),
-      interests: (data['interests'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          <String>[],
-      gender: (data['gender'] ?? 'male').toString(),
-      languages: (data['languages'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          <String>[],
+      interests: interests,
+      gender: (data['gender'] ?? '').toString(),
+      languages: languages,
       bio: (data['bio'] ?? '').toString(),
       photoUrl: photoUrl,
       distanceKm: distanceKm,

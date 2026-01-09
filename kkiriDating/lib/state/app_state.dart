@@ -37,6 +37,7 @@ class AppState extends ChangeNotifier {
 
   bool _isOnboarded = false;
   bool _initialized = false;
+  bool _distanceFilterEnabled = true;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchesSub;
@@ -44,6 +45,7 @@ class AppState extends ChangeNotifier {
 
   static const String _onboardingKey = 'onboarding_complete';
   static const String _preferredLanguagesKey = 'preferred_languages';
+  static const String _distanceFilterEnabledKey = 'distance_filter_enabled';
 
   User? get user => _auth.currentUser;
   bool get isLoggedIn => user != null && !user!.isAnonymous;
@@ -54,6 +56,42 @@ class AppState extends ChangeNotifier {
   List<MatchPair> get matches => List<MatchPair>.unmodifiable(_matches);
   List<String> get myPreferredLanguages =>
       List<String>.unmodifiable(_preferredLanguages);
+  bool get distanceFilterEnabled => _distanceFilterEnabled;
+
+  bool isProfileComplete(Profile profile) {
+    return profile.name.trim().isNotEmpty &&
+        profile.age > 0 &&
+        profile.gender.trim().isNotEmpty &&
+        profile.interests.isNotEmpty &&
+        profile.photoUrl != null &&
+        profile.photoUrl!.trim().isNotEmpty;
+  }
+
+  bool isOppositeGender(Profile me, Profile other) {
+    final String meGender = me.gender.trim().toLowerCase();
+    final String otherGender = other.gender.trim().toLowerCase();
+    return meGender.isNotEmpty &&
+        otherGender.isNotEmpty &&
+        meGender != otherGender;
+  }
+
+  bool hasCommonInterest(Profile me, Profile other) {
+    if (me.interests.isEmpty || other.interests.isEmpty) return false;
+    return other.interests.any(me.interests.contains);
+  }
+
+  bool passesDistanceFilter(Profile other) {
+    if (!_distanceFilterEnabled) return true;
+    final Profile? meProfile = _me;
+    if (meProfile == null) return false;
+    if (meProfile.location == null || other.location == null) {
+      return true;
+    }
+    final double limit = meProfile.distanceKm;
+    if (limit <= 0) return true;
+    final double distance = _distanceKm(meProfile.location!, other.location!);
+    return distance <= limit;
+  }
 
   Future<void> bootstrap() async {
     if (_initialized) return;
@@ -176,6 +214,11 @@ class AppState extends ChangeNotifier {
         ..clear()
         ..addAll(storedLanguages);
     }
+    final bool? storedDistanceEnabled =
+        await _preferences.readBool(_distanceFilterEnabledKey);
+    if (storedDistanceEnabled != null) {
+      _distanceFilterEnabled = storedDistanceEnabled;
+    }
 
     notifyListeners();
   }
@@ -202,25 +245,23 @@ class AppState extends ChangeNotifier {
     if (meProfile == null) {
       return const Stream<List<Profile>>.empty();
     }
-    final String targetGender =
-        meProfile.gender == 'female' ? 'male' : 'female';
     final matchesIds = _matches.expand((m) => m.userIds).toSet();
     return _db
         .collection('users')
-        .where('gender', isEqualTo: targetGender)
         .snapshots()
         .handleError((error) => debugPrint('watchCandidates error: $error'))
         .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
         .map((list) {
           final filtered = list
               .where((p) =>
+                  isProfileComplete(p) &&
                   p.id != meProfile.id &&
-                  p.gender == targetGender &&
-                  _sharesInterests(meProfile, p) &&
+                  isOppositeGender(meProfile, p) &&
+                  hasCommonInterest(meProfile, p) &&
+                  passesDistanceFilter(p) &&
                   !_likedIds.contains(p.id) &&
                   !_passedIds.contains(p.id) &&
                   !matchesIds.contains(p.id))
-              .where((p) => _withinDistance(p, meProfile))
               .toList();
           filtered.sort((a, b) {
             final double scoreB =
@@ -238,37 +279,25 @@ class AppState extends ChangeNotifier {
     if (meProfile == null) {
       return const Stream<List<Profile>>.empty();
     }
-    final String targetGender =
-        meProfile.gender == 'female' ? 'male' : 'female';
+    final matchesIds = _matches.expand((m) => m.userIds).toSet();
     return _db
         .collection('users')
-        .where('gender', isEqualTo: targetGender)
         .snapshots()
         .handleError((error) => debugPrint('watchNearbyUsers error: $error'))
         .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
         .map((list) {
           return list
               .where((p) =>
+                  isProfileComplete(p) &&
                   p.id != meProfile.id &&
-                  p.gender == targetGender &&
-                  _sharesInterests(meProfile, p))
-              .where((p) => _withinDistance(p, meProfile))
+                  isOppositeGender(meProfile, p) &&
+                  hasCommonInterest(meProfile, p) &&
+                  passesDistanceFilter(p) &&
+                  !_likedIds.contains(p.id) &&
+                  !_passedIds.contains(p.id) &&
+                  !matchesIds.contains(p.id))
               .toList();
         });
-  }
-
-  bool _sharesInterests(Profile meProfile, Profile other) {
-    return other.interests.any(meProfile.interests.contains);
-  }
-
-  bool _withinDistance(Profile other, Profile meProfile) {
-    if (meProfile.location == null || other.location == null) {
-      return true;
-    }
-    final double limit =
-        meProfile.distanceKm <= 0 ? double.infinity : meProfile.distanceKm;
-    final double distance = _distanceKm(meProfile.location!, other.location!);
-    return distance <= limit;
   }
 
   double? distanceKmTo(Profile other) {
@@ -388,6 +417,12 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> savePreferredLanguages() => _persistPreferredLanguages();
+
+  Future<void> setDistanceFilterEnabled(bool enabled) async {
+    _distanceFilterEnabled = enabled;
+    await _preferences.writeBool(_distanceFilterEnabledKey, enabled);
+    notifyListeners();
+  }
 
   Future<void> _persistPreferredLanguages() =>
       _preferences.writeStringList(_preferredLanguagesKey, _preferredLanguages);

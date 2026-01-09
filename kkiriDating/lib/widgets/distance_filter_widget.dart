@@ -72,6 +72,9 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
     final location = me?.location;
     final lat = location?.latitude;
     final lng = location?.longitude;
+    final distanceEnabled = state.distanceFilterEnabled;
+    final distanceLabel =
+        distanceEnabled ? '${_distanceKm.toStringAsFixed(0)} km' : '거리 제한 없음';
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -83,16 +86,29 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l.distance, style: const TextStyle(fontWeight: FontWeight.w700)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(l.distance,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              Switch(
+                value: distanceEnabled,
+                onChanged: (value) => state.setDistanceFilterEnabled(value),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
-          Text(l.distanceHint),
+          Text(distanceLabel),
           Slider(
             min: 1,
             max: 200,
             value: _distanceKm.clamp(1, 200),
             label: '${_distanceKm.toStringAsFixed(0)} km',
-            onChanged: (value) => setState(() => _distanceKm = value),
+            onChanged: distanceEnabled
+                ? (value) => setState(() => _distanceKm = value)
+                : null,
             onChangeEnd: (_) async {
+              if (!distanceEnabled) return;
               await state.updateMatchPreferences(
                 distanceKm: _distanceKm,
                 location: location,
