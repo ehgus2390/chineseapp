@@ -14,7 +14,7 @@ class ChatListScreen extends StatelessWidget {
     final state = context.watch<AppState>();
     final l = AppLocalizations.of(context);
     final me = state.meOrNull;
-    final bool profileComplete = me != null && state.isProfileComplete(me);
+    final bool profileComplete = me != null && state.isProfileReady(me);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F3F4),
@@ -52,6 +52,8 @@ class ChatListScreen extends StatelessWidget {
                       initialData: const <Profile>[],
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
+                          debugPrint(
+                              'watchNearbyUsers error: ${snapshot.error}');
                           return Center(
                             child: Text(
                               'Something went wrong. Please try again.',
@@ -64,12 +66,12 @@ class ChatListScreen extends StatelessWidget {
                           return const Center(
                               child: CircularProgressIndicator());
                         }
-                        final list = snapshot.data ?? <Profile>[];
+                        final list = snapshot.data ?? const <Profile>[];
                         if (list.isEmpty) {
-                          return Center(
+                          return const Center(
                             child: Text(
-                              l.chatEmpty,
-                              style: const TextStyle(color: Colors.black54),
+                              '조건에 맞는 프로필이 없습니다',
+                              style: TextStyle(color: Colors.black54),
                             ),
                           );
                         }

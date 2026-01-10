@@ -18,6 +18,8 @@ class AppState extends ChangeNotifier {
   AppState() {
     chat = ChatService(_db);
     _authSub = _auth.authStateChanges().listen(_handleAuthChanged);
+    _eligibleController.add(<Profile>[]);
+    _startUsersListenerIfReady();
   }
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -37,11 +39,17 @@ class AppState extends ChangeNotifier {
 
   bool _isOnboarded = false;
   bool _initialized = false;
+  bool _profileLoaded = false;
   bool _distanceFilterEnabled = true;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchesSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSub;
   StreamSubscription<User?>? _authSub;
+  final StreamController<List<Profile>> _eligibleController =
+      StreamController<List<Profile>>.broadcast();
+  List<Profile> _allUsers = <Profile>[];
+  String? _usersGenderFilter;
 
   static const String _onboardingKey = 'onboarding_complete';
   static const String _preferredLanguagesKey = 'preferred_languages';
@@ -57,11 +65,14 @@ class AppState extends ChangeNotifier {
   List<String> get myPreferredLanguages =>
       List<String>.unmodifiable(_preferredLanguages);
   bool get distanceFilterEnabled => _distanceFilterEnabled;
+  bool get isMeProfileReady => _profileLoaded && _me != null;
 
-  bool isProfileComplete(Profile profile) {
+  bool isProfileReady(Profile profile) {
+    final String gender = profile.gender.trim().toLowerCase();
+    final bool genderValid = gender == 'male' || gender == 'female';
     return profile.name.trim().isNotEmpty &&
         profile.age > 0 &&
-        profile.gender.trim().isNotEmpty &&
+        genderValid &&
         profile.interests.isNotEmpty &&
         profile.photoUrl != null &&
         profile.photoUrl!.trim().isNotEmpty;
@@ -70,9 +81,9 @@ class AppState extends ChangeNotifier {
   bool isOppositeGender(Profile me, Profile other) {
     final String meGender = me.gender.trim().toLowerCase();
     final String otherGender = other.gender.trim().toLowerCase();
-    return meGender.isNotEmpty &&
-        otherGender.isNotEmpty &&
-        meGender != otherGender;
+    final bool meValid = meGender == 'male' || meGender == 'female';
+    final bool otherValid = otherGender == 'male' || otherGender == 'female';
+    return meValid && otherValid && meGender != otherGender;
   }
 
   bool hasCommonInterest(Profile me, Profile other) {
@@ -93,6 +104,25 @@ class AppState extends ChangeNotifier {
     return distance <= limit;
   }
 
+  List<Profile> applyEligibility({
+    required List<Profile> all,
+    required Profile me,
+    required bool distanceFilterEnabled,
+  }) {
+    final matchesIds = _matches.expand((m) => m.userIds).toSet();
+    return all
+        .where((p) =>
+            isProfileReady(p) &&
+            p.id != me.id &&
+            isOppositeGender(me, p) &&
+            hasCommonInterest(me, p) &&
+            _passesDistanceFilter(me, p, distanceFilterEnabled) &&
+            !_likedIds.contains(p.id) &&
+            !_passedIds.contains(p.id) &&
+            !matchesIds.contains(p.id))
+        .toList();
+  }
+
   Future<void> bootstrap() async {
     if (_initialized) return;
     _initialized = true;
@@ -101,6 +131,7 @@ class AppState extends ChangeNotifier {
   }
   
   Future<void> _handleAuthChanged(User? user) async {
+    _profileLoaded = false;
     if (user == null || user.isAnonymous) {
       if (user?.isAnonymous == true) {
         await _auth.signOut();
@@ -112,6 +143,7 @@ class AppState extends ChangeNotifier {
       _passedIds.clear();
       await _meSub?.cancel();
       await _matchesSub?.cancel();
+      _emitEligibleIfReady();
       notifyListeners();
       return;
     }
@@ -121,6 +153,7 @@ class AppState extends ChangeNotifier {
     await _loadMyDecisions();
     _watchMyProfile();
     _watchMatches();
+    _startUsersListenerIfReady();
     notifyListeners();
   }
 
@@ -164,6 +197,8 @@ class AppState extends ChangeNotifier {
     if (!doc.exists) return;
     _me = Profile.fromDoc(doc);
     _profiles[_me!.id] = _me!;
+    _profileLoaded = true;
+    _startUsersListenerIfReady();
     if (_preferredLanguages.isEmpty) {
       _preferredLanguages
         ..clear()
@@ -180,6 +215,8 @@ class AppState extends ChangeNotifier {
       (doc) {
         _me = Profile.fromDoc(doc);
         _profiles[_me!.id] = _me!;
+        _startUsersListenerIfReady();
+        _emitEligibleIfReady();
         notifyListeners();
       },
     );
@@ -198,6 +235,7 @@ class AppState extends ChangeNotifier {
       _matches
         ..clear()
         ..addAll(snapshot.docs.map(MatchPair.fromDoc));
+      _emitEligibleIfReady();
       notifyListeners();
     });
   }
@@ -237,67 +275,77 @@ class AppState extends ChangeNotifier {
     _passedIds
       ..clear()
       ..addAll(passesSnap.docs.map((doc) => doc.id));
+    _emitEligibleIfReady();
     notifyListeners();
   }
 
   Stream<List<Profile>> watchCandidates() {
-    final Profile? meProfile = _me;
-    if (meProfile == null) {
-      return const Stream<List<Profile>>.empty();
-    }
-    final matchesIds = _matches.expand((m) => m.userIds).toSet();
-    return _db
-        .collection('users')
-        .snapshots()
-        .handleError((error) => debugPrint('watchCandidates error: $error'))
-        .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
-        .map((list) {
-          final filtered = list
-              .where((p) =>
-                  isProfileComplete(p) &&
-                  p.id != meProfile.id &&
-                  isOppositeGender(meProfile, p) &&
-                  hasCommonInterest(meProfile, p) &&
-                  passesDistanceFilter(p) &&
-                  !_likedIds.contains(p.id) &&
-                  !_passedIds.contains(p.id) &&
-                  !matchesIds.contains(p.id))
-              .toList();
-          filtered.sort((a, b) {
-            final double scoreB =
-                _matchService.score(meProfile, b, _preferredLanguages);
-            final double scoreA =
-                _matchService.score(meProfile, a, _preferredLanguages);
-            return scoreB.compareTo(scoreA);
-          });
-          return filtered;
-        });
+    return _eligibleController.stream;
   }
 
   Stream<List<Profile>> watchNearbyUsers() {
-    final Profile? meProfile = _me;
-    if (meProfile == null) {
-      return const Stream<List<Profile>>.empty();
+    return _eligibleController.stream;
+  }
+
+  void _startUsersListenerIfReady() {
+    String? targetGender;
+    if (_me != null && isProfileReady(_me!)) {
+      targetGender = _oppositeGender(_me!.gender);
     }
-    final matchesIds = _matches.expand((m) => m.userIds).toSet();
-    return _db
-        .collection('users')
-        .snapshots()
-        .handleError((error) => debugPrint('watchNearbyUsers error: $error'))
-        .map((snapshot) => snapshot.docs.map(Profile.fromDoc).toList())
-        .map((list) {
-          return list
-              .where((p) =>
-                  isProfileComplete(p) &&
-                  p.id != meProfile.id &&
-                  isOppositeGender(meProfile, p) &&
-                  hasCommonInterest(meProfile, p) &&
-                  passesDistanceFilter(p) &&
-                  !_likedIds.contains(p.id) &&
-                  !_passedIds.contains(p.id) &&
-                  !matchesIds.contains(p.id))
-              .toList();
-        });
+    if (_usersSub != null && _usersGenderFilter == targetGender) return;
+    _usersSub?.cancel();
+    _usersGenderFilter = targetGender;
+    debugPrint('users listener attach: gender=$targetGender');
+    Query<Map<String, dynamic>> query = _db.collection('users');
+    if (targetGender != null) {
+      query = query.where('gender', isEqualTo: targetGender);
+    }
+    _usersSub = query.snapshots().listen(
+      (snapshot) {
+        _allUsers = snapshot.docs.map(Profile.fromDoc).toList();
+        debugPrint('users snapshot: ${_allUsers.length}');
+        _emitEligibleIfReady();
+      },
+      onError: (error) {
+        debugPrint('watchCandidates error: $error');
+        debugPrint('watchNearbyUsers error: $error');
+        _eligibleController.addError(error);
+      },
+    );
+  }
+
+  void _stopUsersListener() {
+    _usersSub?.cancel();
+    _usersSub = null;
+    _usersGenderFilter = null;
+    _allUsers = <Profile>[];
+    _eligibleController.add(<Profile>[]);
+  }
+
+  void _emitEligibleIfReady() {
+    final Profile? reference =
+        (_me != null && isProfileReady(_me!)) ? _me : _selectReferenceProfile();
+    if (_allUsers.isEmpty || reference == null) {
+      _eligibleController.add(<Profile>[]);
+      debugPrint('eligible emit: no reference');
+      return;
+    }
+    final bool useDistance =
+        _distanceFilterEnabled && identical(reference, _me);
+    final eligible = applyEligibility(
+      all: _allUsers,
+      me: reference,
+      distanceFilterEnabled: useDistance,
+    );
+    eligible.sort((a, b) {
+      final double scoreB =
+          _matchService.score(_me!, b, _preferredLanguages);
+      final double scoreA =
+          _matchService.score(_me!, a, _preferredLanguages);
+      return scoreB.compareTo(scoreA);
+    });
+    debugPrint('eligible emit: ${eligible.length}');
+    _eligibleController.add(eligible);
   }
 
   double? distanceKmTo(Profile other) {
@@ -340,6 +388,7 @@ class AppState extends ChangeNotifier {
       await _createMatch(meProfile.id, profile.id);
     }
 
+    _emitEligibleIfReady();
     notifyListeners();
   }
 
@@ -354,6 +403,7 @@ class AppState extends ChangeNotifier {
         .collection('passes')
         .doc(profile.id)
         .set(<String, dynamic>{'createdAt': FieldValue.serverTimestamp()});
+    _emitEligibleIfReady();
     notifyListeners();
   }
 
@@ -421,6 +471,7 @@ class AppState extends ChangeNotifier {
   Future<void> setDistanceFilterEnabled(bool enabled) async {
     _distanceFilterEnabled = enabled;
     await _preferences.writeBool(_distanceFilterEnabledKey, enabled);
+    _emitEligibleIfReady();
     notifyListeners();
   }
 
@@ -497,6 +548,7 @@ class AppState extends ChangeNotifier {
       'distanceKm': distanceKm,
       'location': location,
     }, SetOptions(merge: true));
+    _emitEligibleIfReady();
   }
 
   Future<void> uploadAvatar(Uint8List data) async {
@@ -529,7 +581,31 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _meSub?.cancel();
     _matchesSub?.cancel();
+    _usersSub?.cancel();
     _authSub?.cancel();
     super.dispose();
+  }
+
+  bool _passesDistanceFilter(
+      Profile me, Profile other, bool distanceFilterEnabled) {
+    if (!distanceFilterEnabled) return true;
+    if (me.location == null || other.location == null) return true;
+    if (me.distanceKm <= 0) return true;
+    final double distance = _distanceKm(me.location!, other.location!);
+    return distance <= me.distanceKm;
+  }
+
+  Profile? _selectReferenceProfile() {
+    for (final profile in _allUsers) {
+      if (isProfileReady(profile)) return profile;
+    }
+    return null;
+  }
+
+  String? _oppositeGender(String gender) {
+    final String normalized = gender.trim().toLowerCase();
+    if (normalized == 'male') return 'female';
+    if (normalized == 'female') return 'male';
+    return null;
   }
 }
