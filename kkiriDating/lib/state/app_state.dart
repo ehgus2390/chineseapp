@@ -39,7 +39,6 @@ class AppState extends ChangeNotifier {
 
   bool _isOnboarded = false;
   bool _initialized = false;
-  bool _profileLoaded = false;
   bool _distanceFilterEnabled = true;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
@@ -49,7 +48,6 @@ class AppState extends ChangeNotifier {
   final StreamController<List<Profile>> _eligibleController =
       StreamController<List<Profile>>.broadcast();
   List<Profile> _allUsers = <Profile>[];
-  String? _usersGenderFilter;
 
   static const String _onboardingKey = 'onboarding_complete';
   static const String _preferredLanguagesKey = 'preferred_languages';
@@ -65,7 +63,6 @@ class AppState extends ChangeNotifier {
   List<String> get myPreferredLanguages =>
       List<String>.unmodifiable(_preferredLanguages);
   bool get distanceFilterEnabled => _distanceFilterEnabled;
-  bool get isMeProfileReady => _profileLoaded && _me != null;
 
   bool isProfileReady(Profile profile) {
     final String gender = profile.gender.trim().toLowerCase();
@@ -131,7 +128,6 @@ class AppState extends ChangeNotifier {
   }
   
   Future<void> _handleAuthChanged(User? user) async {
-    _profileLoaded = false;
     if (user == null || user.isAnonymous) {
       if (user?.isAnonymous == true) {
         await _auth.signOut();
@@ -153,7 +149,6 @@ class AppState extends ChangeNotifier {
     await _loadMyDecisions();
     _watchMyProfile();
     _watchMatches();
-    _startUsersListenerIfReady();
     notifyListeners();
   }
 
@@ -197,7 +192,6 @@ class AppState extends ChangeNotifier {
     if (!doc.exists) return;
     _me = Profile.fromDoc(doc);
     _profiles[_me!.id] = _me!;
-    _profileLoaded = true;
     _startUsersListenerIfReady();
     if (_preferredLanguages.isEmpty) {
       _preferredLanguages
@@ -215,7 +209,6 @@ class AppState extends ChangeNotifier {
       (doc) {
         _me = Profile.fromDoc(doc);
         _profiles[_me!.id] = _me!;
-        _startUsersListenerIfReady();
         _emitEligibleIfReady();
         notifyListeners();
       },
@@ -288,22 +281,10 @@ class AppState extends ChangeNotifier {
   }
 
   void _startUsersListenerIfReady() {
-    String? targetGender;
-    if (_me != null && isProfileReady(_me!)) {
-      targetGender = _oppositeGender(_me!.gender);
-    }
-    if (_usersSub != null && _usersGenderFilter == targetGender) return;
-    _usersSub?.cancel();
-    _usersGenderFilter = targetGender;
-    debugPrint('users listener attach: gender=$targetGender');
-    Query<Map<String, dynamic>> query = _db.collection('users');
-    if (targetGender != null) {
-      query = query.where('gender', isEqualTo: targetGender);
-    }
-    _usersSub = query.snapshots().listen(
+    if (_usersSub != null) return;
+    _usersSub = _db.collection('users').snapshots().listen(
       (snapshot) {
         _allUsers = snapshot.docs.map(Profile.fromDoc).toList();
-        debugPrint('users snapshot: ${_allUsers.length}');
         _emitEligibleIfReady();
       },
       onError: (error) {
@@ -317,25 +298,19 @@ class AppState extends ChangeNotifier {
   void _stopUsersListener() {
     _usersSub?.cancel();
     _usersSub = null;
-    _usersGenderFilter = null;
     _allUsers = <Profile>[];
     _eligibleController.add(<Profile>[]);
   }
 
   void _emitEligibleIfReady() {
-    final Profile? reference =
-        (_me != null && isProfileReady(_me!)) ? _me : _selectReferenceProfile();
-    if (_allUsers.isEmpty || reference == null) {
+    if (_me == null || !isProfileReady(_me!)) {
       _eligibleController.add(<Profile>[]);
-      debugPrint('eligible emit: no reference');
       return;
     }
-    final bool useDistance =
-        _distanceFilterEnabled && identical(reference, _me);
     final eligible = applyEligibility(
       all: _allUsers,
-      me: reference,
-      distanceFilterEnabled: useDistance,
+      me: _me!,
+      distanceFilterEnabled: _distanceFilterEnabled,
     );
     eligible.sort((a, b) {
       final double scoreB =
@@ -344,7 +319,6 @@ class AppState extends ChangeNotifier {
           _matchService.score(_me!, a, _preferredLanguages);
       return scoreB.compareTo(scoreA);
     });
-    debugPrint('eligible emit: ${eligible.length}');
     _eligibleController.add(eligible);
   }
 
@@ -595,17 +569,5 @@ class AppState extends ChangeNotifier {
     return distance <= me.distanceKm;
   }
 
-  Profile? _selectReferenceProfile() {
-    for (final profile in _allUsers) {
-      if (isProfileReady(profile)) return profile;
-    }
-    return null;
-  }
-
-  String? _oppositeGender(String gender) {
-    final String normalized = gender.trim().toLowerCase();
-    if (normalized == 'male') return 'female';
-    if (normalized == 'female') return 'male';
-    return null;
-  }
+  
 }

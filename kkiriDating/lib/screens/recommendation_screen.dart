@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
@@ -29,6 +29,9 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final state = context.watch<AppState>();
+    final me = state.meOrNull;
+    final bool profileComplete = me != null && state.isProfileReady(me);
+
     return Column(
       children: [
         SafeArea(
@@ -76,6 +79,11 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
             stream: state.watchCandidates(),
             initialData: const <Profile>[],
             builder: (context, snapshot) {
+              if (!profileComplete) {
+                return _ProfileCompletionPrompt(
+                  onComplete: () => context.go('/home/profile'),
+                );
+              }
               if (snapshot.hasError) {
                 debugPrint('watchCandidates error: ${snapshot.error}');
                 return Center(
@@ -222,6 +230,36 @@ class _SwipeHint extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       color: color,
       child: Icon(icon, color: Colors.white, size: 48),
+    );
+  }
+}
+
+class _ProfileCompletionPrompt extends StatelessWidget {
+  final VoidCallback onComplete;
+
+  const _ProfileCompletionPrompt({required this.onComplete});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              '프로필을 완성해야 추천을 받을 수 있어요',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.black54, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onComplete,
+              child: const Text('프로필 완성하기'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
