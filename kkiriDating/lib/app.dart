@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,7 +9,6 @@ import 'screens/recommendation_screen.dart';
 import 'screens/chat_list_screen.dart';
 import 'screens/chat_room_screen.dart';
 import 'screens/profile_screen.dart';
-import 'state/app_state.dart';
 import 'state/locale_state.dart';
 
 class KkiriApp extends StatelessWidget {
@@ -17,25 +16,10 @@ class KkiriApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
     final locale = context.watch<LocaleState>().locale;
 
     final router = GoRouter(
-      initialLocation: '/login',
-      refreshListenable: state,
-      redirect: (context, routerState) {
-        final bool loggedIn = state.isLoggedIn;
-        final String location = routerState.matchedLocation;
-        final bool loggingIn = location == '/login';
-
-        if (!loggedIn) {
-          return loggingIn ? null : '/login';
-        }
-        if (loggingIn) {
-          return '/home/discover';
-        }
-        return null;
-      },
+      initialLocation: '/home/discover',
       routes: [
         GoRoute(
           path: '/login',

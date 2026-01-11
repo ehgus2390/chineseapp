@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -63,18 +63,22 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
         .showSnackBar(SnackBar(content: Text(l.locationUpdated)));
   }
 
+  String _distanceLabel(double value) {
+    if (value <= 30) return '가까움';
+    if (value <= 80) return '중간';
+    return '넓게';
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final l = AppLocalizations.of(context);
     _seedFromProfile(state);
     final me = state.meOrNull;
-    final location = me?.location;
-    final lat = location?.latitude;
-    final lng = location?.longitude;
+    final hasLocation = me?.location != null;
     final distanceEnabled = state.distanceFilterEnabled;
     final distanceLabel =
-        distanceEnabled ? '${_distanceKm.toStringAsFixed(0)} km' : '거리 제한 없음';
+        distanceEnabled ? _distanceLabel(_distanceKm) : '거리 제한 없음';
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -89,8 +93,8 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(l.distance,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              const Text('거리 범위',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
               Switch(
                 value: distanceEnabled,
                 onChanged: (value) => state.setDistanceFilterEnabled(value),
@@ -103,7 +107,6 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
             min: 1,
             max: 200,
             value: _distanceKm.clamp(1, 200),
-            label: '${_distanceKm.toStringAsFixed(0)} km',
             onChanged: distanceEnabled
                 ? (value) => setState(() => _distanceKm = value)
                 : null,
@@ -111,30 +114,14 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
               if (!distanceEnabled) return;
               await state.updateMatchPreferences(
                 distanceKm: _distanceKm,
-                location: location,
+                location: me?.location,
               );
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(l.location, style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _ValueBox(
-                  label: l.latitude,
-                  value: lat == null ? '-' : lat.toStringAsFixed(6),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ValueBox(
-                  label: l.longitude,
-                  value: lng == null ? '-' : lng.toStringAsFixed(6),
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(height: 6),
+          Text(hasLocation ? '설정됨' : '미설정'),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
@@ -150,32 +137,6 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
                   : Text(l.useCurrentLocation),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ValueBox extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _ValueBox({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
       ),
     );

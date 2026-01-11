@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -11,21 +11,17 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/match.dart';
 import '../models/profile.dart';
 import '../services/chat_service.dart';
-import '../services/match_service.dart';
 import '../services/preferences_storage.dart';
 
 class AppState extends ChangeNotifier {
   AppState() {
     chat = ChatService(_db);
     _authSub = _auth.authStateChanges().listen(_handleAuthChanged);
-    _eligibleController.add(<Profile>[]);
-    _startUsersListenerIfReady();
   }
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final MatchService _matchService = MatchService();
   final PreferencesStorage _preferences = PreferencesStorage.instance;
 
   late final ChatService chat;
@@ -43,11 +39,7 @@ class AppState extends ChangeNotifier {
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchesSub;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSub;
   StreamSubscription<User?>? _authSub;
-  final StreamController<List<Profile>> _eligibleController =
-      StreamController<List<Profile>>.broadcast();
-  List<Profile> _allUsers = <Profile>[];
 
   static const String _onboardingKey = 'onboarding_complete';
   static const String _preferredLanguagesKey = 'preferred_languages';
@@ -62,6 +54,8 @@ class AppState extends ChangeNotifier {
   List<MatchPair> get matches => List<MatchPair>.unmodifiable(_matches);
   List<String> get myPreferredLanguages =>
       List<String>.unmodifiable(_preferredLanguages);
+  Set<String> get likedIds => Set<String>.unmodifiable(_likedIds);
+  Set<String> get passedIds => Set<String>.unmodifiable(_passedIds);
   bool get distanceFilterEnabled => _distanceFilterEnabled;
 
   bool isProfileReady(Profile profile) {
@@ -88,38 +82,6 @@ class AppState extends ChangeNotifier {
     return other.interests.any(me.interests.contains);
   }
 
-  bool passesDistanceFilter(Profile other) {
-    if (!_distanceFilterEnabled) return true;
-    final Profile? meProfile = _me;
-    if (meProfile == null) return false;
-    if (meProfile.location == null || other.location == null) {
-      return true;
-    }
-    final double limit = meProfile.distanceKm;
-    if (limit <= 0) return true;
-    final double distance = _distanceKm(meProfile.location!, other.location!);
-    return distance <= limit;
-  }
-
-  List<Profile> applyEligibility({
-    required List<Profile> all,
-    required Profile me,
-    required bool distanceFilterEnabled,
-  }) {
-    final matchesIds = _matches.expand((m) => m.userIds).toSet();
-    return all
-        .where((p) =>
-            isProfileReady(p) &&
-            p.id != me.id &&
-            isOppositeGender(me, p) &&
-            hasCommonInterest(me, p) &&
-            _passesDistanceFilter(me, p, distanceFilterEnabled) &&
-            !_likedIds.contains(p.id) &&
-            !_passedIds.contains(p.id) &&
-            !matchesIds.contains(p.id))
-        .toList();
-  }
-
   Future<void> bootstrap() async {
     if (_initialized) return;
     _initialized = true;
@@ -139,7 +101,6 @@ class AppState extends ChangeNotifier {
       _passedIds.clear();
       await _meSub?.cancel();
       await _matchesSub?.cancel();
-      _emitEligibleIfReady();
       notifyListeners();
       return;
     }
@@ -192,7 +153,6 @@ class AppState extends ChangeNotifier {
     if (!doc.exists) return;
     _me = Profile.fromDoc(doc);
     _profiles[_me!.id] = _me!;
-    _startUsersListenerIfReady();
     if (_preferredLanguages.isEmpty) {
       _preferredLanguages
         ..clear()
@@ -209,7 +169,6 @@ class AppState extends ChangeNotifier {
       (doc) {
         _me = Profile.fromDoc(doc);
         _profiles[_me!.id] = _me!;
-        _emitEligibleIfReady();
         notifyListeners();
       },
     );
@@ -228,7 +187,6 @@ class AppState extends ChangeNotifier {
       _matches
         ..clear()
         ..addAll(snapshot.docs.map(MatchPair.fromDoc));
-      _emitEligibleIfReady();
       notifyListeners();
     });
   }
@@ -268,58 +226,7 @@ class AppState extends ChangeNotifier {
     _passedIds
       ..clear()
       ..addAll(passesSnap.docs.map((doc) => doc.id));
-    _emitEligibleIfReady();
     notifyListeners();
-  }
-
-  Stream<List<Profile>> watchCandidates() {
-    return _eligibleController.stream;
-  }
-
-  Stream<List<Profile>> watchNearbyUsers() {
-    return _eligibleController.stream;
-  }
-
-  void _startUsersListenerIfReady() {
-    if (_usersSub != null) return;
-    _usersSub = _db.collection('users').snapshots().listen(
-      (snapshot) {
-        _allUsers = snapshot.docs.map(Profile.fromDoc).toList();
-        _emitEligibleIfReady();
-      },
-      onError: (error) {
-        debugPrint('watchCandidates error: $error');
-        debugPrint('watchNearbyUsers error: $error');
-        _eligibleController.addError(error);
-      },
-    );
-  }
-
-  void _stopUsersListener() {
-    _usersSub?.cancel();
-    _usersSub = null;
-    _allUsers = <Profile>[];
-    _eligibleController.add(<Profile>[]);
-  }
-
-  void _emitEligibleIfReady() {
-    if (_me == null || !isProfileReady(_me!)) {
-      _eligibleController.add(<Profile>[]);
-      return;
-    }
-    final eligible = applyEligibility(
-      all: _allUsers,
-      me: _me!,
-      distanceFilterEnabled: _distanceFilterEnabled,
-    );
-    eligible.sort((a, b) {
-      final double scoreB =
-          _matchService.score(_me!, b, _preferredLanguages);
-      final double scoreA =
-          _matchService.score(_me!, a, _preferredLanguages);
-      return scoreB.compareTo(scoreA);
-    });
-    _eligibleController.add(eligible);
   }
 
   double? distanceKmTo(Profile other) {
@@ -362,7 +269,6 @@ class AppState extends ChangeNotifier {
       await _createMatch(meProfile.id, profile.id);
     }
 
-    _emitEligibleIfReady();
     notifyListeners();
   }
 
@@ -377,7 +283,6 @@ class AppState extends ChangeNotifier {
         .collection('passes')
         .doc(profile.id)
         .set(<String, dynamic>{'createdAt': FieldValue.serverTimestamp()});
-    _emitEligibleIfReady();
     notifyListeners();
   }
 
@@ -445,7 +350,6 @@ class AppState extends ChangeNotifier {
   Future<void> setDistanceFilterEnabled(bool enabled) async {
     _distanceFilterEnabled = enabled;
     await _preferences.writeBool(_distanceFilterEnabledKey, enabled);
-    _emitEligibleIfReady();
     notifyListeners();
   }
 
@@ -522,7 +426,6 @@ class AppState extends ChangeNotifier {
       'distanceKm': distanceKm,
       'location': location,
     }, SetOptions(merge: true));
-    _emitEligibleIfReady();
   }
 
   Future<void> uploadAvatar(Uint8List data) async {
@@ -555,19 +458,7 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _meSub?.cancel();
     _matchesSub?.cancel();
-    _usersSub?.cancel();
     _authSub?.cancel();
     super.dispose();
   }
-
-  bool _passesDistanceFilter(
-      Profile me, Profile other, bool distanceFilterEnabled) {
-    if (!distanceFilterEnabled) return true;
-    if (me.location == null || other.location == null) return true;
-    if (me.distanceKm <= 0) return true;
-    final double distance = _distanceKm(me.location!, other.location!);
-    return distance <= me.distanceKm;
-  }
-
-  
 }

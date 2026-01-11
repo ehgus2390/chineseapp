@@ -2,6 +2,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
+import '../state/eligible_profiles_provider.dart';
 import '../widgets/profile_card.dart';
 import '../l10n/app_localizations.dart';
 import '../models/profile.dart';
@@ -29,6 +30,7 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final state = context.watch<AppState>();
+    final eligible = context.watch<EligibleProfilesProvider>();
     final me = state.meOrNull;
     final bool profileComplete = me != null && state.isProfileReady(me);
 
@@ -76,7 +78,7 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
         ),
         Expanded(
           child: StreamBuilder<List<Profile>>(
-            stream: state.watchCandidates(),
+            stream: eligible.stream,
             initialData: const <Profile>[],
             builder: (context, snapshot) {
               if (!profileComplete) {
@@ -93,14 +95,11 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
                   ),
                 );
               }
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
               final list = snapshot.data ?? const <Profile>[];
               if (list.isEmpty) {
                 return const Center(
                   child: Text(
-                    '조건에 맞는 프로필이 없습니다',
+                    '💗 조건에 맞는 프로필이 없습니다',
                     style: TextStyle(color: Colors.black54),
                   ),
                 );
@@ -110,7 +109,7 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
               if (filtered.isEmpty) {
                 return const Center(
                   child: Text(
-                    '조건에 맞는 프로필이 없습니다',
+                    '💗 조건에 맞는 프로필이 없습니다',
                     style: TextStyle(color: Colors.black54),
                   ),
                 );
