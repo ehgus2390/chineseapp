@@ -46,16 +46,10 @@ class _KkiriAppState extends State<KkiriApp> {
         return null;
       },
       routes: [
-        GoRoute(
-          path: '/login',
-          builder: (_, __) => const AuthScreen(),
-        ),
+        GoRoute(path: '/login', builder: (_, __) => const AuthScreen()),
         ShellRoute(
           builder: (context, state, child) {
-            return Scaffold(
-              body: child,
-              bottomNavigationBar: _BottomNav(),
-            );
+            return Scaffold(body: child, bottomNavigationBar: _BottomNav());
           },
           routes: [
             GoRoute(
@@ -112,7 +106,7 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final location = GoRouter.of(context).location;
+    final location = GoRouterState.of(context).uri.toString();
 
     int currentIndex = 0;
     if (location.startsWith('/home/chat')) currentIndex = 1;
@@ -134,9 +128,18 @@ class _BottomNav extends StatelessWidget {
         }
       },
       destinations: [
-        NavigationDestination(icon: const Icon(Icons.explore), label: l.tabRecommend),
-        NavigationDestination(icon: const Icon(Icons.chat_bubble), label: l.tabChat),
-        NavigationDestination(icon: const Icon(Icons.person), label: l.tabProfile),
+        NavigationDestination(
+          icon: const Icon(Icons.explore),
+          label: l.tabRecommend,
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.chat_bubble),
+          label: l.tabChat,
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.person),
+          label: l.tabProfile,
+        ),
       ],
     );
   }

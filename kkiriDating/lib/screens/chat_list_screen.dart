@@ -7,8 +7,65 @@ import '../l10n/app_localizations.dart';
 import '../widgets/distance_filter_widget.dart';
 import '../models/profile.dart';
 
-class ChatListScreen extends StatelessWidget {
+class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
+
+  @override
+  State<ChatListScreen> createState() => _ChatListScreenState();
+}
+
+class _ChatListScreenState extends State<ChatListScreen> {
+  int _lastEligibleCount = 0;
+  bool _showCta = false;
+  bool _showHeart = false;
+  double _heartScale = 0.8;
+  bool _animating = false;
+
+  void _syncAnimation(int count) {
+    if (count == 0) {
+      _lastEligibleCount = 0;
+      if (_showCta || _showHeart || _heartScale != 0.8) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          setState(() {
+            _showCta = false;
+            _showHeart = false;
+            _heartScale = 0.8;
+          });
+        });
+      }
+      return;
+    }
+
+    if (_lastEligibleCount == 0) {
+      _lastEligibleCount = count;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _runMatchAnimation());
+      return;
+    }
+    _lastEligibleCount = count;
+  }
+
+  Future<void> _runMatchAnimation() async {
+    if (_animating) return;
+    _animating = true;
+    if (!mounted) return;
+    setState(() {
+      _showHeart = true;
+      _showCta = false;
+      _heartScale = 0.8;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    if (!mounted) return;
+    setState(() => _heartScale = 1.2);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+    setState(() => _heartScale = 1.0);
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (!mounted) return;
+    setState(() => _showCta = true);
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    _animating = false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,25 +111,41 @@ class ChatListScreen extends StatelessWidget {
                 builder: (context, snapshot) {
                   if (!profileComplete) {
                     return _ProfileCompletionPrompt(
+                      title: l.profileCompleteTitle,
+                      actionLabel: l.profileCompleteAction,
                       onComplete: () => context.go('/home/profile'),
                     );
                   }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return _ChatSearchingState(
+                      emoji: l.chatSearchingEmoji,
+                      title: l.chatSearchingTitle,
+                      subtitle: l.chatSearchingSubtitle,
+                    );
+                  }
                   if (snapshot.hasError) {
-                    debugPrint('watchNearbyUsers error: ${snapshot.error}');
-                    return Center(
-                      child: Text(
-                        'Something went wrong. Please try again.',
-                        style: const TextStyle(color: Colors.black54),
-                      ),
+                    return _ChatWaitingState(
+                      title: l.chatWaitingTitle,
+                      subtitle: l.chatWaitingSubtitle,
                     );
                   }
                   final list = snapshot.data ?? const <Profile>[];
+                  _syncAnimation(list.length);
                   if (list.isEmpty) {
-                    return const _ChatEmptyState();
+                    return _ChatWaitingState(
+                      title: l.chatWaitingTitle,
+                      subtitle: l.chatWaitingSubtitle,
+                    );
                   }
                   final Profile target = list.first;
-                  return _ChatCtaCard(
-                    profile: target,
+                  return _ChatMatchState(
+                    title: l.chatMatchTitle,
+                    subtitle: l.chatMatchSubtitle,
+                    buttonLabel: l.chatStartButton,
+                    emoji: l.chatSearchingEmoji,
+                    showHeart: _showHeart,
+                    heartScale: _heartScale,
+                    showCta: _showCta,
                     onStart: () async {
                       final matchId = await state.ensureChatRoom(target.id);
                       if (!context.mounted) return;
@@ -89,8 +162,16 @@ class ChatListScreen extends StatelessWidget {
   }
 }
 
-class _ChatEmptyState extends StatelessWidget {
-  const _ChatEmptyState();
+class _ChatSearchingState extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String subtitle;
+
+  const _ChatSearchingState({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -99,13 +180,15 @@ class _ChatEmptyState extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Text('💗', style: TextStyle(fontSize: 32)),
-            SizedBox(height: 12),
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 32)),
+            const SizedBox(height: 10),
+            Text(title, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 8),
             Text(
-              '조건에 맞는 친구를 찾고 있어요',
+              subtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54, fontSize: 16),
+              style: const TextStyle(color: Colors.black54, fontSize: 16),
             ),
           ],
         ),
@@ -114,58 +197,97 @@ class _ChatEmptyState extends StatelessWidget {
   }
 }
 
-class _ChatCtaCard extends StatelessWidget {
-  final Profile profile;
-  final VoidCallback onStart;
+class _ChatWaitingState extends StatelessWidget {
+  final String title;
+  final String subtitle;
 
-  const _ChatCtaCard({required this.profile, required this.onStart});
+  const _ChatWaitingState({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
-    final String? photoUrl = profile.photoUrl;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              height: 220,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: photoUrl == null || photoUrl.isEmpty
-                    ? const Center(child: Icon(Icons.person, size: 64))
-                    : Image.network(photoUrl, fit: BoxFit.cover),
-              ),
-            ),
-            const SizedBox(height: 16),
+            Text(title, style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 10),
             Text(
-              '${profile.name} · ${profile.age}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatMatchState extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
+  final String emoji;
+  final bool showHeart;
+  final double heartScale;
+  final bool showCta;
+  final VoidCallback onStart;
+
+  const _ChatMatchState({
+    required this.title,
+    required this.subtitle,
+    required this.buttonLabel,
+    required this.emoji,
+    required this.showHeart,
+    required this.heartScale,
+    required this.showCta,
+    required this.onStart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedOpacity(
+              opacity: showHeart ? 1 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: AnimatedScale(
+                key: const ValueKey('match-heart'),
+                scale: heartScale,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutBack,
+                child: Text(emoji, style: const TextStyle(fontSize: 42)),
+              ),
             ),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: onStart,
-              style: FilledButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
+            Text(title, style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
+            ),
+            const SizedBox(height: 16),
+            AnimatedOpacity(
+              opacity: showCta ? 1 : 0,
+              duration: const Duration(milliseconds: 240),
+              child: FilledButton(
+                onPressed: showCta ? onStart : null,
+                style: FilledButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
+                child: Text(buttonLabel),
               ),
-              child: const Text('💬 지금 채팅 시작하기'),
             ),
           ],
         ),
@@ -175,9 +297,15 @@ class _ChatCtaCard extends StatelessWidget {
 }
 
 class _ProfileCompletionPrompt extends StatelessWidget {
+  final String title;
+  final String actionLabel;
   final VoidCallback onComplete;
 
-  const _ProfileCompletionPrompt({required this.onComplete});
+  const _ProfileCompletionPrompt({
+    required this.title,
+    required this.actionLabel,
+    required this.onComplete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -187,15 +315,15 @@ class _ProfileCompletionPrompt extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              '프로필을 완성해야 추천을 받을 수 있어요',
+            Text(
+              title,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54, fontSize: 16),
+              style: const TextStyle(color: Colors.black54, fontSize: 16),
             ),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: onComplete,
-              child: const Text('프로필 완성하기'),
+              child: Text(actionLabel),
             ),
           ],
         ),

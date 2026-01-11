@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -76,6 +76,23 @@ class AppLocalizations {
   String get needAccount => t('needAccount');
   String get haveAccount => t('haveAccount');
   String get signOut => t('signOut');
+
+  String get matchingSearchingTitle => t('matchingSearchingTitle');
+  String get matchingSearchingSubtitle => t('matchingSearchingSubtitle');
+  String get recommendCardSubtitle => t('recommendCardSubtitle');
+  String get noMatchTitle => t('noMatchTitle');
+  String get noMatchSubtitle => t('noMatchSubtitle');
+  String get noMatchAction => t('noMatchAction');
+  String get profileCompleteTitle => t('profileCompleteTitle');
+  String get profileCompleteAction => t('profileCompleteAction');
+  String get chatSearchingTitle => t('chatSearchingTitle');
+  String get chatSearchingEmoji => t('chatSearchingEmoji');
+  String get chatSearchingSubtitle => t('chatSearchingSubtitle');
+  String get chatMatchTitle => t('chatMatchTitle');
+  String get chatMatchSubtitle => t('chatMatchSubtitle');
+  String get chatStartButton => t('chatStartButton');
+  String get chatWaitingTitle => t('chatWaitingTitle');
+  String get chatWaitingSubtitle => t('chatWaitingSubtitle');
 }
 
 class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
