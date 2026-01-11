@@ -9,17 +9,42 @@ import 'screens/recommendation_screen.dart';
 import 'screens/chat_list_screen.dart';
 import 'screens/chat_room_screen.dart';
 import 'screens/profile_screen.dart';
+import 'state/app_state.dart';
 import 'state/locale_state.dart';
 
-class KkiriApp extends StatelessWidget {
+class KkiriApp extends StatefulWidget {
   const KkiriApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final locale = context.watch<LocaleState>().locale;
+  State<KkiriApp> createState() => _KkiriAppState();
+}
 
-    final router = GoRouter(
-      initialLocation: '/home/discover',
+class _KkiriAppState extends State<KkiriApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _router = _buildRouter(context.read<AppState>());
+  }
+
+  GoRouter _buildRouter(AppState state) {
+    return GoRouter(
+      initialLocation: '/login',
+      refreshListenable: state,
+      redirect: (context, routerState) {
+        final bool loggedIn = state.isLoggedIn;
+        final String location = routerState.matchedLocation;
+        final bool loggingIn = location == '/login';
+
+        if (!loggedIn) {
+          return loggingIn ? null : '/login';
+        }
+        if (loggingIn) {
+          return '/home/discover';
+        }
+        return null;
+      },
       routes: [
         GoRoute(
           path: '/login',
@@ -56,10 +81,15 @@ class KkiriApp extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = context.watch<LocaleState>().locale;
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      routerConfig: router,
+      routerConfig: _router,
       title: 'Kkiri Dating',
       locale: locale,
       theme: ThemeData(
@@ -82,7 +112,7 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final location = GoRouterState.of(context).uri.toString();
+    final location = GoRouter.of(context).location;
 
     int currentIndex = 0;
     if (location.startsWith('/home/chat')) currentIndex = 1;
