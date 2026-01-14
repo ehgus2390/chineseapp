@@ -1,10 +1,12 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../state/eligible_profiles_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/distance_filter_widget.dart';
+import '../models/match.dart';
 import '../models/profile.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -15,20 +17,45 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
+  final Set<String> _skippedIds = <String>{};
   int _lastEligibleCount = 0;
-  bool _showCta = false;
   bool _showHeart = false;
   double _heartScale = 0.8;
   bool _animating = false;
+  bool _navigating = false;
+  bool _waitingLong = false;
+  Timer? _waitingTimer;
+
+  @override
+  void dispose() {
+    _waitingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleLongWait() {
+    if (_waitingTimer != null) return;
+    _waitingTimer = Timer(const Duration(seconds: 8), () {
+      if (!mounted) return;
+      setState(() => _waitingLong = true);
+      _waitingTimer = null;
+    });
+  }
+
+  void _resetWaiting() {
+    _waitingTimer?.cancel();
+    _waitingTimer = null;
+    if (_waitingLong) {
+      _waitingLong = false;
+    }
+  }
 
   void _syncAnimation(int count) {
     if (count == 0) {
       _lastEligibleCount = 0;
-      if (_showCta || _showHeart || _heartScale != 0.8) {
+      if (_showHeart || _heartScale != 0.8) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           setState(() {
-            _showCta = false;
             _showHeart = false;
             _heartScale = 0.8;
           });
@@ -51,7 +78,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (!mounted) return;
     setState(() {
       _showHeart = true;
-      _showCta = false;
       _heartScale = 0.8;
     });
     await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -60,9 +86,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
     setState(() => _heartScale = 1.0);
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    if (!mounted) return;
-    setState(() => _showCta = true);
     await Future<void>.delayed(const Duration(milliseconds: 250));
     _animating = false;
   }
@@ -131,25 +154,98 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   }
                   final list = snapshot.data ?? const <Profile>[];
                   _syncAnimation(list.length);
-                  if (list.isEmpty) {
-                    return _ChatWaitingState(
-                      title: l.chatWaitingTitle,
-                      subtitle: l.chatWaitingSubtitle,
+                  final visible =
+                      list.where((p) => !_skippedIds.contains(p.id)).toList();
+                  if (visible.isEmpty) {
+                    _navigating = false;
+                    _scheduleLongWait();
+                    if (_waitingLong) {
+                      return _ChatWaitingState(
+                        title: l.chatWaitingTitle,
+                        subtitle: l.chatWaitingSubtitle,
+                      );
+                    }
+                    return _ChatSearchingState(
+                      emoji: l.chatSearchingEmoji,
+                      title: l.chatSearchingTitle,
+                      subtitle: l.chatSearchingSubtitle,
                     );
                   }
-                  final Profile target = list.first;
-                  return _ChatMatchState(
-                    title: l.chatMatchTitle,
-                    subtitle: l.chatMatchSubtitle,
-                    buttonLabel: l.chatStartButton,
-                    emoji: l.chatSearchingEmoji,
-                    showHeart: _showHeart,
-                    heartScale: _heartScale,
-                    showCta: _showCta,
-                    onStart: () async {
-                      final matchId = await state.ensureChatRoom(target.id);
-                      if (!context.mounted) return;
-                      context.go('/home/chat/room/$matchId');
+                  _resetWaiting();
+                  final Profile target = visible.first;
+                  final List<String> ids = <String>[me!.id, target.id]..sort();
+                  final String matchId = ids.join('_');
+                  return StreamBuilder<MatchSession?>(
+                    stream: state.watchMatchSession(target.id),
+                    builder: (context, sessionSnapshot) {
+                      final session = sessionSnapshot.data;
+                      final bool meReady =
+                          session?.ready[me.id] == true;
+                      final bool otherReady = session?.pendingUserIds
+                              .where((id) => id != me.id)
+                              .every((id) => session?.ready[id] == true) ==
+                          true;
+                      if (session != null && session.connected) {
+                        if (_navigating) {
+                          return _ChatWaitingState(
+                            title: l.chatWaitingTitle,
+                            subtitle: l.chatWaitingSubtitle,
+                          );
+                        }
+                        _navigating = true;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!context.mounted) return;
+                          context.go('/home/chat/room/$matchId');
+                        });
+                        return _ChatWaitingState(
+                          title: l.chatWaitingTitle,
+                          subtitle: l.chatWaitingSubtitle,
+                        );
+                      }
+                      if (meReady && otherReady) {
+                        if (_navigating) {
+                          return _ChatWaitingState(
+                            title: l.chatWaitingTitle,
+                            subtitle: l.chatWaitingSubtitle,
+                          );
+                        }
+                        _navigating = true;
+                        WidgetsBinding.instance.addPostFrameCallback((_) async {
+                          await state.ensureConnectedMatch(target.id);
+                          if (!context.mounted) return;
+                          context.go('/home/chat/room/$matchId');
+                        });
+                        return _ChatWaitingState(
+                          title: l.chatWaitingTitle,
+                          subtitle: l.chatWaitingSubtitle,
+                        );
+                      }
+                      if (meReady && !otherReady) {
+                        _navigating = false;
+                        return _WaitingForOther(
+                          title: l.waitingForOtherUser,
+                          emoji: l.chatSearchingEmoji,
+                        );
+                      }
+                      _navigating = false;
+                      return _ChatConsentState(
+                        title: l.matchingConsentTitle,
+                        subtitle: l.matchingConsentSubtitle,
+                        connectLabel: l.matchingConnectButton,
+                        skipLabel: l.matchingSkipButton,
+                        emoji: l.chatSearchingEmoji,
+                        showHeart: _showHeart,
+                        heartScale: _heartScale,
+                        onConnect: () async {
+                          await state.setMatchConsent(target.id, true);
+                        },
+                        onSkip: () async {
+                          _skippedIds.add(target.id);
+                          await state.skipMatchSession(target.id);
+                          if (!mounted) return;
+                          setState(() {});
+                        },
+                      );
                     },
                   );
                 },
@@ -225,25 +321,55 @@ class _ChatWaitingState extends StatelessWidget {
   }
 }
 
-class _ChatMatchState extends StatelessWidget {
+class _WaitingForOther extends StatelessWidget {
+  final String title;
+  final String emoji;
+
+  const _WaitingForOther({required this.title, required this.emoji});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 32)),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatConsentState extends StatelessWidget {
   final String title;
   final String subtitle;
-  final String buttonLabel;
+  final String connectLabel;
+  final String skipLabel;
   final String emoji;
   final bool showHeart;
   final double heartScale;
-  final bool showCta;
-  final VoidCallback onStart;
+  final VoidCallback onConnect;
+  final VoidCallback onSkip;
 
-  const _ChatMatchState({
+  const _ChatConsentState({
     required this.title,
     required this.subtitle,
-    required this.buttonLabel,
+    required this.connectLabel,
+    required this.skipLabel,
     required this.emoji,
     required this.showHeart,
     required this.heartScale,
-    required this.showCta,
-    required this.onStart,
+    required this.onConnect,
+    required this.onSkip,
   });
 
   @override
@@ -274,20 +400,20 @@ class _ChatMatchState extends StatelessWidget {
               style: const TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 16),
-            AnimatedOpacity(
-              opacity: showCta ? 1 : 0,
-              duration: const Duration(milliseconds: 240),
-              child: FilledButton(
-                onPressed: showCta ? onStart : null,
-                style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
-                  ),
+            FilledButton(
+              onPressed: onConnect,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(buttonLabel),
               ),
+              child: Text(connectLabel),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: onSkip,
+              child: Text(skipLabel),
             ),
           ],
         ),

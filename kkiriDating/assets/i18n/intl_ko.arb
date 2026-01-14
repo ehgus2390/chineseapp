@@ -61,12 +61,21 @@
   "noMatchAction": "관심사 수정하기",
   "profileCompleteTitle": "프로필을 완성해야 추천을 받을 수 있어요",
   "profileCompleteAction": "프로필 완성하기",
-  "chatSearchingTitle": "조건에 맞는 친구를 찾고 있어요",
   "chatSearchingEmoji": "💗",
+  "chatSearchingTitle": "조건에 맞는 친구를 찾고 있어요",
   "chatSearchingSubtitle": "관심사가 비슷한 사람을 우선으로 찾고 있어요",
   "chatMatchTitle": "💬 대화를 시작해볼까요?",
   "chatMatchSubtitle": "지금 이 순간, 이야기해볼 사람이 있어요",
   "chatStartButton": "💗 지금 채팅 시작하기",
   "chatWaitingTitle": "🌱 아직 연결 중이에요",
-  "chatWaitingSubtitle": "조금만 더 기다려 주세요"
+  "chatWaitingSubtitle": "조금만 더 기다려 주세요",
+  "matchingConsentTitle": "💬 지금 대화를 시작해볼까요?",
+  "matchingConsentSubtitle": "지금 이 순간, 이야기해볼 사람이 있어요",
+  "matchingConnectButton": "💗 연결하기",
+  "matchingSkipButton": "다음 매칭 기다리기",
+  "waitingForOtherUser": "상대방의 응답을 기다리고 있어요",
+  "firstMessageGuide": "✨ 대화를 시작해보세요!\n공통 관심사로 이야기를 꺼내면 좋아요.",
+  "firstMessageSuggestions": "요즘 {interest} 자주 하세요?|{interest} 좋아하게 된 계기가 뭐예요?|혹시 {interest} 말고도 관심 있는 게 있나요?",
+  "chatInputHint": "메시지를 입력하세요",
+  "chatError": "오류가 발생했습니다"
 }

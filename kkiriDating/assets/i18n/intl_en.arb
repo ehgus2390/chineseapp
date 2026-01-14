@@ -61,12 +61,21 @@
   "noMatchAction": "Edit interests",
   "profileCompleteTitle": "Complete your profile to get recommendations",
   "profileCompleteAction": "Complete profile",
-  "chatSearchingTitle": "Finding a friend that fits you",
   "chatSearchingEmoji": "💗",
+  "chatSearchingTitle": "Finding a friend that fits you",
   "chatSearchingSubtitle": "Prioritizing people with similar interests",
   "chatMatchTitle": "💬 Want to start a chat?",
   "chatMatchSubtitle": "Someone is here to talk right now",
   "chatStartButton": "💗 Start chatting now",
   "chatWaitingTitle": "🌱 Still connecting",
-  "chatWaitingSubtitle": "Please wait a little longer"
+  "chatWaitingSubtitle": "Please wait a little longer",
+  "matchingConsentTitle": "💬 Want to start a chat now?",
+  "matchingConsentSubtitle": "Someone is here to talk right now",
+  "matchingConnectButton": "💗 Connect",
+  "matchingSkipButton": "Wait for the next match",
+  "waitingForOtherUser": "Waiting for their response",
+  "firstMessageGuide": "✨ Start the conversation!\nIt helps to begin with a shared interest.",
+  "firstMessageSuggestions": "Do you do {interest} often these days?|What got you into {interest}?|Are you into anything besides {interest}?",
+  "chatInputHint": "Type a message",
+  "chatError": "Something went wrong"
 }

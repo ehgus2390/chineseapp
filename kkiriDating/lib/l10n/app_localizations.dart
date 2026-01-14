@@ -93,6 +93,15 @@ class AppLocalizations {
   String get chatStartButton => t('chatStartButton');
   String get chatWaitingTitle => t('chatWaitingTitle');
   String get chatWaitingSubtitle => t('chatWaitingSubtitle');
+  String get matchingConsentTitle => t('matchingConsentTitle');
+  String get matchingConsentSubtitle => t('matchingConsentSubtitle');
+  String get matchingConnectButton => t('matchingConnectButton');
+  String get matchingSkipButton => t('matchingSkipButton');
+  String get waitingForOtherUser => t('waitingForOtherUser');
+  String get firstMessageGuide => t('firstMessageGuide');
+  String get firstMessageSuggestions => t('firstMessageSuggestions');
+  String get chatInputHint => t('chatInputHint');
+  String get chatError => t('chatError');
 }
 
 class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -229,6 +229,80 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Stream<MatchSession?> watchMatchSession(String otherUserId) {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      return Stream<MatchSession?>.value(null);
+    }
+    final String matchId = _matchIdFor(otherUserId);
+    return _db.collection('matches').doc(matchId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      final data = doc.data() ?? <String, dynamic>{};
+      return MatchSession.fromMap(matchId, data);
+    });
+  }
+
+  Future<void> setMatchConsent(String otherUserId, bool ready) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    final String matchId = _matchIdFor(otherUserId);
+    final List<String> ids = <String>[meProfile.id, otherUserId]..sort();
+    await _db.collection('matches').doc(matchId).set(<String, dynamic>{
+      'pendingUserIds': ids,
+      'ready': <String, bool>{meProfile.id: ready},
+      'pendingAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> skipMatchSession(String targetUserId) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    final String matchId = _matchIdFor(targetUserId);
+    await _db.collection('matches').doc(matchId).set(<String, dynamic>{
+      'pendingUserIds': FieldValue.delete(),
+      'ready': FieldValue.delete(),
+      'pendingAt': FieldValue.delete(),
+    }, SetOptions(merge: true));
+    notifyListeners();
+  }
+
+  Future<String> ensureConnectedMatch(String otherUserId) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return '';
+    final String matchId = _matchIdFor(otherUserId);
+    final doc = await _db.collection('matches').doc(matchId).get();
+    if (!doc.exists) return '';
+    final data = doc.data() ?? <String, dynamic>{};
+    final List<dynamic>? userIds = data['userIds'] as List<dynamic>?;
+    if (userIds != null && userIds.isNotEmpty) return matchId;
+    final List<dynamic>? pending = data['pendingUserIds'] as List<dynamic>?;
+    final Map<String, dynamic>? readyMap =
+        data['ready'] as Map<String, dynamic>?;
+    if (pending == null || readyMap == null) return '';
+    if (pending.length != 2) return '';
+    final bool allReady = pending.every((id) {
+      final value = readyMap[id];
+      return value == true;
+    });
+    if (!allReady) return '';
+    await _db.collection('matches').doc(matchId).set(<String, dynamic>{
+      'userIds': pending.map((e) => e.toString()).toList(),
+      'createdAt': FieldValue.serverTimestamp(),
+      'lastMessage': '',
+      'lastMessageAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    return matchId;
+  }
+
+  String _matchIdFor(String otherUserId) {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      throw StateError('No signed-in user.');
+    }
+    final List<String> ids = <String>[meProfile.id, otherUserId]..sort();
+    return ids.join('_');
+  }
+
   double? distanceKmTo(Profile other) {
     if (_me?.location == null || other.location == null) return null;
     return _distanceKm(_me!.location!, other.location!);
@@ -426,6 +500,24 @@ class AppState extends ChangeNotifier {
       'distanceKm': distanceKm,
       'location': location,
     }, SetOptions(merge: true));
+  }
+
+  Future<void> ensureFirstMessageGuide(
+    String matchId,
+    String guideText,
+  ) async {
+    bool shouldSend = false;
+    await _db.runTransaction((tx) async {
+      final ref = _db.collection('matches').doc(matchId);
+      final snap = await tx.get(ref);
+      final data = snap.data() ?? <String, dynamic>{};
+      if (data['guideSent'] == true) return;
+      tx.set(ref, <String, dynamic>{'guideSent': true},
+          SetOptions(merge: true));
+      shouldSend = true;
+    });
+    if (!shouldSend) return;
+    await chat.send(matchId, 'system', guideText);
   }
 
   Future<void> uploadAvatar(Uint8List data) async {
