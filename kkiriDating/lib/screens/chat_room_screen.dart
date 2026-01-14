@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../models/message.dart';
 import '../l10n/app_localizations.dart';
+import '../models/profile.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   final String matchId;
@@ -57,8 +58,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final msgs = snapshot.data ?? <Message>[];
-                final bool hasUserMessage =
-                    msgs.any((m) => m.senderId == state.me.id);
+                final bool hasUserMessage = msgs.any(
+                  (m) => m.senderId == state.me.id,
+                );
                 return Column(
                   children: [
                     Expanded(
@@ -72,10 +74,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           if (isSystem) {
                             return Center(
                               child: Container(
-                                margin:
-                                    const EdgeInsets.symmetric(vertical: 8),
+                                margin: const EdgeInsets.symmetric(vertical: 8),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.pink.shade50,
                                   borderRadius: BorderRadius.circular(12),
@@ -89,8 +92,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                             );
                           }
                           return Align(
-                            alignment:
-                                isMe ? Alignment.centerRight : Alignment.centerLeft,
+                            alignment: isMe
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
                             child: Container(
                               margin: const EdgeInsets.all(8),
                               padding: const EdgeInsets.all(12),
@@ -112,7 +116,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         onSelect: (text) {
                           ctrl.text = text;
                           ctrl.selection = TextSelection.fromPosition(
-                              TextPosition(offset: ctrl.text.length));
+                            TextPosition(offset: ctrl.text.length),
+                          );
                         },
                       ),
                   ],
@@ -140,10 +145,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     await state.chat.send(widget.matchId, state.me.id, text);
                     ctrl.clear();
                   },
-                )
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -154,18 +159,17 @@ class _SuggestionChips extends StatelessWidget {
   final String matchId;
   final ValueChanged<String> onSelect;
 
-  const _SuggestionChips({
-    required this.matchId,
-    required this.onSelect,
-  });
+  const _SuggestionChips({required this.matchId, required this.onSelect});
 
   List<String> _suggestionsFromProfiles(
-      AppLocalizations l, Profile me, Profile other) {
+    AppLocalizations l,
+    Profile me,
+    Profile other,
+  ) {
     final shared = other.interests.where(me.interests.contains).toList();
     if (shared.isEmpty) return <String>[];
     final interest = shared.first;
-    return l
-        .firstMessageSuggestions
+    return l.firstMessageSuggestions
         .split('|')
         .map((s) => s.replaceAll('{interest}', interest))
         .toList();
@@ -193,10 +197,12 @@ class _SuggestionChips extends StatelessWidget {
           child: Wrap(
             spacing: 8,
             children: suggestions
-                .map((text) => ActionChip(
-                      label: Text(text),
-                      onPressed: () => onSelect(text),
-                    ))
+                .map(
+                  (text) => ActionChip(
+                    label: Text(text),
+                    onPressed: () => onSelect(text),
+                  ),
+                )
                 .toList(),
           ),
         );

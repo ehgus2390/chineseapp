@@ -2,11 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../state/app_state.dart';
 import '../state/eligible_profiles_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/distance_filter_widget.dart';
-import '../models/match.dart';
+import '../models/match_session.dart';
 import '../models/profile.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -173,19 +174,34 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   }
                   _resetWaiting();
                   final Profile target = visible.first;
-                  final List<String> ids = <String>[me!.id, target.id]..sort();
+                  final List<String> ids = <String>[me.id, target.id]..sort();
                   final String matchId = ids.join('_');
                   return StreamBuilder<MatchSession?>(
-                    stream: state.watchMatchSession(target.id),
+                    stream: _matchSessionStream(me, target),
                     builder: (context, sessionSnapshot) {
                       final session = sessionSnapshot.data;
-                      final bool meReady =
-                          session?.ready[me.id] == true;
-                      final bool otherReady = session?.pendingUserIds
-                              .where((id) => id != me.id)
-                              .every((id) => session?.ready[id] == true) ==
-                          true;
-                      if (session != null && session.connected) {
+                      if (session == null) {
+                        _navigating = false;
+                        return _ChatSearchingState(
+                          emoji: l.chatSearchingEmoji,
+                          title: l.chatSearchingTitle,
+                          subtitle: l.chatSearchingSubtitle,
+                        );
+                      }
+                      if (session.expiresAt != null &&
+                          session.expiresAt!.isBefore(DateTime.now())) {
+                        _navigating = false;
+                        return _ChatSearchingState(
+                          emoji: l.chatSearchingEmoji,
+                          title: l.chatSearchingTitle,
+                          subtitle: l.chatSearchingSubtitle,
+                        );
+                      }
+                      final bool meReady = session.ready[me.id] == true;
+                      final bool otherReady = session.participants
+                          .where((id) => id != me.id)
+                          .every((id) => session.ready[id] == true);
+                      if (session.status == MatchStatus.connected) {
                         if (_navigating) {
                           return _ChatWaitingState(
                             title: l.chatWaitingTitle,
@@ -202,22 +218,68 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           subtitle: l.chatWaitingSubtitle,
                         );
                       }
-                      if (meReady && otherReady) {
-                        if (_navigating) {
-                          return _ChatWaitingState(
-                            title: l.chatWaitingTitle,
-                            subtitle: l.chatWaitingSubtitle,
+                      if (session.status == MatchStatus.cancelled) {
+                        _navigating = false;
+                        return _ChatSearchingState(
+                          emoji: l.chatSearchingEmoji,
+                          title: l.chatSearchingTitle,
+                          subtitle: l.chatSearchingSubtitle,
+                        );
+                      }
+                      if (session.status == MatchStatus.consent) {
+                        if (meReady && !otherReady) {
+                          _navigating = false;
+                          return _WaitingForOther(
+                            title: l.waitingForOtherUser,
+                            emoji: l.chatSearchingEmoji,
                           );
                         }
-                        _navigating = true;
-                        WidgetsBinding.instance.addPostFrameCallback((_) async {
-                          await state.ensureConnectedMatch(target.id);
-                          if (!context.mounted) return;
-                          context.go('/home/chat/room/$matchId');
-                        });
-                        return _ChatWaitingState(
-                          title: l.chatWaitingTitle,
-                          subtitle: l.chatWaitingSubtitle,
+                        _navigating = false;
+                        return _ChatConsentState(
+                          title: l.matchingConsentTitle,
+                          subtitle: l.matchingConsentSubtitle,
+                          connectLabel: l.matchingConnectButton,
+                          skipLabel: l.matchingSkipButton,
+                          emoji: l.chatSearchingEmoji,
+                          showHeart: _showHeart,
+                          heartScale: _heartScale,
+                          onConnect: () async {
+                            await state.setMatchConsent(target.id, true);
+                          },
+                          onSkip: () async {
+                            _skippedIds.add(target.id);
+                            await state.skipMatchSession(target.id);
+                            if (!mounted) return;
+                            setState(() {});
+                          },
+                        );
+                      }
+                      if (session.status == MatchStatus.waiting) {
+                        if (meReady && !otherReady) {
+                          _navigating = false;
+                          return _WaitingForOther(
+                            title: l.waitingForOtherUser,
+                            emoji: l.chatSearchingEmoji,
+                          );
+                        }
+                        _navigating = false;
+                        return _ChatConsentState(
+                          title: l.matchingConsentTitle,
+                          subtitle: l.matchingConsentSubtitle,
+                          connectLabel: l.matchingConnectButton,
+                          skipLabel: l.matchingSkipButton,
+                          emoji: l.chatSearchingEmoji,
+                          showHeart: _showHeart,
+                          heartScale: _heartScale,
+                          onConnect: () async {
+                            await state.setMatchConsent(target.id, true);
+                          },
+                          onSkip: () async {
+                            _skippedIds.add(target.id);
+                            await state.skipMatchSession(target.id);
+                            if (!mounted) return;
+                            setState(() {});
+                          },
                         );
                       }
                       if (meReady && !otherReady) {
@@ -228,23 +290,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         );
                       }
                       _navigating = false;
-                      return _ChatConsentState(
-                        title: l.matchingConsentTitle,
-                        subtitle: l.matchingConsentSubtitle,
-                        connectLabel: l.matchingConnectButton,
-                        skipLabel: l.matchingSkipButton,
+                      return _ChatSearchingState(
                         emoji: l.chatSearchingEmoji,
-                        showHeart: _showHeart,
-                        heartScale: _heartScale,
-                        onConnect: () async {
-                          await state.setMatchConsent(target.id, true);
-                        },
-                        onSkip: () async {
-                          _skippedIds.add(target.id);
-                          await state.skipMatchSession(target.id);
-                          if (!mounted) return;
-                          setState(() {});
-                        },
+                        title: l.chatSearchingTitle,
+                        subtitle: l.chatSearchingSubtitle,
                       );
                     },
                   );
@@ -256,6 +305,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
     );
   }
+}
+
+Stream<MatchSession?> _matchSessionStream(Profile me, Profile target) {
+  final List<String> ids = <String>[me.id, target.id]..sort();
+  final String matchId = ids.join('_');
+  return FirebaseFirestore.instance
+      .collection('match_sessions')
+      .doc(matchId)
+      .snapshots()
+      .map((doc) {
+    if (!doc.exists) return null;
+    final data = doc.data() ?? <String, dynamic>{};
+    if (data['mode']?.toString() != 'auto') return null;
+    return MatchSession.fromDoc(doc);
+  });
 }
 
 class _ChatSearchingState extends StatelessWidget {

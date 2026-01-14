@@ -8,10 +8,13 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../models/match.dart';
+import '../models/match.dart' as legacy_match;
+import '../models/match_session.dart' as session_model;
 import '../models/profile.dart';
 import '../services/chat_service.dart';
 import '../services/preferences_storage.dart';
+
+enum MatchMode { direct, auto }
 
 class AppState extends ChangeNotifier {
   AppState() {
@@ -28,7 +31,8 @@ class AppState extends ChangeNotifier {
 
   Profile? _me;
   final Map<String, Profile> _profiles = <String, Profile>{};
-  final List<MatchPair> _matches = <MatchPair>[];
+  final List<legacy_match.MatchPair> _matches =
+      <legacy_match.MatchPair>[];
   final List<String> _preferredLanguages = <String>[];
   final Set<String> _likedIds = <String>{};
   final Set<String> _passedIds = <String>{};
@@ -51,7 +55,8 @@ class AppState extends ChangeNotifier {
   bool get isOnboarded => _isOnboarded;
   Profile get me => _me!;
   Profile? get meOrNull => _me;
-  List<MatchPair> get matches => List<MatchPair>.unmodifiable(_matches);
+  List<legacy_match.MatchPair> get matches =>
+      List<legacy_match.MatchPair>.unmodifiable(_matches);
   List<String> get myPreferredLanguages =>
       List<String>.unmodifiable(_preferredLanguages);
   Set<String> get likedIds => Set<String>.unmodifiable(_likedIds);
@@ -186,7 +191,7 @@ class AppState extends ChangeNotifier {
         .listen((snapshot) {
       _matches
         ..clear()
-        ..addAll(snapshot.docs.map(MatchPair.fromDoc));
+        ..addAll(snapshot.docs.map(legacy_match.MatchPair.fromDoc));
       notifyListeners();
     });
   }
@@ -229,16 +234,79 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Stream<MatchSession?> watchMatchSession(String otherUserId) {
+  Stream<legacy_match.MatchSession?> watchMatchSession(String otherUserId) {
     final Profile? meProfile = _me;
     if (meProfile == null) {
-      return Stream<MatchSession?>.value(null);
+      return Stream<legacy_match.MatchSession?>.value(null);
     }
     final String matchId = _matchIdFor(otherUserId);
     return _db.collection('matches').doc(matchId).snapshots().map((doc) {
       if (!doc.exists) return null;
       final data = doc.data() ?? <String, dynamic>{};
-      return MatchSession.fromMap(matchId, data);
+      return legacy_match.MatchSession.fromMap(matchId, data);
+    });
+  }
+
+  Future<session_model.MatchSession> ensureMatchSession({
+    required String otherUserId,
+    required MatchMode mode,
+  }) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      throw StateError('No signed-in user.');
+    }
+    if (otherUserId == meProfile.id) {
+      throw ArgumentError('Cannot match with self.');
+    }
+
+    final List<String> ids = <String>[meProfile.id, otherUserId]..sort();
+    final String matchId = ids.join('_');
+    final DocumentReference<Map<String, dynamic>> ref =
+        _db.collection('match_sessions').doc(matchId);
+
+    return _db.runTransaction((tx) async {
+      final snapshot = await tx.get(ref);
+      if (snapshot.exists) {
+        return session_model.MatchSession.fromDoc(snapshot);
+      }
+      // Transaction ensures only one creator succeeds under concurrent calls.
+      final bool isDirect = mode == MatchMode.direct;
+      final DateTime now = DateTime.now();
+      final DateTime? expiresAt =
+          isDirect ? null : now.add(const Duration(minutes: 5));
+      tx.set(ref, <String, dynamic>{
+        'participants': ids,
+        'mode': isDirect ? 'direct' : 'auto',
+        'status': isDirect ? 'connected' : 'consent',
+        'ready': <String, bool>{
+          meProfile.id: isDirect,
+          otherUserId: isDirect,
+        },
+        'initiatedBy': meProfile.id,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'connectedAt':
+            isDirect ? FieldValue.serverTimestamp() : null,
+        'expiresAt':
+            isDirect ? null : Timestamp.fromDate(expiresAt!),
+        'cancelledBy': null,
+      });
+      return session_model.MatchSession(
+        id: matchId,
+        participants: ids,
+        status: isDirect
+            ? session_model.MatchStatus.connected
+            : session_model.MatchStatus.consent,
+        ready: <String, bool>{
+          meProfile.id: isDirect,
+          otherUserId: isDirect,
+        },
+        createdAt: now,
+        updatedAt: now,
+        connectedAt: isDirect ? now : null,
+        cancelledBy: null,
+        expiresAt: expiresAt,
+      );
     });
   }
 
