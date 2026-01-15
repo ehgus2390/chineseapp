@@ -36,6 +36,7 @@ class AppState extends ChangeNotifier {
   final List<String> _preferredLanguages = <String>[];
   final Set<String> _likedIds = <String>{};
   final Set<String> _passedIds = <String>{};
+  final Set<String> _loggedEventKeys = <String>{};
 
   bool _isOnboarded = false;
   bool _initialized = false;
@@ -179,6 +180,7 @@ class AppState extends ChangeNotifier {
     );
   }
 
+  // LEGACY_MATCHES_TODO: still reading matches collection.
   void _watchMatches() {
     final Profile? meProfile = _me;
     if (meProfile == null) return;
@@ -234,6 +236,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // LEGACY_MATCHES_TODO: still using matches collection match sessions.
   Stream<legacy_match.MatchSession?> watchMatchSession(String otherUserId) {
     final Profile? meProfile = _me;
     if (meProfile == null) {
@@ -245,6 +248,86 @@ class AppState extends ChangeNotifier {
       final data = doc.data() ?? <String, dynamic>{};
       return legacy_match.MatchSession.fromMap(matchId, data);
     });
+  }
+
+  Future<void> ensureChatRoomForSession(String sessionId) async {
+    final DocumentReference<Map<String, dynamic>> sessionRef =
+        _db.collection('match_sessions').doc(sessionId);
+    final DocumentReference<Map<String, dynamic>> roomRef =
+        _db.collection('chat_rooms').doc(sessionId);
+
+    await _db.runTransaction((tx) async {
+      final sessionSnap = await tx.get(sessionRef);
+      if (!sessionSnap.exists) return;
+      final data = sessionSnap.data() ?? <String, dynamic>{};
+      if (data['status']?.toString() != 'connected') return;
+
+      final List<String> participants =
+          (data['participants'] as List<dynamic>? ?? <dynamic>[])
+              .map((e) => e.toString())
+              .toList();
+      final String? mode = data['mode']?.toString();
+
+      final roomSnap = await tx.get(roomRef);
+      if (roomSnap.exists) return;
+      final Map<String, dynamic> payload = <String, dynamic>{
+        'participants': participants,
+        'sessionId': sessionId,
+        'mode': mode,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastMessage': null,
+        'lastMessageAt': null,
+      };
+      // Transaction keeps room creation idempotent under concurrent callers.
+      tx.set(roomRef, payload, SetOptions(merge: true));
+    });
+  }
+
+  Future<void> logEvent({
+    required String type,
+    required String sessionId,
+    required String mode,
+    required String otherUserId,
+  }) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    final String key = '$type|$sessionId|${meProfile.id}';
+    if (_loggedEventKeys.contains(key)) return;
+    _loggedEventKeys.add(key);
+    try {
+      await _db.collection('analytics_events').add(<String, dynamic>{
+        'type': type,
+        'sessionId': sessionId,
+        'mode': mode,
+        'userId': meProfile.id,
+        'otherUserId': otherUserId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Best-effort logging: ignore analytics errors.
+    }
+  }
+
+  Future<void> logFirstMessageSent({
+    required String sessionId,
+    required String otherUserId,
+  }) async {
+    try {
+      final doc = await _db.collection('match_sessions').doc(sessionId).get();
+      if (!doc.exists) return;
+      final data = doc.data() ?? <String, dynamic>{};
+      final String? mode = data['mode']?.toString();
+      if (mode == null) return;
+      await logEvent(
+        type: 'first_message_sent',
+        sessionId: sessionId,
+        mode: mode,
+        otherUserId: otherUserId,
+      );
+    } catch (_) {
+      // Best-effort logging: ignore analytics errors.
+    }
   }
 
   Future<session_model.MatchSession> ensureMatchSession({
@@ -428,6 +511,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // LEGACY_MATCHES_TODO: still creating matches documents.
   Future<void> _createMatch(String meId, String otherId) async {
     final List<String> ids = <String>[meId, otherId]..sort();
     final String matchId = ids.join('_');
@@ -439,6 +523,7 @@ class AppState extends ChangeNotifier {
     }, SetOptions(merge: true));
   }
 
+  // LEGACY_MATCHES_TODO: matches-based chat room creation path.
   Future<String> ensureChatRoom(String otherUserId) async {
     final Profile? meProfile = _me;
     if (meProfile == null) {

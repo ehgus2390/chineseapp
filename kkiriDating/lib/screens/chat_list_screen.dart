@@ -209,7 +209,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           );
                         }
                         _navigating = true;
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) async {
+                          await state.logEvent(
+                            type: 'connected',
+                            sessionId: matchId,
+                            mode: 'auto',
+                            otherUserId: target.id,
+                          );
+                          await state.ensureChatRoomForSession(matchId);
                           if (!context.mounted) return;
                           context.go('/home/chat/room/$matchId');
                         });
@@ -234,6 +241,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             emoji: l.chatSearchingEmoji,
                           );
                         }
+                        state.logEvent(
+                          type: 'auto_consent_shown',
+                          sessionId: matchId,
+                          mode: 'auto',
+                          otherUserId: target.id,
+                        );
                         _navigating = false;
                         return _ChatConsentState(
                           title: l.matchingConsentTitle,
@@ -244,10 +257,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           showHeart: _showHeart,
                           heartScale: _heartScale,
                           onConnect: () async {
+                            await state.logEvent(
+                              type: 'auto_connect_tap',
+                              sessionId: matchId,
+                              mode: 'auto',
+                              otherUserId: target.id,
+                            );
                             await state.setMatchConsent(target.id, true);
                           },
                           onSkip: () async {
                             _skippedIds.add(target.id);
+                            await state.logEvent(
+                              type: 'auto_skip_tap',
+                              sessionId: matchId,
+                              mode: 'auto',
+                              otherUserId: target.id,
+                            );
                             await state.skipMatchSession(target.id);
                             if (!mounted) return;
                             setState(() {});

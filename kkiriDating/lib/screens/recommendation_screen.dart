@@ -26,6 +26,31 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
     setState(() => _dismissedIds.add(profile.id));
   }
 
+  Future<void> _startChat(Profile target) async {
+    final state = context.read<AppState>();
+    final me = state.meOrNull;
+    final bool profileComplete = me != null && state.isProfileReady(me);
+    if (!profileComplete) {
+      if (!mounted) return;
+      context.go('/home/profile');
+      return;
+    }
+    if (!state.isProfileReady(target)) return;
+    final session = await state.ensureMatchSession(
+      otherUserId: target.id,
+      mode: MatchMode.direct,
+    );
+    await state.logEvent(
+      type: 'direct_initiated',
+      sessionId: session.id,
+      mode: 'direct',
+      otherUserId: target.id,
+    );
+    await state.ensureChatRoomForSession(session.id);
+    if (!mounted) return;
+    context.go('/home/chat/room/${session.id}');
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -151,6 +176,7 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
                                   profile: next,
                                   onLike: () {},
                                   onPass: () {},
+                                  onChat: () => _startChat(next),
                                   distanceKm: state.distanceKmTo(next),
                                 ),
                               ),
@@ -181,6 +207,7 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
                               profile: top,
                               onLike: () => _dismiss(top, true),
                               onPass: () => _dismiss(top, false),
+                              onChat: () => _startChat(top),
                               distanceKm: state.distanceKmTo(top),
                             ),
                           ),

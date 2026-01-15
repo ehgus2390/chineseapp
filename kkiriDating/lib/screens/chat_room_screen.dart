@@ -16,6 +16,7 @@ class ChatRoomScreen extends StatefulWidget {
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final ctrl = TextEditingController();
   bool _guideChecked = false;
+  bool _firstMessageLogged = false;
 
   @override
   void didChangeDependencies() {
@@ -142,6 +143,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   onPressed: () async {
                     final text = ctrl.text.trim();
                     if (text.isEmpty) return;
+                    if (!_firstMessageLogged) {
+                      _firstMessageLogged = true;
+                      final parts = widget.matchId.split('_');
+                      final otherId = parts.firstWhere(
+                        (id) => id != state.me.id,
+                        orElse: () => '',
+                      );
+                      if (otherId.isNotEmpty) {
+                        state.logFirstMessageSent(
+                          sessionId: widget.matchId,
+                          otherUserId: otherId,
+                        );
+                      }
+                    }
                     await state.chat.send(widget.matchId, state.me.id, text);
                     ctrl.clear();
                   },

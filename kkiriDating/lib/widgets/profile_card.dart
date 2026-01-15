@@ -6,6 +6,7 @@ class ProfileCard extends StatelessWidget {
   final Profile profile;
   final VoidCallback onLike;
   final VoidCallback onPass;
+  final VoidCallback onChat;
   final double? distanceKm;
 
   const ProfileCard({
@@ -13,6 +14,7 @@ class ProfileCard extends StatelessWidget {
     required this.profile,
     required this.onLike,
     required this.onPass,
+    required this.onChat,
     required this.distanceKm,
   });
 
@@ -177,7 +179,7 @@ class ProfileCard extends StatelessWidget {
                   ),
                   _ActionButton(
                     icon: Icons.chat_bubble,
-                    onPressed: () {},
+                    onPressed: onChat,
                     background: Colors.white.withOpacity(0.85),
                     foreground: Colors.black87,
                     label: l.tabChat,
