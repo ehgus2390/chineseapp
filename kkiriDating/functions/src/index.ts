@@ -1,4 +1,4 @@
-// Firebase Functions: scheduled maintenance for match session expiry.
+// Firebase Functions: scheduled maintenance for match   expiry.
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
