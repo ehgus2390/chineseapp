@@ -8,7 +8,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../models/match.dart' as legacy_match;
 import '../models/match_session.dart' as session_model;
 import '../models/profile.dart';
 import '../services/chat_service.dart';
@@ -31,8 +30,8 @@ class AppState extends ChangeNotifier {
 
   Profile? _me;
   final Map<String, Profile> _profiles = <String, Profile>{};
-  final List<legacy_match.MatchPair> _matches =
-      <legacy_match.MatchPair>[];
+  final Map<String, session_model.MatchSession> _matchSessions =
+      <String, session_model.MatchSession>{};
   final List<String> _preferredLanguages = <String>[];
   final Set<String> _likedIds = <String>{};
   final Set<String> _passedIds = <String>{};
@@ -43,8 +42,23 @@ class AppState extends ChangeNotifier {
   bool _distanceFilterEnabled = true;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchesSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubA;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubB;
   StreamSubscription<User?>? _authSub;
+
+  Stream<session_model.MatchSession?> watchMatchSession(String otherUserId) {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      return Stream.value(null);
+    }
+
+    final String matchId = _matchIdFor(otherUserId);
+
+    return _db.collection('match_sessions').doc(matchId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return session_model.MatchSession.fromDoc(doc);
+    });
+  }
 
   static const String _onboardingKey = 'onboarding_complete';
   static const String _preferredLanguagesKey = 'preferred_languages';
@@ -56,8 +70,8 @@ class AppState extends ChangeNotifier {
   bool get isOnboarded => _isOnboarded;
   Profile get me => _me!;
   Profile? get meOrNull => _me;
-  List<legacy_match.MatchPair> get matches =>
-      List<legacy_match.MatchPair>.unmodifiable(_matches);
+  Set<String> get matchedUserIds => Set<String>.unmodifiable(_matchedUserIds);
+  final Set<String> _matchedUserIds = <String>{};
   List<String> get myPreferredLanguages =>
       List<String>.unmodifiable(_preferredLanguages);
   Set<String> get likedIds => Set<String>.unmodifiable(_likedIds);
@@ -94,7 +108,7 @@ class AppState extends ChangeNotifier {
 
     await _restorePersistentState();
   }
-  
+
   Future<void> _handleAuthChanged(User? user) async {
     if (user == null || user.isAnonymous) {
       if (user?.isAnonymous == true) {
@@ -102,11 +116,13 @@ class AppState extends ChangeNotifier {
       }
       _me = null;
       _profiles.clear();
-      _matches.clear();
+      _matchSessions.clear();
+      _matchedUserIds.clear();
       _likedIds.clear();
       _passedIds.clear();
       await _meSub?.cancel();
-      await _matchesSub?.cancel();
+      await _matchSessionsSubA?.cancel();
+      await _matchSessionsSubB?.cancel();
       notifyListeners();
       return;
     }
@@ -115,7 +131,7 @@ class AppState extends ChangeNotifier {
     await _loadMeOnce();
     await _loadMyDecisions();
     _watchMyProfile();
-    _watchMatches();
+    _watchMatchSessions();
     notifyListeners();
   }
 
@@ -171,31 +187,60 @@ class AppState extends ChangeNotifier {
     final User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
     _meSub?.cancel();
-    _meSub = _db.collection('users').doc(currentUser.uid).snapshots().listen(
-      (doc) {
-        _me = Profile.fromDoc(doc);
-        _profiles[_me!.id] = _me!;
-        notifyListeners();
-      },
-    );
-  }
-
-  // LEGACY_MATCHES_TODO: still reading matches collection.
-  void _watchMatches() {
-    final Profile? meProfile = _me;
-    if (meProfile == null) return;
-    _matchesSub?.cancel();
-    _matchesSub = _db
-        .collection('matches')
-        .where('userIds', arrayContains: meProfile.id)
-        .orderBy('lastMessageAt', descending: true)
-        .snapshots()
-        .listen((snapshot) {
-      _matches
-        ..clear()
-        ..addAll(snapshot.docs.map(legacy_match.MatchPair.fromDoc));
+    _meSub = _db.collection('users').doc(currentUser.uid).snapshots().listen((
+      doc,
+    ) {
+      _me = Profile.fromDoc(doc);
+      _profiles[_me!.id] = _me!;
       notifyListeners();
     });
+  }
+
+  void _watchMatchSessions() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    _matchSessionsSubA?.cancel();
+    _matchSessionsSubB?.cancel();
+    _matchSessionsSubA = _db
+        .collection('match_sessions')
+        .where('userA', isEqualTo: meProfile.id)
+        .snapshots()
+        .listen(_handleMatchSessionsSnapshot);
+    _matchSessionsSubB = _db
+        .collection('match_sessions')
+        .where('userB', isEqualTo: meProfile.id)
+        .snapshots()
+        .listen(_handleMatchSessionsSnapshot);
+  }
+
+  void _handleMatchSessionsSnapshot(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    for (final change in snapshot.docChanges) {
+      if (change.type == DocumentChangeType.removed) {
+        _matchSessions.remove(change.doc.id);
+      } else {
+        _matchSessions[change.doc.id] = session_model.MatchSession.fromDoc(
+          change.doc,
+        );
+      }
+    }
+    _rebuildMatchedUserIds();
+    notifyListeners();
+  }
+
+  void _rebuildMatchedUserIds() {
+    _matchedUserIds
+      ..clear()
+      ..addAll(
+        _matchSessions.values
+            .where((session) {
+              return session.status == session_model.MatchStatus.accepted;
+            })
+            .map((session) {
+              return session.userA == _me?.id ? session.userB : session.userA;
+            }),
+      );
   }
 
   Future<void> _restorePersistentState() async {
@@ -203,15 +248,17 @@ class AppState extends ChangeNotifier {
         await _preferences.readBool(_onboardingKey) ?? false;
     _isOnboarded = storedOnboarding;
 
-    final List<String>? storedLanguages =
-        await _preferences.readStringList(_preferredLanguagesKey);
+    final List<String>? storedLanguages = await _preferences.readStringList(
+      _preferredLanguagesKey,
+    );
     if (storedLanguages != null && storedLanguages.isNotEmpty) {
       _preferredLanguages
         ..clear()
         ..addAll(storedLanguages);
     }
-    final bool? storedDistanceEnabled =
-        await _preferences.readBool(_distanceFilterEnabledKey);
+    final bool? storedDistanceEnabled = await _preferences.readBool(
+      _distanceFilterEnabledKey,
+    );
     if (storedDistanceEnabled != null) {
       _distanceFilterEnabled = storedDistanceEnabled;
     }
@@ -222,50 +269,46 @@ class AppState extends ChangeNotifier {
   Future<void> _loadMyDecisions() async {
     final Profile? meProfile = _me;
     if (meProfile == null) return;
-    final likesSnap =
-        await _db.collection('users').doc(meProfile.id).collection('likes').get();
+    final likesSnap = await _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('likes')
+        .get();
     _likedIds
       ..clear()
       ..addAll(likesSnap.docs.map((doc) => doc.id));
 
-    final passesSnap =
-        await _db.collection('users').doc(meProfile.id).collection('passes').get();
+    final passesSnap = await _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('passes')
+        .get();
     _passedIds
       ..clear()
       ..addAll(passesSnap.docs.map((doc) => doc.id));
     notifyListeners();
   }
 
-  // LEGACY_MATCHES_TODO: still using matches collection match sessions.
-  Stream<legacy_match.MatchSession?> watchMatchSession(String otherUserId) {
-    final Profile? meProfile = _me;
-    if (meProfile == null) {
-      return Stream<legacy_match.MatchSession?>.value(null);
-    }
-    final String matchId = _matchIdFor(otherUserId);
-    return _db.collection('matches').doc(matchId).snapshots().map((doc) {
-      if (!doc.exists) return null;
-      final data = doc.data() ?? <String, dynamic>{};
-      return legacy_match.MatchSession.fromMap(matchId, data);
-    });
-  }
-
   Future<void> ensureChatRoomForSession(String sessionId) async {
-    final DocumentReference<Map<String, dynamic>> sessionRef =
-        _db.collection('match_sessions').doc(sessionId);
-    final DocumentReference<Map<String, dynamic>> roomRef =
-        _db.collection('chat_rooms').doc(sessionId);
+    final DocumentReference<Map<String, dynamic>> sessionRef = _db
+        .collection('match_sessions')
+        .doc(sessionId);
+    final DocumentReference<Map<String, dynamic>> roomRef = _db
+        .collection('chat_rooms')
+        .doc(sessionId);
 
     await _db.runTransaction((tx) async {
       final sessionSnap = await tx.get(sessionRef);
       if (!sessionSnap.exists) return;
       final data = sessionSnap.data() ?? <String, dynamic>{};
-      if (data['status']?.toString() != 'connected') return;
+      if (data['status']?.toString() != 'accepted') return;
 
-      final List<String> participants =
-          (data['participants'] as List<dynamic>? ?? <dynamic>[])
-              .map((e) => e.toString())
-              .toList();
+      final String userA = (data['userA'] ?? '').toString();
+      final String userB = (data['userB'] ?? '').toString();
+      final List<String> participants = <String>[
+        userA,
+        userB,
+      ].where((id) => id.trim().isNotEmpty).toList();
       final String? mode = data['mode']?.toString();
 
       final roomSnap = await tx.get(roomRef);
@@ -278,6 +321,7 @@ class AppState extends ChangeNotifier {
         'updatedAt': FieldValue.serverTimestamp(),
         'lastMessage': null,
         'lastMessageAt': null,
+        'isActive': true,
       };
       // Transaction keeps room creation idempotent under concurrent callers.
       tx.set(roomRef, payload, SetOptions(merge: true));
@@ -344,51 +388,43 @@ class AppState extends ChangeNotifier {
 
     final List<String> ids = <String>[meProfile.id, otherUserId]..sort();
     final String matchId = ids.join('_');
-    final DocumentReference<Map<String, dynamic>> ref =
-        _db.collection('match_sessions').doc(matchId);
+    final DocumentReference<Map<String, dynamic>> ref = _db
+        .collection('match_sessions')
+        .doc(matchId);
 
     return _db.runTransaction((tx) async {
       final snapshot = await tx.get(ref);
       if (snapshot.exists) {
         return session_model.MatchSession.fromDoc(snapshot);
       }
-      // Transaction ensures only one creator succeeds under concurrent calls.
       final bool isDirect = mode == MatchMode.direct;
       final DateTime now = DateTime.now();
-      final DateTime? expiresAt =
-          isDirect ? null : now.add(const Duration(minutes: 5));
+      final DateTime? expiresAt = isDirect
+          ? null
+          : now.add(const Duration(minutes: 5));
       tx.set(ref, <String, dynamic>{
-        'participants': ids,
+        'userA': ids.first,
+        'userB': ids.last,
         'mode': isDirect ? 'direct' : 'auto',
-        'status': isDirect ? 'connected' : 'consent',
-        'ready': <String, bool>{
-          meProfile.id: isDirect,
-          otherUserId: isDirect,
-        },
+        'status': isDirect ? 'accepted' : 'pending',
+        'chatRoomId': null,
         'initiatedBy': meProfile.id,
         'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'connectedAt':
-            isDirect ? FieldValue.serverTimestamp() : null,
-        'expiresAt':
-            isDirect ? null : Timestamp.fromDate(expiresAt!),
-        'cancelledBy': null,
+        'respondedAt': isDirect ? FieldValue.serverTimestamp() : null,
+        'expiresAt': isDirect ? null : Timestamp.fromDate(expiresAt!),
       });
       return session_model.MatchSession(
         id: matchId,
-        participants: ids,
+        userA: ids.first,
+        userB: ids.last,
         status: isDirect
-            ? session_model.MatchStatus.connected
-            : session_model.MatchStatus.consent,
-        ready: <String, bool>{
-          meProfile.id: isDirect,
-          otherUserId: isDirect,
-        },
+            ? session_model.MatchStatus.accepted
+            : session_model.MatchStatus.pending,
+        chatRoomId: null,
         createdAt: now,
-        updatedAt: now,
-        connectedAt: isDirect ? now : null,
-        cancelledBy: null,
+        respondedAt: isDirect ? now : null,
         expiresAt: expiresAt,
+        mode: isDirect ? 'direct' : 'auto',
       );
     });
   }
@@ -397,52 +433,30 @@ class AppState extends ChangeNotifier {
     final Profile? meProfile = _me;
     if (meProfile == null) return;
     final String matchId = _matchIdFor(otherUserId);
-    final List<String> ids = <String>[meProfile.id, otherUserId]..sort();
-    await _db.collection('matches').doc(matchId).set(<String, dynamic>{
-      'pendingUserIds': ids,
-      'ready': <String, bool>{meProfile.id: ready},
-      'pendingAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    await _db.runTransaction((tx) async {
+      final ref = _db.collection('match_sessions').doc(matchId);
+      final snap = await tx.get(ref);
+      if (!snap.exists) return;
+      final data = snap.data() ?? <String, dynamic>{};
+      if (data['status']?.toString() == 'accepted') return;
+      if (ready) {
+        tx.set(ref, <String, dynamic>{
+          'status': 'accepted',
+          'respondedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    });
   }
 
   Future<void> skipMatchSession(String targetUserId) async {
     final Profile? meProfile = _me;
     if (meProfile == null) return;
     final String matchId = _matchIdFor(targetUserId);
-    await _db.collection('matches').doc(matchId).set(<String, dynamic>{
-      'pendingUserIds': FieldValue.delete(),
-      'ready': FieldValue.delete(),
-      'pendingAt': FieldValue.delete(),
+    await _db.collection('match_sessions').doc(matchId).set(<String, dynamic>{
+      'status': 'skipped',
+      'respondedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
     notifyListeners();
-  }
-
-  Future<String> ensureConnectedMatch(String otherUserId) async {
-    final Profile? meProfile = _me;
-    if (meProfile == null) return '';
-    final String matchId = _matchIdFor(otherUserId);
-    final doc = await _db.collection('matches').doc(matchId).get();
-    if (!doc.exists) return '';
-    final data = doc.data() ?? <String, dynamic>{};
-    final List<dynamic>? userIds = data['userIds'] as List<dynamic>?;
-    if (userIds != null && userIds.isNotEmpty) return matchId;
-    final List<dynamic>? pending = data['pendingUserIds'] as List<dynamic>?;
-    final Map<String, dynamic>? readyMap =
-        data['ready'] as Map<String, dynamic>?;
-    if (pending == null || readyMap == null) return '';
-    if (pending.length != 2) return '';
-    final bool allReady = pending.every((id) {
-      final value = readyMap[id];
-      return value == true;
-    });
-    if (!allReady) return '';
-    await _db.collection('matches').doc(matchId).set(<String, dynamic>{
-      'userIds': pending.map((e) => e.toString()).toList(),
-      'createdAt': FieldValue.serverTimestamp(),
-      'lastMessage': '',
-      'lastMessageAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    return matchId;
   }
 
   String _matchIdFor(String otherUserId) {
@@ -465,8 +479,8 @@ class AppState extends ChangeNotifier {
     final double dLon = _deg2rad(b.longitude - a.longitude);
     final double lat1 = _deg2rad(a.latitude);
     final double lat2 = _deg2rad(b.latitude);
-    final double h = pow(sin(dLat / 2), 2) +
-        cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2);
+    final double h =
+        pow(sin(dLat / 2), 2) + cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2);
     return radius * 2 * asin(sqrt(h));
   }
 
@@ -491,7 +505,7 @@ class AppState extends ChangeNotifier {
         .doc(meProfile.id)
         .get();
     if (reciprocal.exists) {
-      await _createMatch(meProfile.id, profile.id);
+      await ensureMatchSession(otherUserId: profile.id, mode: MatchMode.direct);
     }
 
     notifyListeners();
@@ -509,38 +523,6 @@ class AppState extends ChangeNotifier {
         .doc(profile.id)
         .set(<String, dynamic>{'createdAt': FieldValue.serverTimestamp()});
     notifyListeners();
-  }
-
-  // LEGACY_MATCHES_TODO: still creating matches documents.
-  Future<void> _createMatch(String meId, String otherId) async {
-    final List<String> ids = <String>[meId, otherId]..sort();
-    final String matchId = ids.join('_');
-    await _db.collection('matches').doc(matchId).set(<String, dynamic>{
-      'userIds': ids,
-      'createdAt': FieldValue.serverTimestamp(),
-      'lastMessage': '',
-      'lastMessageAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  }
-
-  // LEGACY_MATCHES_TODO: matches-based chat room creation path.
-  Future<String> ensureChatRoom(String otherUserId) async {
-    final Profile? meProfile = _me;
-    if (meProfile == null) {
-      throw StateError('No signed-in user.');
-    }
-    final List<String> ids = <String>[meProfile.id, otherUserId]..sort();
-    final String matchId = ids.join('_');
-    final doc = await _db.collection('matches').doc(matchId).get();
-    if (!doc.exists) {
-      await _db.collection('matches').doc(matchId).set(<String, dynamic>{
-        'userIds': ids,
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastMessage': '',
-        'lastMessageAt': FieldValue.serverTimestamp(),
-      });
-    }
-    return matchId;
   }
 
   Future<Profile?> fetchProfile(String id) async {
@@ -655,18 +637,16 @@ class AppState extends ChangeNotifier {
     }, SetOptions(merge: true));
   }
 
-  Future<void> ensureFirstMessageGuide(
-    String matchId,
-    String guideText,
-  ) async {
+  Future<void> ensureFirstMessageGuide(String matchId, String guideText) async {
     bool shouldSend = false;
     await _db.runTransaction((tx) async {
-      final ref = _db.collection('matches').doc(matchId);
+      final ref = _db.collection('chat_rooms').doc(matchId);
       final snap = await tx.get(ref);
       final data = snap.data() ?? <String, dynamic>{};
       if (data['guideSent'] == true) return;
-      tx.set(ref, <String, dynamic>{'guideSent': true},
-          SetOptions(merge: true));
+      tx.set(ref, <String, dynamic>{
+        'guideSent': true,
+      }, SetOptions(merge: true));
       shouldSend = true;
     });
     if (!shouldSend) return;
@@ -679,9 +659,9 @@ class AppState extends ChangeNotifier {
       throw StateError('Cannot upload avatar without signing in.');
     }
 
-    final Reference ref = _storage
-        .ref()
-        .child('profile_images/${currentUser.uid}/profile.jpg');
+    final Reference ref = _storage.ref().child(
+      'profile_images/${currentUser.uid}/profile.jpg',
+    );
     try {
       final task = await ref.putData(
         data,
@@ -691,9 +671,9 @@ class AppState extends ChangeNotifier {
         ),
       );
       final String url = await task.ref.getDownloadURL();
-      await _db.collection('users').doc(currentUser.uid).update(<String, Object?>{
-        'photoUrl': url,
-      });
+      await _db.collection('users').doc(currentUser.uid).update(
+        <String, Object?>{'photoUrl': url},
+      );
     } on FirebaseException catch (e) {
       throw StateError('Upload failed: ${e.code}');
     }
@@ -702,7 +682,8 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _meSub?.cancel();
-    _matchesSub?.cancel();
+    _matchSessionsSubA?.cancel();
+    _matchSessionsSubB?.cancel();
     _authSub?.cancel();
     super.dispose();
   }

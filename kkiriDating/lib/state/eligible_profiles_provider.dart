@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-import '../models/match.dart';
 import '../models/profile.dart';
 import '../services/match_service.dart';
 import 'app_state.dart';
@@ -33,7 +32,7 @@ class EligibleProfilesProvider extends ChangeNotifier {
   Profile? _me;
   Set<String> _likedIds = <String>{};
   Set<String> _passedIds = <String>{};
-  List<MatchPair> _matches = <MatchPair>[];
+  Set<String> _matchedUserIds = <String>{};
   bool _distanceFilterEnabled = true;
   List<String> _preferredLanguages = <String>[];
 
@@ -43,7 +42,7 @@ class EligibleProfilesProvider extends ChangeNotifier {
     _me = state.meOrNull;
     _likedIds = state.likedIds;
     _passedIds = state.passedIds;
-    _matches = state.matches;
+    _matchedUserIds = state.matchedUserIds;
     _distanceFilterEnabled = state.distanceFilterEnabled;
     _preferredLanguages = state.myPreferredLanguages;
     _emitEligible();
@@ -77,7 +76,6 @@ class EligibleProfilesProvider extends ChangeNotifier {
     required List<Profile> allUsers,
     required bool distanceFilterEnabled,
   }) {
-    final matchesIds = _matches.expand((m) => m.userIds).toSet();
     return allUsers
         .where((p) =>
             isProfileComplete(p) &&
@@ -87,7 +85,7 @@ class EligibleProfilesProvider extends ChangeNotifier {
             _passesDistanceFilter(me, p, distanceFilterEnabled) &&
             !_likedIds.contains(p.id) &&
             !_passedIds.contains(p.id) &&
-            !matchesIds.contains(p.id))
+            !_matchedUserIds.contains(p.id))
         .toList();
   }
 

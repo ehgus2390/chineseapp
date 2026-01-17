@@ -128,8 +128,11 @@ class ProfileCard extends StatelessWidget {
                   if (distanceLabel != null) ...[
                     Row(
                       children: [
-                        const Icon(Icons.location_on,
-                            color: Colors.white70, size: 16),
+                        const Icon(
+                          Icons.location_on,
+                          color: Colors.white70,
+                          size: 16,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           distanceLabel,
@@ -145,12 +148,13 @@ class ProfileCard extends StatelessWidget {
                   Wrap(
                     spacing: 6,
                     children: interests
-                        .map((label) => Chip(
-                              label: Text(label),
-                              backgroundColor: Colors.white.withOpacity(0.2),
-                              labelStyle:
-                                  const TextStyle(color: Colors.white),
-                            ))
+                        .map(
+                          (label) => Chip(
+                            label: Text(label),
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            labelStyle: const TextStyle(color: Colors.white),
+                          ),
+                        )
                         .toList(),
                   ),
                 ],
@@ -231,10 +235,7 @@ class _ActionButton extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white, fontSize: 12),
-        ),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
       ],
     );
   }

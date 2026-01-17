@@ -36,13 +36,16 @@ class Profile {
 
   factory Profile.fromMap(String id, Map<String, dynamic> data) {
     final Object? photoValue = data['photoUrl'];
-    final String? photoUrl = photoValue is String && photoValue.trim().isNotEmpty
+    final String? photoUrl =
+        photoValue is String && photoValue.trim().isNotEmpty
         ? photoValue
         : null;
     final Object? ageValue = data['age'];
     final int age = ageValue is num ? ageValue.toInt() : 0;
     final Object? distanceValue = data['distanceKm'];
-    final double distanceKm = distanceValue is num ? distanceValue.toDouble() : 30.0;
+    final double distanceKm = distanceValue is num
+        ? distanceValue.toDouble()
+        : 30.0;
     final Object? locationValue = data['location'];
     final GeoPoint? location = locationValue is GeoPoint ? locationValue : null;
     final Object? interestsValue = data['interests'];

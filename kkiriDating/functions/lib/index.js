@@ -1,37 +1,31 @@
 "use strict";
+/**
+ * Import function triggers from their respective submodules:
+ *
+ * import {onCall} from "firebase-functions/v2/https";
+ * import {onDocumentWritten} from "firebase-functions/v2/firestore";
+ *
+ * See a full list of supported triggers at https://firebase.google.com/docs/functions
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.expireMatchSessions = void 0;
-// Firebase Functions: scheduled maintenance for match   expiry.
-const scheduler_1 = require("firebase-functions/v2/scheduler");
-const app_1 = require("firebase-admin/app");
-const firestore_1 = require("firebase-admin/firestore");
-(0, app_1.initializeApp)();
-const db = (0, firestore_1.getFirestore)();
-exports.expireMatchSessions = (0, scheduler_1.onSchedule)('every 1 minutes', async () => {
-    const statuses = ['searching', 'consent', 'waiting'];
-    const now = firestore_1.Timestamp.now();
-    // Process in chunks to keep batch sizes safe.
-    while (true) {
-        const snapshot = await db
-            .collection('match_sessions')
-            .where('mode', '==', 'auto')
-            .where('status', 'in', statuses)
-            .where('expiresAt', '<=', now)
-            .orderBy('expiresAt')
-            .limit(200)
-            .get();
-        if (snapshot.empty) {
-            break;
-        }
-        const batch = db.batch();
-        for (const doc of snapshot.docs) {
-            batch.set(doc.ref, {
-                status: 'cancelled',
-                cancelledBy: 'system',
-                updatedAt: firestore_1.FieldValue.serverTimestamp(),
-            }, { merge: true });
-        }
-        await batch.commit();
-    }
-});
+const firebase_functions_1 = require("firebase-functions");
+// import {onRequest} from "firebase-functions/https";
+// import * as logger from "firebase-functions/logger";
+// Start writing functions
+// https://firebase.google.com/docs/functions/typescript
+// For cost control, you can set the maximum number of containers that can be
+// running at the same time. This helps mitigate the impact of unexpected
+// traffic spikes by instead downgrading performance. This limit is a
+// per-function limit. You can override the limit for each function using the
+// `maxInstances` option in the function's options, e.g.
+// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
+// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
+// functions should each use functions.runWith({ maxInstances: 10 }) instead.
+// In the v1 API, each function can only serve one request per container, so
+// this will be the maximum concurrent request count.
+(0, firebase_functions_1.setGlobalOptions)({ maxInstances: 10 });
+// export const helloWorld = onRequest((request, response) => {
+//   logger.info("Hello logs!", {structuredData: true});
+//   response.send("Hello from Firebase!");
+// });
 //# sourceMappingURL=index.js.map

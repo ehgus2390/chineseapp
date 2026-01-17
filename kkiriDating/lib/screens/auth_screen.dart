@@ -62,13 +62,15 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               Text(
                 l.loginTitle,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 8),
-              Text(l.loginSubtitle, style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                l.loginSubtitle,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
               const SizedBox(height: 32),
               TextField(
                 controller: emailCtrl,
@@ -87,10 +89,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 20),
               if (_error != null)
-                Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
-                ),
+                Text(_error!, style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,

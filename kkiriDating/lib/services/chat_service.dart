@@ -8,7 +8,7 @@ class ChatService {
 
   Stream<List<Message>> watchMessages(String matchId) {
     return _db
-        .collection('matches')
+        .collection('chat_rooms')
         .doc(matchId)
         .collection('messages')
         .orderBy('createdAt', descending: false)
@@ -19,15 +19,20 @@ class ChatService {
 
   Future<void> send(String matchId, String senderId, String text) async {
     final now = FieldValue.serverTimestamp();
-    final messages = _db.collection('matches').doc(matchId).collection('messages');
+    final messages = _db
+        .collection('chat_rooms')
+        .doc(matchId)
+        .collection('messages');
     await messages.add(<String, dynamic>{
       'senderId': senderId,
       'text': text,
       'createdAt': now,
     });
-    await _db.collection('matches').doc(matchId).set(<String, dynamic>{
+    await _db.collection('chat_rooms').doc(matchId).set(<String, dynamic>{
       'lastMessage': text,
       'lastMessageAt': now,
+      'updatedAt': now,
+      'isActive': true,
     }, SetOptions(merge: true));
   }
 }

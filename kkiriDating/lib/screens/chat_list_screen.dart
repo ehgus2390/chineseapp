@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../state/app_state.dart';
 import '../state/eligible_profiles_provider.dart';
 import '../l10n/app_localizations.dart';
@@ -19,10 +19,12 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final Set<String> _skippedIds = <String>{};
+
   int _lastEligibleCount = 0;
   bool _showHeart = false;
   double _heartScale = 0.8;
   bool _animating = false;
+
   bool _navigating = false;
   bool _waitingLong = false;
   Timer? _waitingTimer;
@@ -76,17 +78,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Future<void> _runMatchAnimation() async {
     if (_animating) return;
     _animating = true;
+
     if (!mounted) return;
     setState(() {
       _showHeart = true;
       _heartScale = 0.8;
     });
+
     await Future<void>.delayed(const Duration(milliseconds: 20));
     if (!mounted) return;
     setState(() => _heartScale = 1.2);
+
     await Future<void>.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
     setState(() => _heartScale = 1.0);
+
     await Future<void>.delayed(const Duration(milliseconds: 250));
     _animating = false;
   }
@@ -96,6 +102,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final state = context.watch<AppState>();
     final l = AppLocalizations.of(context);
     final eligible = context.watch<EligibleProfilesProvider>();
+
     final me = state.meOrNull;
     final bool profileComplete = me != null && state.isProfileReady(me);
 
@@ -104,29 +111,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-              child: Row(
-                children: [
-                  Text(
-                    l.chatTitle,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.search, color: Colors.black),
-                    onPressed: () {},
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.settings, color: Colors.black),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-            ),
+            _Header(title: l.chatTitle),
             if (profileComplete) const DistanceFilterWidget(),
             Expanded(
               child: StreamBuilder<List<Profile>>(
@@ -140,6 +125,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       onComplete: () => context.go('/home/profile'),
                     );
                   }
+
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return _ChatSearchingState(
                       emoji: l.chatSearchingEmoji,
@@ -147,16 +133,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       subtitle: l.chatSearchingSubtitle,
                     );
                   }
+
                   if (snapshot.hasError) {
                     return _ChatWaitingState(
                       title: l.chatWaitingTitle,
                       subtitle: l.chatWaitingSubtitle,
                     );
                   }
+
                   final list = snapshot.data ?? const <Profile>[];
                   _syncAnimation(list.length);
-                  final visible =
-                      list.where((p) => !_skippedIds.contains(p.id)).toList();
+
+                  final visible = list
+                      .where((p) => !_skippedIds.contains(p.id))
+                      .toList();
+
                   if (visible.isEmpty) {
                     _navigating = false;
                     _scheduleLongWait();
@@ -172,153 +163,60 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       subtitle: l.chatSearchingSubtitle,
                     );
                   }
+
                   _resetWaiting();
+
                   final Profile target = visible.first;
-                  final List<String> ids = <String>[me.id, target.id]..sort();
-                  final String matchId = ids.join('_');
+
                   return StreamBuilder<MatchSession?>(
-                    stream: _matchSessionStream(me, target),
-                    builder: (context, sessionSnapshot) {
-                      final session = sessionSnapshot.data;
-                      if (session == null) {
+                    stream: state.watchMatchSession(target.id),
+                    builder: (context, snapshot) {
+                      final session = snapshot.data;
+
+                      // 아직 세션 없거나 pending 상태 → 동의 UI
+                      if (session == null ||
+                          session.status != MatchStatus.accepted) {
                         _navigating = false;
-                        return _ChatSearchingState(
+                        return _ChatConsentState(
+                          title: l.matchingConsentTitle,
+                          subtitle: l.matchingConsentSubtitle,
+                          connectLabel: l.matchingConnectButton,
+                          skipLabel: l.matchingSkipButton,
                           emoji: l.chatSearchingEmoji,
-                          title: l.chatSearchingTitle,
-                          subtitle: l.chatSearchingSubtitle,
+                          showHeart: _showHeart,
+                          heartScale: _heartScale,
+                          onConnect: () async {
+                            await state.setMatchConsent(target.id, true);
+                          },
+                          onSkip: () async {
+                            _skippedIds.add(target.id);
+                            await state.skipMatchSession(target.id);
+                            if (!mounted) return;
+                            setState(() {});
+                          },
                         );
                       }
-                      if (session.expiresAt != null &&
-                          session.expiresAt!.isBefore(DateTime.now())) {
-                        _navigating = false;
-                        return _ChatSearchingState(
-                          emoji: l.chatSearchingEmoji,
-                          title: l.chatSearchingTitle,
-                          subtitle: l.chatSearchingSubtitle,
-                        );
-                      }
-                      final bool meReady = session.ready[me.id] == true;
-                      final bool otherReady = session.participants
-                          .where((id) => id != me.id)
-                          .every((id) => session.ready[id] == true);
-                      if (session.status == MatchStatus.connected) {
-                        if (_navigating) {
-                          return _ChatWaitingState(
-                            title: l.chatWaitingTitle,
-                            subtitle: l.chatWaitingSubtitle,
-                          );
-                        }
-                        _navigating = true;
-                        WidgetsBinding.instance.addPostFrameCallback((_) async {
-                          await state.logEvent(
-                            type: 'connected',
-                            sessionId: matchId,
-                            mode: 'auto',
-                            otherUserId: target.id,
-                          );
-                          await state.ensureChatRoomForSession(matchId);
-                          if (!context.mounted) return;
-                          context.go('/home/chat/room/$matchId');
-                        });
+
+                      // accepted 되었지만 아직 roomId 없음 → 대기
+                      if (session.chatRoomId == null) {
                         return _ChatWaitingState(
                           title: l.chatWaitingTitle,
                           subtitle: l.chatWaitingSubtitle,
                         );
                       }
-                      if (session.status == MatchStatus.cancelled) {
-                        _navigating = false;
-                        return _ChatSearchingState(
-                          emoji: l.chatSearchingEmoji,
-                          title: l.chatSearchingTitle,
-                          subtitle: l.chatSearchingSubtitle,
-                        );
+
+                      // accepted + roomId 존재 → 이동
+                      if (!_navigating) {
+                        _navigating = true;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!context.mounted) return;
+                          context.go('/home/chat/room/${session.chatRoomId}');
+                        });
                       }
-                      if (session.status == MatchStatus.consent) {
-                        if (meReady && !otherReady) {
-                          _navigating = false;
-                          return _WaitingForOther(
-                            title: l.waitingForOtherUser,
-                            emoji: l.chatSearchingEmoji,
-                          );
-                        }
-                        state.logEvent(
-                          type: 'auto_consent_shown',
-                          sessionId: matchId,
-                          mode: 'auto',
-                          otherUserId: target.id,
-                        );
-                        _navigating = false;
-                        return _ChatConsentState(
-                          title: l.matchingConsentTitle,
-                          subtitle: l.matchingConsentSubtitle,
-                          connectLabel: l.matchingConnectButton,
-                          skipLabel: l.matchingSkipButton,
-                          emoji: l.chatSearchingEmoji,
-                          showHeart: _showHeart,
-                          heartScale: _heartScale,
-                          onConnect: () async {
-                            await state.logEvent(
-                              type: 'auto_connect_tap',
-                              sessionId: matchId,
-                              mode: 'auto',
-                              otherUserId: target.id,
-                            );
-                            await state.setMatchConsent(target.id, true);
-                          },
-                          onSkip: () async {
-                            _skippedIds.add(target.id);
-                            await state.logEvent(
-                              type: 'auto_skip_tap',
-                              sessionId: matchId,
-                              mode: 'auto',
-                              otherUserId: target.id,
-                            );
-                            await state.skipMatchSession(target.id);
-                            if (!mounted) return;
-                            setState(() {});
-                          },
-                        );
-                      }
-                      if (session.status == MatchStatus.waiting) {
-                        if (meReady && !otherReady) {
-                          _navigating = false;
-                          return _WaitingForOther(
-                            title: l.waitingForOtherUser,
-                            emoji: l.chatSearchingEmoji,
-                          );
-                        }
-                        _navigating = false;
-                        return _ChatConsentState(
-                          title: l.matchingConsentTitle,
-                          subtitle: l.matchingConsentSubtitle,
-                          connectLabel: l.matchingConnectButton,
-                          skipLabel: l.matchingSkipButton,
-                          emoji: l.chatSearchingEmoji,
-                          showHeart: _showHeart,
-                          heartScale: _heartScale,
-                          onConnect: () async {
-                            await state.setMatchConsent(target.id, true);
-                          },
-                          onSkip: () async {
-                            _skippedIds.add(target.id);
-                            await state.skipMatchSession(target.id);
-                            if (!mounted) return;
-                            setState(() {});
-                          },
-                        );
-                      }
-                      if (meReady && !otherReady) {
-                        _navigating = false;
-                        return _WaitingForOther(
-                          title: l.waitingForOtherUser,
-                          emoji: l.chatSearchingEmoji,
-                        );
-                      }
-                      _navigating = false;
-                      return _ChatSearchingState(
-                        emoji: l.chatSearchingEmoji,
-                        title: l.chatSearchingTitle,
-                        subtitle: l.chatSearchingSubtitle,
+
+                      return _ChatWaitingState(
+                        title: l.chatWaitingTitle,
+                        subtitle: l.chatWaitingSubtitle,
                       );
                     },
                   );
@@ -332,19 +230,38 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 }
 
-Stream<MatchSession?> _matchSessionStream(Profile me, Profile target) {
-  final List<String> ids = <String>[me.id, target.id]..sort();
-  final String matchId = ids.join('_');
-  return FirebaseFirestore.instance
-      .collection('match_sessions')
-      .doc(matchId)
-      .snapshots()
-      .map((doc) {
-    if (!doc.exists) return null;
-    final data = doc.data() ?? <String, dynamic>{};
-    if (data['mode']?.toString() != 'auto') return null;
-    return MatchSession.fromDoc(doc);
-  });
+/* ───────────────────────── UI Components ───────────────────────── */
+
+class _Header extends StatelessWidget {
+  final String title;
+  const _Header({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.black,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.black),
+            onPressed: () {},
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ChatSearchingState extends StatelessWidget {
@@ -360,24 +277,18 @@ class _ChatSearchingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 32)),
-            const SizedBox(height: 10),
-            Text(title, style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54, fontSize: 16),
-            ),
-          ],
+    return _CenteredText(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 32)),
+        const SizedBox(height: 10),
+        Text(title, style: const TextStyle(fontSize: 16)),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54, fontSize: 16),
         ),
-      ),
+      ],
     );
   }
 }
@@ -390,50 +301,16 @@ class _ChatWaitingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(title, style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54),
-            ),
-          ],
+    return _CenteredText(
+      children: [
+        Text(title, style: const TextStyle(fontSize: 18)),
+        const SizedBox(height: 10),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54),
         ),
-      ),
-    );
-  }
-}
-
-class _WaitingForOther extends StatelessWidget {
-  final String title;
-  final String emoji;
-
-  const _WaitingForOther({required this.title, required this.emoji});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 32)),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54, fontSize: 16),
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
@@ -463,50 +340,31 @@ class _ChatConsentState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedOpacity(
-              opacity: showHeart ? 1 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: AnimatedScale(
-                key: const ValueKey('match-heart'),
-                scale: heartScale,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutBack,
-                child: Text(emoji, style: const TextStyle(fontSize: 42)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(title, style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: onConnect,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              child: Text(connectLabel),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: onSkip,
-              child: Text(skipLabel),
-            ),
-          ],
+    return _CenteredText(
+      children: [
+        AnimatedOpacity(
+          opacity: showHeart ? 1 : 0,
+          duration: const Duration(milliseconds: 200),
+          child: AnimatedScale(
+            scale: heartScale,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutBack,
+            child: Text(emoji, style: const TextStyle(fontSize: 42)),
+          ),
         ),
-      ),
+        const SizedBox(height: 12),
+        Text(title, style: const TextStyle(fontSize: 18)),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(onPressed: onConnect, child: Text(connectLabel)),
+        const SizedBox(height: 8),
+        TextButton(onPressed: onSkip, child: Text(skipLabel)),
+      ],
     );
   }
 }
@@ -524,23 +382,32 @@ class _ProfileCompletionPrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return _CenteredText(
+      children: [
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54, fontSize: 16),
+        ),
+        const SizedBox(height: 12),
+        FilledButton(onPressed: onComplete, child: Text(actionLabel)),
+      ],
+    );
+  }
+}
+
+class _CenteredText extends StatelessWidget {
+  final List<Widget> children;
+  const _CenteredText({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54, fontSize: 16),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: onComplete,
-              child: Text(actionLabel),
-            ),
-          ],
+          children: children,
         ),
       ),
     );

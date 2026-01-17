@@ -1,34 +1,33 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum MatchStatus {
-  searching,
-  consent,
-  waiting,
-  connected,
-  cancelled,
+  pending,
+  accepted,
+  skipped,
+  expired,
 }
 
 class MatchSession {
   final String id;
-  final List<String> participants;
+  final String userA;
+  final String userB;
   final MatchStatus status;
-  final Map<String, bool> ready;
+  final String? chatRoomId;
   final DateTime createdAt;
-  final DateTime updatedAt;
-  final DateTime? connectedAt;
-  final String? cancelledBy;
+  final DateTime? respondedAt;
   final DateTime? expiresAt;
+  final String? mode;
 
   MatchSession({
     required this.id,
-    required this.participants,
+    required this.userA,
+    required this.userB,
     required this.status,
-    required this.ready,
+    required this.chatRoomId,
     required this.createdAt,
-    required this.updatedAt,
-    this.connectedAt,
-    this.cancelledBy,
+    required this.respondedAt,
     this.expiresAt,
+    this.mode,
   });
 
   factory MatchSession.fromDoc(
@@ -37,72 +36,56 @@ class MatchSession {
     final data = doc.data() ?? <String, dynamic>{};
     return MatchSession(
       id: doc.id,
-      participants: (data['participants'] as List<dynamic>? ?? <dynamic>[])
-          .map((e) => e.toString())
-          .toList(),
+      userA: (data['userA'] ?? '').toString(),
+      userB: (data['userB'] ?? '').toString(),
       status: _statusFromString(data['status']),
-      ready: _readyFromMap(data['ready']),
+      chatRoomId: data['chatRoomId'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      connectedAt: (data['connectedAt'] as Timestamp?)?.toDate(),
-      cancelledBy: data['cancelledBy'] as String?,
+      respondedAt: (data['respondedAt'] as Timestamp?)?.toDate(),
       expiresAt: (data['expiresAt'] as Timestamp?)?.toDate(),
+      mode: data['mode'] as String?,
     );
   }
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
-      'participants': participants,
+      'userA': userA,
+      'userB': userB,
       'status': _statusToString(status),
-      'ready': ready,
+      'chatRoomId': chatRoomId,
       'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
-      'connectedAt': connectedAt == null ? null : Timestamp.fromDate(connectedAt!),
-      'cancelledBy': cancelledBy,
+      'respondedAt':
+          respondedAt == null ? null : Timestamp.fromDate(respondedAt!),
       'expiresAt': expiresAt == null ? null : Timestamp.fromDate(expiresAt!),
+      'mode': mode,
     };
   }
 
   static MatchStatus _statusFromString(Object? value) {
     switch (value?.toString()) {
-      case 'searching':
-        return MatchStatus.searching;
-      case 'consent':
-        return MatchStatus.consent;
-      case 'waiting':
-        return MatchStatus.waiting;
-      case 'connected':
-        return MatchStatus.connected;
-      case 'cancelled':
-        return MatchStatus.cancelled;
+      case 'pending':
+        return MatchStatus.pending;
+      case 'accepted':
+        return MatchStatus.accepted;
+      case 'skipped':
+        return MatchStatus.skipped;
+      case 'expired':
+        return MatchStatus.expired;
     }
-    return MatchStatus.searching;
+    return MatchStatus.pending;
   }
 
   static String _statusToString(MatchStatus status) {
     switch (status) {
-      case MatchStatus.searching:
-        return 'searching';
-      case MatchStatus.consent:
-        return 'consent';
-      case MatchStatus.waiting:
-        return 'waiting';
-      case MatchStatus.connected:
-        return 'connected';
-      case MatchStatus.cancelled:
-        return 'cancelled';
+      case MatchStatus.pending:
+        return 'pending';
+      case MatchStatus.accepted:
+        return 'accepted';
+      case MatchStatus.skipped:
+        return 'skipped';
+      case MatchStatus.expired:
+        return 'expired';
     }
-  }
-
-  static Map<String, bool> _readyFromMap(Object? value) {
-    final Map<String, bool> result = <String, bool>{};
-    final Map<String, dynamic>? map = value as Map<String, dynamic>?;
-    if (map == null) return result;
-    for (final entry in map.entries) {
-      result[entry.key] = entry.value == true;
-    }
-    return result;
   }
 }
