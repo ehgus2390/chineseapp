@@ -49,7 +49,7 @@ class _KkiriAppState extends State<KkiriApp> {
         GoRoute(path: '/login', builder: (_, __) => const AuthScreen()),
         ShellRoute(
           builder: (context, state, child) {
-            return Scaffold(body: child, bottomNavigationBar: _BottomNav());
+            return _HomeShell(child: child);
           },
           routes: [
             GoRoute(
@@ -106,7 +106,7 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final location = GoRouterState.of(context).uri.toString();
+    final location = GoRouter.of(context).location;
 
     int currentIndex = 0;
     if (location.startsWith('/home/chat')) currentIndex = 1;
@@ -141,6 +141,34 @@ class _BottomNav extends StatelessWidget {
           label: l.tabProfile,
         ),
       ],
+    );
+  }
+}
+
+class _HomeShell extends StatelessWidget {
+  final Widget child;
+
+  const _HomeShell({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final location = GoRouter.of(context).location;
+    if (location.startsWith('/home/chat/room')) {
+      return Scaffold(body: child, bottomNavigationBar: _BottomNav());
+    }
+    int currentIndex = 0;
+    if (location.startsWith('/home/chat')) currentIndex = 1;
+    if (location.startsWith('/home/profile')) currentIndex = 2;
+    return Scaffold(
+      body: IndexedStack(
+        index: currentIndex,
+        children: const [
+          RecommendationScreen(),
+          ChatListScreen(),
+          ProfileScreen(),
+        ],
+      ),
+      bottomNavigationBar: _BottomNav(),
     );
   }
 }
