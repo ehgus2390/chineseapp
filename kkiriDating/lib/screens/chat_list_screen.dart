@@ -198,7 +198,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       title: l.queueSearchingTitle,
                       subtitle: l.queueSearchingSubtitle,
                       countdownText: null,
-                      showConnect: true,
+                      showConnect: !_queueActive,
                       connectLabel: l.queueConnect,
                       onConnect: () => _enterMatchingQueue(),
                     );
@@ -231,7 +231,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       title: l.queueSearchingTitle,
                       subtitle: l.queueSearchingSubtitle,
                       countdownText: null,
-                      showConnect: true,
+                      showConnect: !_queueActive,
                       connectLabel: l.queueConnect,
                       onConnect: _enterMatchingQueue,
                     );
@@ -263,7 +263,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           title: l.queueSearchingTitle,
                           subtitle: l.queueSearchingSubtitle,
                           countdownText: null,
-                          showConnect: true,
+                          showConnect: !_queueActive,
                           connectLabel: l.queueConnect,
                           onConnect: _enterMatchingQueue,
                         );

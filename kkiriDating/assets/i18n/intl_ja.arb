@@ -63,7 +63,7 @@
   "locationUnset": "未設定",
   "notificationsTitle": "通知を受け取る",
   "notificationsSubtitle": "マッチとメッセージの通知を受け取れます",
-  "queueSearchingTitle": "相性の合う相手を探しています",
+  "queueSearchingTitle": "相手をマッチング中です",
   "queueSearchingSubtitle": "相手を探しています。少しお待ちください。",
   "queueTimeout": "応答時間が終了しました",
   "queueConnect": "接続する",

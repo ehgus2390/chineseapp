@@ -63,7 +63,7 @@
   "locationUnset": "미설정",
   "notificationsTitle": "알림 받기",
   "notificationsSubtitle": "매칭 및 메시지 알림을 받을 수 있어요",
-  "queueSearchingTitle": "나와 잘 맞는 이성을 찾고 있습니다",
+  "queueSearchingTitle": "상대를 매칭 중입니다",
   "queueSearchingSubtitle": "상대방을 찾는 중이에요. 잠시만 기다려주세요.",
   "queueTimeout": "응답 시간이 초과되었습니다",
   "queueConnect": "연결하기",

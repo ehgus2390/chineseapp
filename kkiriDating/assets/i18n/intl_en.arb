@@ -63,7 +63,7 @@
   "locationUnset": "Not set",
   "notificationsTitle": "Notifications",
   "notificationsSubtitle": "Receive match and message alerts",
-  "queueSearchingTitle": "Finding someone who matches you",
+  "queueSearchingTitle": "Matching you with someone",
   "queueSearchingSubtitle": "Looking for the other person. Please wait.",
   "queueTimeout": "Response timed out",
   "queueConnect": "Connect",
