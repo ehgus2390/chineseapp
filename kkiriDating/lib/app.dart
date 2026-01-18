@@ -11,9 +11,12 @@ import 'screens/chat_room_screen.dart';
 import 'screens/profile_screen.dart';
 import 'state/app_state.dart';
 import 'state/locale_state.dart';
+import 'state/notification_state.dart';
 
 class KkiriApp extends StatefulWidget {
-  const KkiriApp({super.key});
+  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey;
+
+  const KkiriApp({super.key, required this.scaffoldMessengerKey});
 
   @override
   State<KkiriApp> createState() => _KkiriAppState();
@@ -86,6 +89,7 @@ class _KkiriAppState extends State<KkiriApp> {
       routerConfig: _router,
       title: 'Kkiri Dating',
       locale: locale,
+      scaffoldMessengerKey: widget.scaffoldMessengerKey,
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFFE94D8A),
         useMaterial3: true,
@@ -107,6 +111,7 @@ class _BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final location = GoRouter.of(context).location;
+    final unreadChatCount = context.watch<NotificationState>().unreadChatCount;
 
     int currentIndex = 0;
     if (location.startsWith('/home/chat')) currentIndex = 1;
@@ -120,6 +125,8 @@ class _BottomNav extends StatelessWidget {
             context.go('/home/discover');
             break;
           case 1:
+            // Clear badge only when user explicitly enters chat.
+            context.read<NotificationState>().clearChatBadge();
             context.go('/home/chat');
             break;
           case 2:
@@ -133,12 +140,45 @@ class _BottomNav extends StatelessWidget {
           label: l.tabRecommend,
         ),
         NavigationDestination(
-          icon: const Icon(Icons.chat_bubble),
+          icon: _Badge(
+            show: unreadChatCount > 0,
+            child: const Icon(Icons.chat_bubble),
+          ),
           label: l.tabChat,
         ),
         NavigationDestination(
           icon: const Icon(Icons.person),
           label: l.tabProfile,
+        ),
+      ],
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final bool show;
+  final Widget child;
+
+  const _Badge({required this.show, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!show) return child;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          right: -2,
+          top: -2,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
+            ),
+          ),
         ),
       ],
     );

@@ -2,7 +2,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
-import '../state/eligible_profiles_provider.dart';
+import '../state/recommendation_provider.dart';
 import '../widgets/profile_card.dart';
 import '../l10n/app_localizations.dart';
 import '../models/profile.dart';
@@ -16,6 +16,7 @@ class RecommendationScreen extends StatefulWidget {
 
 class _RecommendationScreenState extends State<RecommendationScreen> {
   final Set<String> _dismissedIds = <String>{};
+  DateTime? _lastSeenRefresh;
 
   void _dismiss(Profile profile, bool liked) {
     if (liked) {
@@ -55,9 +56,13 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final state = context.watch<AppState>();
-    final eligible = context.watch<EligibleProfilesProvider>();
+    final recommendations = context.watch<RecommendationProvider>();
     final me = state.meOrNull;
     final bool profileComplete = me != null && state.isProfileReady(me);
+    if (_lastSeenRefresh != recommendations.lastUpdatedAt) {
+      _lastSeenRefresh = recommendations.lastUpdatedAt;
+      _dismissedIds.clear();
+    }
 
     return Column(
       children: [
@@ -83,6 +88,12 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
                       ?.copyWith(color: Colors.black54),
                 ),
                 const Spacer(),
+                TextButton(
+                  onPressed: () => recommendations.refreshRecommendations(
+                    reason: RefreshReason.manual,
+                  ),
+                  child: Text(l.refreshRecommendations),
+                ),
                 IconButton(
                   icon: const Icon(Icons.tune),
                   onPressed: () => context.go('/home/profile'),
@@ -102,122 +113,138 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
           ),
         ),
         Expanded(
-          child: StreamBuilder<List<Profile>>(
-            stream: eligible.stream,
-            initialData: const <Profile>[],
-            builder: (context, snapshot) {
-              if (!profileComplete) {
-                return _ProfileCompletionPrompt(
-                  title: l.profileCompleteTitle,
-                  actionLabel: l.profileCompleteAction,
-                  onComplete: () => context.go('/home/profile'),
-                );
-              }
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _MatchingProgress(
-                  title: l.matchingSearchingTitle,
-                  subtitle: l.matchingSearchingSubtitle,
-                );
-              }
-              if (snapshot.hasError) {
-                return _NoMatchState(
-                  title: l.noMatchTitle,
-                  subtitle: l.noMatchSubtitle,
-                  actionLabel: l.noMatchAction,
-                  onAction: () => context.go('/home/profile'),
-                );
-              }
-              final list = snapshot.data ?? const <Profile>[];
-              if (list.isEmpty) {
-                return _NoMatchState(
-                  title: l.noMatchTitle,
-                  subtitle: l.noMatchSubtitle,
-                  actionLabel: l.noMatchAction,
-                  onAction: () => context.go('/home/profile'),
-                );
-              }
-              final filtered =
-                  list.where((p) => !_dismissedIds.contains(p.id)).toList();
-              if (filtered.isEmpty) {
-                return _NoMatchState(
-                  title: l.noMatchTitle,
-                  subtitle: l.noMatchSubtitle,
-                  actionLabel: l.noMatchAction,
-                  onAction: () => context.go('/home/profile'),
-                );
-              }
-              final top = filtered.first;
-              final next = filtered.length > 1 ? filtered[1] : null;
+          child: _RecommendationBody(
+            profileComplete: profileComplete,
+            recommendations: recommendations,
+            dismissedIds: _dismissedIds,
+            onStartChat: _startChat,
+            onDismiss: _dismiss,
+            distanceFor: state.distanceKmTo,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      l.recommendCardSubtitle,
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w600,
+class _RecommendationBody extends StatelessWidget {
+  final bool profileComplete;
+  final RecommendationProvider recommendations;
+  final Set<String> dismissedIds;
+  final void Function(Profile target) onStartChat;
+  final void Function(Profile profile, bool liked) onDismiss;
+  final double? Function(Profile profile) distanceFor;
+
+  const _RecommendationBody({
+    required this.profileComplete,
+    required this.recommendations,
+    required this.dismissedIds,
+    required this.onStartChat,
+    required this.onDismiss,
+    required this.distanceFor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    if (!profileComplete) {
+      return _ProfileCompletionPrompt(
+        title: l.profileCompleteTitle,
+        actionLabel: l.profileCompleteAction,
+        onComplete: () => context.go('/home/profile'),
+      );
+    }
+    if (recommendations.isLoading && recommendations.recommendations.isEmpty) {
+      return _MatchingProgress(
+        title: l.matchingSearchingTitle,
+        subtitle: l.matchingSearchingSubtitle,
+      );
+    }
+    final list = recommendations.recommendations;
+    if (list.isEmpty) {
+      return _NoMatchState(
+        title: l.noMatchTitle,
+        subtitle: l.noMatchSubtitle,
+        actionLabel: l.noMatchAction,
+        onAction: () => context.go('/home/profile'),
+      );
+    }
+    final filtered = list.where((p) => !dismissedIds.contains(p.id)).toList();
+    if (filtered.isEmpty) {
+      return _NoMatchState(
+        title: l.noMatchTitle,
+        subtitle: l.noMatchSubtitle,
+        actionLabel: l.noMatchAction,
+        onAction: () => context.go('/home/profile'),
+      );
+    }
+    final top = filtered.first;
+    final next = filtered.length > 1 ? filtered[1] : null;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            l.recommendCardSubtitle,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (next != null)
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Transform.scale(
+                      scale: 0.96,
+                      child: ProfileCard(
+                        profile: next,
+                        onLike: () {},
+                        onPass: () {},
+                        onChat: () => onStartChat(next),
+                        distanceKm: distanceFor(next),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        if (next != null)
-                          Positioned.fill(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 16),
-                              child: Transform.scale(
-                                scale: 0.96,
-                                child: ProfileCard(
-                                  profile: next,
-                                  onLike: () {},
-                                  onPass: () {},
-                                  onChat: () => _startChat(next),
-                                  distanceKm: state.distanceKmTo(next),
-                                ),
-                              ),
-                            ),
-                          ),
-                        Positioned.fill(
-                          child: Dismissible(
-                            key: ValueKey(top.id),
-                            direction: DismissDirection.horizontal,
-                            background: _SwipeHint(
-                              color: Colors.green.withOpacity(0.2),
-                              icon: Icons.favorite,
-                              alignment: Alignment.centerLeft,
-                            ),
-                            secondaryBackground: _SwipeHint(
-                              color: Colors.red.withOpacity(0.2),
-                              icon: Icons.close,
-                              alignment: Alignment.centerRight,
-                            ),
-                            onDismissed: (direction) {
-                              if (direction == DismissDirection.endToStart) {
-                                _dismiss(top, false);
-                              } else {
-                                _dismiss(top, true);
-                              }
-                            },
-                            child: ProfileCard(
-                              profile: top,
-                              onLike: () => _dismiss(top, true),
-                              onPass: () => _dismiss(top, false),
-                              onChat: () => _startChat(top),
-                              distanceKm: state.distanceKmTo(top),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                ),
+              Positioned.fill(
+                child: Dismissible(
+                  key: ValueKey(top.id),
+                  direction: DismissDirection.horizontal,
+                  background: _SwipeHint(
+                    color: Colors.green.withOpacity(0.2),
+                    icon: Icons.favorite,
+                    alignment: Alignment.centerLeft,
                   ),
-                ],
-              );
-            },
+                  secondaryBackground: _SwipeHint(
+                    color: Colors.red.withOpacity(0.2),
+                    icon: Icons.close,
+                    alignment: Alignment.centerRight,
+                  ),
+                  onDismissed: (direction) {
+                    if (direction == DismissDirection.endToStart) {
+                      onDismiss(top, false);
+                    } else {
+                      onDismiss(top, true);
+                    }
+                  },
+                  child: ProfileCard(
+                    profile: top,
+                    onLike: () => onDismiss(top, true),
+                    onPass: () => onDismiss(top, false),
+                    onChat: () => onStartChat(top),
+                    distanceKm: distanceFor(top),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

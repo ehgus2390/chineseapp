@@ -71,6 +71,23 @@ class EligibleProfilesProvider extends ChangeNotifier {
     _controller.add(eligible);
   }
 
+  List<Profile> buildEligibleSnapshot() {
+    if (_me == null || !isProfileComplete(_me!)) {
+      return <Profile>[];
+    }
+    final eligible = applyEligibility(
+      me: _me!,
+      allUsers: _allUsers,
+      distanceFilterEnabled: _distanceFilterEnabled,
+    );
+    eligible.sort((a, b) {
+      final double scoreB = _matchService.score(_me!, b, _preferredLanguages);
+      final double scoreA = _matchService.score(_me!, a, _preferredLanguages);
+      return scoreB.compareTo(scoreA);
+    });
+    return eligible;
+  }
+
   List<Profile> applyEligibility({
     required Profile me,
     required List<Profile> allUsers,

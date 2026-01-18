@@ -637,6 +637,17 @@ class AppState extends ChangeNotifier {
     }, SetOptions(merge: true));
   }
 
+  Future<void> setNotificationsEnabled(bool enabled) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    await _db.collection('users').doc(meProfile.id).set(
+      <String, dynamic>{
+        'notificationsEnabled': enabled,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
   Future<void> ensureFirstMessageGuide(String matchId, String guideText) async {
     bool shouldSend = false;
     await _db.runTransaction((tx) async {

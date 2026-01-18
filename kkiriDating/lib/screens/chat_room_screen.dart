@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
+import '../state/notification_state.dart';
 import '../models/message.dart';
 import '../l10n/app_localizations.dart';
 import '../models/profile.dart';
@@ -16,6 +17,7 @@ class ChatRoomScreen extends StatefulWidget {
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final ctrl = TextEditingController();
   bool _guideChecked = false;
+  bool _badgeCleared = false;
   bool _firstMessageLogged = false;
 
   @override
@@ -23,6 +25,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     super.didChangeDependencies();
     if (_guideChecked) return;
     _guideChecked = true;
+    if (!_badgeCleared) {
+      _badgeCleared = true;
+      context.read<NotificationState>().clearChatBadge();
+    }
     final state = context.read<AppState>();
     final l = AppLocalizations.of(context);
     state.ensureFirstMessageGuide(widget.matchId, l.firstMessageGuide);

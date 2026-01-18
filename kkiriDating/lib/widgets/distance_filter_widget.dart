@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../state/app_state.dart';
+import '../state/recommendation_provider.dart';
 
 class DistanceFilterWidget extends StatefulWidget {
   const DistanceFilterWidget({super.key});
@@ -56,6 +57,9 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
       distanceKm: _distanceKm,
       location: location,
     );
+    await context
+        .read<RecommendationProvider>()
+        .refreshRecommendations(reason: RefreshReason.locationChanged);
 
     if (!mounted) return;
     setState(() => _updatingLocation = false);
@@ -116,6 +120,9 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
                 distanceKm: _distanceKm,
                 location: me?.location,
               );
+              await context
+                  .read<RecommendationProvider>()
+                  .refreshRecommendations(reason: RefreshReason.profileUpdated);
             },
           ),
           const SizedBox(height: 12),

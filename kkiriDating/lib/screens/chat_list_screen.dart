@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../state/app_state.dart';
 import '../state/eligible_profiles_provider.dart';
@@ -9,6 +10,7 @@ import '../l10n/app_localizations.dart';
 import '../widgets/distance_filter_widget.dart';
 import '../models/match_session.dart';
 import '../models/profile.dart';
+import '../state/notification_state.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -18,8 +20,6 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
-  final Set<String> _skippedIds = <String>{};
-
   int _lastEligibleCount = 0;
   bool _showHeart = false;
   double _heartScale = 0.8;
@@ -28,10 +28,23 @@ class _ChatListScreenState extends State<ChatListScreen> {
   bool _navigating = false;
   bool _waitingLong = false;
   Timer? _waitingTimer;
+  Timer? _countdownTimer;
+  bool _queueActive = false;
+  int _countdown = 10;
+  bool _badgeCleared = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_badgeCleared) return;
+    _badgeCleared = true;
+    context.read<NotificationState>().clearChatBadge();
+  }
 
   @override
   void dispose() {
     _waitingTimer?.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
   }
 
@@ -50,6 +63,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (_waitingLong) {
       _waitingLong = false;
     }
+  }
+
+  void _enterMatchingQueue() {
+    if (_queueActive) return;
+    setState(() {
+      _queueActive = true;
+      _countdown = 10;
+    });
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_countdown <= 1) {
+        timer.cancel();
+        setState(() => _countdown = 0);
+        return;
+      }
+      setState(() => _countdown -= 1);
+    });
   }
 
   void _syncAnimation(int count) {
@@ -115,6 +146,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             if (profileComplete) const DistanceFilterWidget(),
             Expanded(
               child: StreamBuilder<List<Profile>>(
+                // IndexedStack keeps this widget mounted; no side effects on rebuild.
                 stream: eligible.stream,
                 initialData: const <Profile>[],
                 builder: (context, snapshot) {
@@ -131,6 +163,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       emoji: l.chatSearchingEmoji,
                       title: l.chatSearchingTitle,
                       subtitle: l.chatSearchingSubtitle,
+                      countdown: null,
+                      onConnect: _enterMatchingQueue,
                     );
                   }
 
@@ -144,11 +178,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   final list = snapshot.data ?? const <Profile>[];
                   _syncAnimation(list.length);
 
-                  final visible = list
-                      .where((p) => !_skippedIds.contains(p.id))
-                      .toList();
-
-                  if (visible.isEmpty) {
+                  if (list.isEmpty) {
                     _navigating = false;
                     _scheduleLongWait();
                     if (_waitingLong) {
@@ -161,55 +191,58 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       emoji: l.chatSearchingEmoji,
                       title: l.chatSearchingTitle,
                       subtitle: l.chatSearchingSubtitle,
+                      countdown: _queueActive ? _countdown : null,
+                      onConnect: _enterMatchingQueue,
                     );
                   }
 
                   _resetWaiting();
 
-                  final Profile target = visible.first;
+                  final Profile target = list.first;
 
                   return StreamBuilder<MatchSession?>(
-                    stream: state.watchMatchSession(target.id),
+                    stream: _matchSessionStream(me!, target),
                     builder: (context, snapshot) {
                       final session = snapshot.data;
 
-                      // 아직 세션 없거나 pending 상태 → 동의 UI
-                      if (session == null ||
-                          session.status != MatchStatus.accepted) {
+                      // Null/non-accepted sessions stay in queue UX without navigation.
+                      if (session == null) {
                         _navigating = false;
-                        return _ChatConsentState(
-                          title: l.matchingConsentTitle,
-                          subtitle: l.matchingConsentSubtitle,
-                          connectLabel: l.matchingConnectButton,
-                          skipLabel: l.matchingSkipButton,
+                        return _ChatSearchingState(
                           emoji: l.chatSearchingEmoji,
-                          showHeart: _showHeart,
-                          heartScale: _heartScale,
-                          onConnect: () async {
-                            await state.setMatchConsent(target.id, true);
-                          },
-                          onSkip: () async {
-                            _skippedIds.add(target.id);
-                            await state.skipMatchSession(target.id);
-                            if (!mounted) return;
-                            setState(() {});
-                          },
+                          title: '나와 잘 맞는 이성을 찾고 있습니다',
+                          subtitle: '잠시만 기다려 주세요',
+                          countdown: _queueActive ? _countdown : null,
+                          onConnect: _enterMatchingQueue,
                         );
                       }
-
-                      // accepted 되었지만 아직 roomId 없음 → 대기
-                      if (session.chatRoomId == null) {
+                      if (session.status == MatchStatus.pending) {
+                        _navigating = false;
+                        return const _ChatPendingState(
+                          title: '상대 수락 대기 중',
+                        );
+                      }
+                      if (session.status != MatchStatus.accepted) {
+                        _navigating = false;
                         return _ChatWaitingState(
                           title: l.chatWaitingTitle,
                           subtitle: l.chatWaitingSubtitle,
                         );
                       }
 
-                      // accepted + roomId 존재 → 이동
+                      if (session.chatRoomId == null ||
+                          session.chatRoomId!.trim().isEmpty) {
+                        return _ChatWaitingState(
+                          title: l.chatWaitingTitle,
+                          subtitle: l.chatWaitingSubtitle,
+                        );
+                      }
+
                       if (!_navigating) {
                         _navigating = true;
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (!context.mounted) return;
+                          // Guarded navigation avoids rebuild loops.
                           context.go('/home/chat/room/${session.chatRoomId}');
                         });
                       }
@@ -228,6 +261,19 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
     );
   }
+}
+
+Stream<MatchSession?> _matchSessionStream(Profile me, Profile target) {
+  final List<String> ids = <String>[me.id, target.id]..sort();
+  final String sessionId = ids.join('_');
+  return FirebaseFirestore.instance
+      .collection('match_sessions')
+      .doc(sessionId)
+      .snapshots()
+      .map((doc) {
+    if (!doc.exists) return null;
+    return MatchSession.fromDoc(doc);
+  });
 }
 
 /* ───────────────────────── UI Components ───────────────────────── */
@@ -268,11 +314,15 @@ class _ChatSearchingState extends StatelessWidget {
   final String emoji;
   final String title;
   final String subtitle;
+  final int? countdown;
+  final VoidCallback onConnect;
 
   const _ChatSearchingState({
     required this.emoji,
     required this.title,
     required this.subtitle,
+    required this.countdown,
+    required this.onConnect,
   });
 
   @override
@@ -287,6 +337,18 @@ class _ChatSearchingState extends StatelessWidget {
           subtitle,
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.black54, fontSize: 16),
+        ),
+        const SizedBox(height: 14),
+        if (countdown != null) ...[
+          Text(
+            '남은 시간 ${countdown}s',
+            style: const TextStyle(color: Colors.black54),
+          ),
+          const SizedBox(height: 10),
+        ],
+        FilledButton(
+          onPressed: onConnect,
+          child: const Text('연결하기'),
         ),
       ],
     );
@@ -309,6 +371,27 @@ class _ChatWaitingState extends StatelessWidget {
           subtitle,
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.black54),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChatPendingState extends StatelessWidget {
+  final String title;
+
+  const _ChatPendingState({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return _CenteredText(
+      children: [
+        Text(title, style: const TextStyle(fontSize: 18)),
+        const SizedBox(height: 10),
+        const SizedBox(
+          height: 18,
+          width: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ],
     );

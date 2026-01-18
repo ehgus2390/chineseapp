@@ -13,6 +13,7 @@ class Profile {
   final String? photoUrl;
   final double distanceKm;
   final GeoPoint? location;
+  final bool notificationsEnabled;
 
   Profile({
     required this.id,
@@ -27,6 +28,7 @@ class Profile {
     required this.photoUrl,
     required this.distanceKm,
     required this.location,
+    required this.notificationsEnabled,
   });
 
   factory Profile.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -56,6 +58,10 @@ class Profile {
     final List<String> languages = languagesValue is List
         ? languagesValue.map((e) => e.toString()).toList()
         : <String>[];
+    final Object? notificationsValue = data['notificationsEnabled'];
+    final bool notificationsEnabled = notificationsValue is bool
+        ? notificationsValue
+        : true;
     return Profile(
       id: id,
       name: (data['name'] ?? '').toString(),
@@ -69,6 +75,7 @@ class Profile {
       photoUrl: photoUrl,
       distanceKm: distanceKm,
       location: location,
+      notificationsEnabled: notificationsEnabled,
     );
   }
 
@@ -85,6 +92,7 @@ class Profile {
       'photoUrl': photoUrl,
       'distanceKm': distanceKm,
       'location': location,
+      'notificationsEnabled': notificationsEnabled,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }

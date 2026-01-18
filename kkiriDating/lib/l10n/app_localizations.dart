@@ -76,6 +76,7 @@ class AppLocalizations {
   String get needAccount => t('needAccount');
   String get haveAccount => t('haveAccount');
   String get signOut => t('signOut');
+  String get refreshRecommendations => t('refreshRecommendations');
 
   String get matchingSearchingTitle => t('matchingSearchingTitle');
   String get matchingSearchingSubtitle => t('matchingSearchingSubtitle');

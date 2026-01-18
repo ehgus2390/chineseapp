@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../state/app_state.dart';
 import '../state/locale_state.dart';
+import '../state/recommendation_provider.dart';
 import '../l10n/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -277,6 +278,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }).toList(),
         ),
         const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text('알림 받기', style: TextStyle(fontWeight: FontWeight.w700)),
+                  SizedBox(height: 4),
+                  Text(
+                    '매칭 및 메시지 알림을 받을 수 있어요',
+                    style: TextStyle(color: Colors.black54, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: me.notificationsEnabled,
+              onChanged: (value) async {
+                // Update server flag so Functions can honor it immediately.
+                await state.setNotificationsEnabled(value);
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         FilledButton(
           onPressed: () async {
             final int age = int.tryParse(ageCtrl.text.trim()) ?? 0;
@@ -292,6 +318,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               distanceKm: me.distanceKm,
               location: me.location,
             );
+            await context
+                .read<RecommendationProvider>()
+                .refreshRecommendations(reason: RefreshReason.profileUpdated);
           },
           child: Text(l.save),
         ),
