@@ -110,7 +110,7 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final location = GoRouter.of(context).location;
+    final location = GoRouterState.of(context).uri.toString();
     final unreadChatCount = context.watch<NotificationState>().unreadChatCount;
 
     int currentIndex = 0;
@@ -192,7 +192,7 @@ class _HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final location = GoRouter.of(context).location;
+    final location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/home/chat/room')) {
       return Scaffold(body: child, bottomNavigationBar: _BottomNav());
     }

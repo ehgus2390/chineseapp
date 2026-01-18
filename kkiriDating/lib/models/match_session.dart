@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum MatchStatus {
+  searching,
   pending,
   accepted,
   skipped,
@@ -64,6 +65,8 @@ class MatchSession {
 
   static MatchStatus _statusFromString(Object? value) {
     switch (value?.toString()) {
+      case 'searching':
+        return MatchStatus.searching;
       case 'pending':
         return MatchStatus.pending;
       case 'accepted':
@@ -78,6 +81,8 @@ class MatchSession {
 
   static String _statusToString(MatchStatus status) {
     switch (status) {
+      case MatchStatus.searching:
+        return 'searching';
       case MatchStatus.pending:
         return 'pending';
       case MatchStatus.accepted:

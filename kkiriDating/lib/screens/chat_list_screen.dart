@@ -32,6 +32,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
   bool _queueActive = false;
   int _countdown = 10;
   bool _badgeCleared = false;
+  bool _timeoutReached = false;
+  bool _ignorePendingSession = false;
+  static const int _queueDurationSeconds = 10;
 
   @override
   void didChangeDependencies() {
@@ -69,18 +72,48 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (_queueActive) return;
     setState(() {
       _queueActive = true;
-      _countdown = 10;
+      _countdown = _queueDurationSeconds;
+      _timeoutReached = false;
+      _ignorePendingSession = false;
     });
-    _countdownTimer?.cancel();
+  }
+
+  void _startCountdownIfNeeded() {
+    if (_countdownTimer != null) return;
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       if (_countdown <= 1) {
         timer.cancel();
-        setState(() => _countdown = 0);
+        setState(() {
+          _countdown = 0;
+          _queueActive = false;
+          _timeoutReached = true;
+          _ignorePendingSession = true;
+        });
+        Timer(const Duration(seconds: 2), () {
+          if (!mounted) return;
+          setState(() => _timeoutReached = false);
+        });
         return;
       }
       setState(() => _countdown -= 1);
     });
+  }
+
+  void _stopCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+    _queueActive = false;
+  }
+
+  Future<void> _setSessionStatus(MatchSession session, String status) async {
+    await FirebaseFirestore.instance
+        .collection('match_sessions')
+        .doc(session.id)
+        .set(<String, dynamic>{
+      'status': status,
+      'respondedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   void _syncAnimation(int count) {
@@ -159,16 +192,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   }
 
                   if (snapshot.connectionState == ConnectionState.waiting) {
+                    _stopCountdown();
                     return _ChatSearchingState(
                       emoji: l.chatSearchingEmoji,
-                      title: l.chatSearchingTitle,
-                      subtitle: l.chatSearchingSubtitle,
-                      countdown: null,
-                      onConnect: _enterMatchingQueue,
+                      title: l.queueSearchingTitle,
+                      subtitle: l.queueSearchingSubtitle,
+                      countdownText: null,
+                      showConnect: true,
+                      connectLabel: l.queueConnect,
+                      onConnect: () => _enterMatchingQueue(),
                     );
                   }
 
                   if (snapshot.hasError) {
+                    _stopCountdown();
                     return _ChatWaitingState(
                       title: l.chatWaitingTitle,
                       subtitle: l.chatWaitingSubtitle,
@@ -182,16 +219,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     _navigating = false;
                     _scheduleLongWait();
                     if (_waitingLong) {
+                      _stopCountdown();
                       return _ChatWaitingState(
                         title: l.chatWaitingTitle,
                         subtitle: l.chatWaitingSubtitle,
                       );
                     }
+                    _stopCountdown();
                     return _ChatSearchingState(
                       emoji: l.chatSearchingEmoji,
-                      title: l.chatSearchingTitle,
-                      subtitle: l.chatSearchingSubtitle,
-                      countdown: _queueActive ? _countdown : null,
+                      title: l.queueSearchingTitle,
+                      subtitle: l.queueSearchingSubtitle,
+                      countdownText: null,
+                      showConnect: true,
+                      connectLabel: l.queueConnect,
                       onConnect: _enterMatchingQueue,
                     );
                   }
@@ -205,25 +246,97 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     builder: (context, snapshot) {
                       final session = snapshot.data;
 
+                      if (_timeoutReached) {
+                        _navigating = false;
+                        _stopCountdown();
+                        return _ChatTimeoutState(
+                          title: l.queueTimeout,
+                        );
+                      }
+
                       // Null/non-accepted sessions stay in queue UX without navigation.
                       if (session == null) {
                         _navigating = false;
+                        _stopCountdown();
                         return _ChatSearchingState(
                           emoji: l.chatSearchingEmoji,
-                          title: '나와 잘 맞는 이성을 찾고 있습니다',
-                          subtitle: '잠시만 기다려 주세요',
-                          countdown: _queueActive ? _countdown : null,
+                          title: l.queueSearchingTitle,
+                          subtitle: l.queueSearchingSubtitle,
+                          countdownText: null,
+                          showConnect: true,
+                          connectLabel: l.queueConnect,
+                          onConnect: _enterMatchingQueue,
+                        );
+                      }
+                      if (session.status == MatchStatus.searching) {
+                        _navigating = false;
+                        _stopCountdown();
+                        return _ChatSearchingState(
+                          emoji: l.chatSearchingEmoji,
+                          title: l.queueSearchingTitle,
+                          subtitle: l.queueSearchingSubtitle,
+                          countdownText: null,
+                          showConnect: false,
+                          connectLabel: l.queueConnect,
                           onConnect: _enterMatchingQueue,
                         );
                       }
                       if (session.status == MatchStatus.pending) {
                         _navigating = false;
-                        return const _ChatPendingState(
-                          title: '상대 수락 대기 중',
+                        if (_ignorePendingSession) {
+                          _stopCountdown();
+                          return _ChatSearchingState(
+                            emoji: l.chatSearchingEmoji,
+                            title: l.queueSearchingTitle,
+                            subtitle: l.queueSearchingSubtitle,
+                            countdownText: null,
+                            showConnect: true,
+                            connectLabel: l.queueConnect,
+                            onConnect: _enterMatchingQueue,
+                          );
+                        }
+                        _startCountdownIfNeeded();
+                        return Stack(
+                          children: [
+                            _ChatSearchingState(
+                              emoji: l.chatSearchingEmoji,
+                              title: l.queueSearchingTitle,
+                              subtitle: l.queueSearchingSubtitle,
+                              countdownText: null,
+                              showConnect: false,
+                              connectLabel: l.queueConnect,
+                              onConnect: _enterMatchingQueue,
+                            ),
+                            _MatchPendingOverlay(
+                              profile: target,
+                              countdownSeconds: _countdown,
+                              totalSeconds: _queueDurationSeconds,
+                              remainingLabel: l.queueRemainingTime(
+                                _countdown.toString(),
+                              ),
+                              acceptLabel: l.queueAccept,
+                              declineLabel: l.queueDecline,
+                              onAccept: () async {
+                                _stopCountdown();
+                                if (mounted) {
+                                  setState(() => _ignorePendingSession = false);
+                                }
+                                await _setSessionStatus(session, 'pending');
+                              },
+                              onDecline: () async {
+                                _stopCountdown();
+                                if (mounted) {
+                                  setState(() => _ignorePendingSession = true);
+                                }
+                                await _setSessionStatus(session, 'expired');
+                              },
+                            ),
+                          ],
                         );
                       }
                       if (session.status != MatchStatus.accepted) {
                         _navigating = false;
+                        _stopCountdown();
                         return _ChatWaitingState(
                           title: l.chatWaitingTitle,
                           subtitle: l.chatWaitingSubtitle,
@@ -232,6 +345,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                       if (session.chatRoomId == null ||
                           session.chatRoomId!.trim().isEmpty) {
+                        _stopCountdown();
                         return _ChatWaitingState(
                           title: l.chatWaitingTitle,
                           subtitle: l.chatWaitingSubtitle,
@@ -276,6 +390,7 @@ Stream<MatchSession?> _matchSessionStream(Profile me, Profile target) {
   });
 }
 
+
 /* ───────────────────────── UI Components ───────────────────────── */
 
 class _Header extends StatelessWidget {
@@ -313,15 +428,19 @@ class _Header extends StatelessWidget {
 class _ChatSearchingState extends StatelessWidget {
   final String emoji;
   final String title;
-  final String subtitle;
-  final int? countdown;
+  final String? subtitle;
+  final String? countdownText;
+  final bool showConnect;
+  final String connectLabel;
   final VoidCallback onConnect;
 
   const _ChatSearchingState({
     required this.emoji,
     required this.title,
     required this.subtitle,
-    required this.countdown,
+    required this.countdownText,
+    required this.showConnect,
+    required this.connectLabel,
     required this.onConnect,
   });
 
@@ -332,24 +451,27 @@ class _ChatSearchingState extends StatelessWidget {
         Text(emoji, style: const TextStyle(fontSize: 32)),
         const SizedBox(height: 10),
         Text(title, style: const TextStyle(fontSize: 16)),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.black54, fontSize: 16),
-        ),
-        const SizedBox(height: 14),
-        if (countdown != null) ...[
+        if (subtitle != null) ...[
+          const SizedBox(height: 8),
           Text(
-            '남은 시간 ${countdown}s',
+            subtitle!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.black54, fontSize: 16),
+          ),
+        ],
+        const SizedBox(height: 14),
+        if (countdownText != null) ...[
+          Text(
+            countdownText!,
             style: const TextStyle(color: Colors.black54),
           ),
           const SizedBox(height: 10),
         ],
-        FilledButton(
-          onPressed: onConnect,
-          child: const Text('연결하기'),
-        ),
+        if (showConnect)
+          FilledButton(
+            onPressed: onConnect,
+            child: Text(connectLabel),
+          ),
       ],
     );
   }
@@ -393,6 +515,21 @@ class _ChatPendingState extends StatelessWidget {
           width: 18,
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
+      ],
+    );
+  }
+}
+
+class _ChatTimeoutState extends StatelessWidget {
+  final String title;
+
+  const _ChatTimeoutState({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return _CenteredText(
+      children: [
+        Text(title, style: const TextStyle(fontSize: 18)),
       ],
     );
   }
@@ -496,3 +633,128 @@ class _CenteredText extends StatelessWidget {
     );
   }
 }
+
+class _MatchPendingOverlay extends StatelessWidget {
+  final Profile profile;
+  final int countdownSeconds;
+  final int totalSeconds;
+  final String remainingLabel;
+  final String acceptLabel;
+  final String declineLabel;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _MatchPendingOverlay({
+    required this.profile,
+    required this.countdownSeconds,
+    required this.totalSeconds,
+    required this.remainingLabel,
+    required this.acceptLabel,
+    required this.declineLabel,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final double progress =
+        (countdownSeconds / totalSeconds).clamp(0.0, 1.0);
+    final String ageText = profile.age > 0 ? profile.age.toString() : '';
+    final String nameText = profile.name.trim();
+    final String title = ageText.isEmpty ? nameText : '$nameText, $ageText';
+
+    return Container(
+      color: Colors.black.withOpacity(0.2),
+      alignment: Alignment.center,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 32,
+              backgroundImage: profile.photoUrl != null &&
+                      profile.photoUrl!.trim().isNotEmpty
+                  ? NetworkImage(profile.photoUrl!)
+                  : null,
+              child:
+                  profile.photoUrl == null || profile.photoUrl!.trim().isEmpty
+                      ? const Icon(Icons.person, size: 32)
+                      : null,
+            ),
+            const SizedBox(height: 10),
+            Text(title, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 12),
+            const SizedBox(height: 4),
+            Text(remainingLabel),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onDecline,
+                    child: Text(declineLabel),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _CircularAcceptButton(
+                    progress: progress,
+                    label: acceptLabel,
+                    onPressed: onAccept,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CircularAcceptButton extends StatelessWidget {
+  final double progress;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _CircularAcceptButton({
+    required this.progress,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        SizedBox(
+          width: 76,
+          height: 76,
+          child: CircularProgressIndicator(
+            value: progress,
+            strokeWidth: 5,
+            backgroundColor: const Color(0xFFE7D8DD),
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF9C5B6A)),
+          ),
+        ),
+        FilledButton(
+          onPressed: onPressed,
+          style: FilledButton.styleFrom(
+            shape: const CircleBorder(),
+            padding: const EdgeInsets.all(20),
+          ),
+          child: Text(label),
+        ),
+      ],
+    );
+  }
+}
+
+

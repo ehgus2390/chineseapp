@@ -77,6 +77,27 @@ class AppLocalizations {
   String get haveAccount => t('haveAccount');
   String get signOut => t('signOut');
   String get refreshRecommendations => t('refreshRecommendations');
+  String get distanceNear => t('distanceNear');
+  String get distanceMedium => t('distanceMedium');
+  String get distanceFar => t('distanceFar');
+  String get distanceNoLimit => t('distanceNoLimit');
+  String get distanceRangeLabel => t('distanceRangeLabel');
+  String get locationSet => t('locationSet');
+  String get locationUnset => t('locationUnset');
+  String get notificationsTitle => t('notificationsTitle');
+  String get notificationsSubtitle => t('notificationsSubtitle');
+  String get queueSearchingTitle => t('queueSearchingTitle');
+  String get queueSearchingSubtitle => t('queueSearchingSubtitle');
+  String get queueTimeout => t('queueTimeout');
+  String get queueConnect => t('queueConnect');
+  String get queueAccept => t('queueAccept');
+  String get queueDecline => t('queueDecline');
+  String queueRemainingTime(String seconds) =>
+      t('queueRemainingTime').replaceAll('{seconds}', seconds);
+  String get notificationMatchAcceptedToast =>
+      t('notificationMatchAcceptedToast');
+  String get notificationNewMessageToast => t('notificationNewMessageToast');
+  String get notificationViewAction => t('notificationViewAction');
 
   String get matchingSearchingTitle => t('matchingSearchingTitle');
   String get matchingSearchingSubtitle => t('matchingSearchingSubtitle');

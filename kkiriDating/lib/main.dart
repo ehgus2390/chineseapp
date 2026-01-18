@@ -13,6 +13,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/notification_navigation.dart';
 import 'services/analytics_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -119,13 +120,14 @@ class _NotificationListenerHostState extends State<_NotificationListenerHost> {
         userId: userId,
       );
       final notifications = context.read<NotificationState>();
+      final l = AppLocalizations.of(context);
       if (type == 'match_accepted') {
         // Foreground UX: toast + badge update.
         widget.scaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
-            content: const Text('💞 매칭이 완료됐어요. 지금 대화를 시작해보세요'),
+            content: Text(l.notificationMatchAcceptedToast),
             action: SnackBarAction(
-              label: '보기',
+              label: l.notificationViewAction,
               onPressed: () {
                 context.read<NotificationState>().clearChatBadge();
                 final resolvedRoute = _routeForNotification(message.data);
@@ -151,9 +153,9 @@ class _NotificationListenerHostState extends State<_NotificationListenerHost> {
       } else if (type == 'new_message') {
         widget.scaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
-            content: const Text('💬 새 메시지가 도착했어요'),
+            content: Text(l.notificationNewMessageToast),
             action: SnackBarAction(
-              label: '보기',
+              label: l.notificationViewAction,
               onPressed: () {
                 context.read<NotificationState>().clearChatBadge();
                 final resolvedRoute = _routeForNotification(message.data);
@@ -223,3 +225,6 @@ class _NotificationListenerHostState extends State<_NotificationListenerHost> {
   @override
   Widget build(BuildContext context) => widget.child;
 }
+
+
+

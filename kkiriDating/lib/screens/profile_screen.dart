@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../state/app_state.dart';
@@ -283,12 +283,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text('알림 받기', style: TextStyle(fontWeight: FontWeight.w700)),
-                  SizedBox(height: 4),
+                children: [
                   Text(
-                    '매칭 및 메시지 알림을 받을 수 있어요',
-                    style: TextStyle(color: Colors.black54, fontSize: 12),
+                    l.notificationsTitle,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l.notificationsSubtitle,
+                    style: const TextStyle(color: Colors.black54, fontSize: 12),
                   ),
                 ],
               ),
@@ -335,3 +338,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+
+
+

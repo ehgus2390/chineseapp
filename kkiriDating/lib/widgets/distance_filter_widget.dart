@@ -68,9 +68,10 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
   }
 
   String _distanceLabel(double value) {
-    if (value <= 30) return '가까움';
-    if (value <= 80) return '중간';
-    return '넓게';
+    final l = AppLocalizations.of(context);
+    if (value <= 30) return l.distanceNear;
+    if (value <= 80) return l.distanceMedium;
+    return l.distanceFar;
   }
 
   @override
@@ -82,7 +83,7 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
     final hasLocation = me?.location != null;
     final distanceEnabled = state.distanceFilterEnabled;
     final distanceLabel =
-        distanceEnabled ? _distanceLabel(_distanceKm) : '거리 제한 없음';
+        distanceEnabled ? _distanceLabel(_distanceKm) : l.distanceNoLimit;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -97,8 +98,10 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('거리 범위',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                l.distanceRangeLabel,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               Switch(
                 value: distanceEnabled,
                 onChanged: (value) => state.setDistanceFilterEnabled(value),
@@ -128,7 +131,7 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
           const SizedBox(height: 12),
           Text(l.location, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
-          Text(hasLocation ? '설정됨' : '미설정'),
+          Text(hasLocation ? l.locationSet : l.locationUnset),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
