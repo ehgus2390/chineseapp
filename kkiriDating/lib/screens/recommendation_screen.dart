@@ -74,18 +74,16 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
               children: [
                 Text(
                   l.appTitle,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   l.discoverTitle,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(color: Colors.black54),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(color: Colors.black54),
                 ),
                 const Spacer(),
                 TextButton(
@@ -268,10 +266,7 @@ class _HeaderTab extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w700, color: color),
           ),
           const SizedBox(height: 6),
           AnimatedContainer(
@@ -365,10 +360,7 @@ class _NoMatchState extends StatelessWidget {
               style: const TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 14),
-            FilledButton(
-              onPressed: onAction,
-              child: Text(actionLabel),
-            ),
+            FilledButton(onPressed: onAction, child: Text(actionLabel)),
           ],
         ),
       ),
@@ -401,10 +393,7 @@ class _ProfileCompletionPrompt extends StatelessWidget {
               style: const TextStyle(color: Colors.black54, fontSize: 16),
             ),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: onComplete,
-              child: Text(actionLabel),
-            ),
+            FilledButton(onPressed: onComplete, child: Text(actionLabel)),
           ],
         ),
       ),

@@ -217,6 +217,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                   if (list.isEmpty) {
                     _navigating = false;
+                    if (_queueActive) {
+                      _stopCountdown();
+                      return _ChatSearchingState(
+                        emoji: l.chatSearchingEmoji,
+                        title: l.queueSearchingTitle,
+                        subtitle: l.queueSearchingSubtitle,
+                        countdownText: null,
+                        showConnect: false,
+                        connectLabel: l.queueConnect,
+                        onConnect: _enterMatchingQueue,
+                      );
+                    }
                     _scheduleLongWait();
                     if (_waitingLong) {
                       _stopCountdown();
