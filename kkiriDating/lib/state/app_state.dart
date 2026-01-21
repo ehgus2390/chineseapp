@@ -429,6 +429,31 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  Future<void> enterAutoMatchQueue() async {
+    final User? currentUser = _auth.currentUser;
+    if (currentUser == null || currentUser.isAnonymous) {
+      throw StateError('No signed-in user.');
+    }
+
+    final String userId = currentUser.uid;
+    final String sessionId = 'queue_$userId';
+    final DateTime expiresAt = DateTime.now().add(const Duration(minutes: 5));
+
+    await _db.collection('match_sessions').doc(sessionId).set(
+      <String, dynamic>{
+        'userA': userId,
+        'userB': '',
+        'mode': 'auto',
+        'status': 'searching',
+        'chatRoomId': null,
+        'createdAt': FieldValue.serverTimestamp(),
+        'respondedAt': null,
+        'expiresAt': Timestamp.fromDate(expiresAt),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
   Future<void> setMatchConsent(String otherUserId, bool ready) async {
     final Profile? meProfile = _me;
     if (meProfile == null) return;

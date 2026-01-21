@@ -117,6 +117,118 @@ export const onMatchSessionAccepted = onDocumentWritten(
   }
 );
 
+export const onAutoMatchSessionSearching = onDocumentWritten(
+  {
+    document: "match_sessions/{sessionId}",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async (event) => {
+    const after = event.data?.after;
+    const before = event.data?.before;
+    if (!after || !after.exists) return;
+
+    const afterData = after.data() ?? {};
+    const afterStatus = afterData.status?.toString();
+    const beforeStatus = before?.data()?.status?.toString();
+    const mode = afterData.mode?.toString();
+
+    // Only react to auto sessions transitioning into searching.
+    if (mode !== "auto") return;
+    if (afterStatus !== "searching") return;
+    if (beforeStatus === "searching") return;
+
+    const userA = (afterData.userA ?? "").toString();
+    const userB = (afterData.userB ?? "").toString();
+    if (!userA || userB.trim().length > 0) return;
+
+    console.log("auto-match attempt start", {userA});
+
+    // Pool-based pairing: pick another searching auto session.
+    const candidates = await db
+      .collection("match_sessions")
+      .where("mode", "==", "auto")
+      .where("status", "==", "searching")
+      .orderBy("createdAt")
+      .limit(10)
+      .get();
+
+    if (candidates.empty) {
+      console.log("auto-match: no candidates");
+      return;
+    }
+
+    const partnerDoc = candidates.docs.find((doc) => {
+      if (doc.id === after.id) return false;
+      const data = doc.data() ?? {};
+      const otherUserA = (data.userA ?? "").toString();
+      const otherUserB = (data.userB ?? "").toString();
+      return otherUserA && otherUserB.trim().length === 0;
+    });
+
+    if (!partnerDoc) {
+      console.log("auto-match: no eligible partner");
+      return;
+    }
+
+    const otherUserA = (partnerDoc.data().userA ?? "").toString();
+    if (!otherUserA || otherUserA === userA) return;
+
+    const ids = [userA, otherUserA].sort();
+    const pairSessionId = `${ids[0]}_${ids[1]}`;
+    const pairRef = db.collection("match_sessions").doc(pairSessionId);
+    const now = Timestamp.now();
+    const expiresAt = Timestamp.fromDate(
+      new Date(Date.now() + 5 * 60 * 1000),
+    );
+
+    await db.runTransaction(async (tx) => {
+      const currentSnap = await tx.get(after.ref);
+      const partnerSnap = await tx.get(partnerDoc.ref);
+      if (!currentSnap.exists || !partnerSnap.exists) return;
+
+      const currentData = currentSnap.data() ?? {};
+      const partnerData = partnerSnap.data() ?? {};
+
+      if (currentData.status?.toString() !== "searching") return;
+      if (partnerData.status?.toString() !== "searching") return;
+
+      const currentUserA = (currentData.userA ?? "").toString();
+      const partnerUserA = (partnerData.userA ?? "").toString();
+      if (!currentUserA || !partnerUserA) return;
+
+      const currentUserB = (currentData.userB ?? "").toString();
+      const partnerUserB = (partnerData.userB ?? "").toString();
+      if (currentUserB.trim().length > 0 || partnerUserB.trim().length > 0) {
+        return;
+      }
+
+      const pairSnap = await tx.get(pairRef);
+      if (!pairSnap.exists) {
+        tx.set(pairRef, {
+          userA: ids[0],
+          userB: ids[1],
+          mode: "auto",
+          status: "pending",
+          chatRoomId: null,
+          initiatedBy: ids[0],
+          createdAt: FieldValue.serverTimestamp(),
+          respondedAt: null,
+          expiresAt,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Remove both users from the searching pool to prevent duplicate matches.
+      tx.set(after.ref, {status: "expired", updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+      tx.set(partnerDoc.ref, {status: "expired", updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+    });
+
+    console.log("auto-match: paired", {userA, otherUserA, pairSessionId});
+  },
+);
+
 export const onMatchSessionAcceptedNotification = onDocumentWritten(
   {
     document: "match_sessions/{sessionId}",

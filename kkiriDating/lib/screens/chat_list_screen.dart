@@ -1,4 +1,5 @@
 ﻿import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -68,8 +69,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
-  void _enterMatchingQueue() {
+  Future<void> _enterMatchingQueue() async {
     if (_queueActive) return;
+    try {
+      await context.read<AppState>().enterAutoMatchQueue();
+    } catch (_) {
+      // Keep UI responsive even if queue entry fails.
+    }
+    if (!mounted) return;
     setState(() {
       _queueActive = true;
       _countdown = _queueDurationSeconds;
@@ -675,57 +682,83 @@ class _MatchPendingOverlay extends StatelessWidget {
     final String nameText = profile.name.trim();
     final String title = ageText.isEmpty ? nameText : '$nameText, $ageText';
 
-    return Container(
-      color: Colors.black.withOpacity(0.2),
-      alignment: Alignment.center,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+    return Stack(
+      children: [
+        BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+          child: Container(color: Colors.black.withOpacity(0.35)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 32,
-              backgroundImage: profile.photoUrl != null &&
-                      profile.photoUrl!.trim().isNotEmpty
-                  ? NetworkImage(profile.photoUrl!)
-                  : null,
-              child:
-                  profile.photoUrl == null || profile.photoUrl!.trim().isEmpty
-                      ? const Icon(Icons.person, size: 32)
-                      : null,
-            ),
-            const SizedBox(height: 10),
-            Text(title, style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 12),
-            const SizedBox(height: 4),
-            Text(remainingLabel),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: onDecline,
-                    child: Text(declineLabel),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _CircularAcceptButton(
-                    progress: progress,
-                    label: acceptLabel,
-                    onPressed: onAccept,
-                  ),
+        Align(
+          alignment: Alignment.center,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 32,
+                    backgroundImage: profile.photoUrl != null &&
+                            profile.photoUrl!.trim().isNotEmpty
+                        ? NetworkImage(profile.photoUrl!)
+                        : null,
+                    child: profile.photoUrl == null ||
+                            profile.photoUrl!.trim().isEmpty
+                        ? const Icon(Icons.person, size: 32)
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(title, style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 12),
+                const SizedBox(height: 4),
+                Text(remainingLabel),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: onDecline,
+                        child: Text(declineLabel),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _CircularAcceptButton(
+                        progress: progress,
+                        label: acceptLabel,
+                        onPressed: onAccept,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -756,13 +789,18 @@ class _CircularAcceptButton extends StatelessWidget {
             valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF9C5B6A)),
           ),
         ),
-        FilledButton(
-          onPressed: onPressed,
-          style: FilledButton.styleFrom(
-            shape: const CircleBorder(),
-            padding: const EdgeInsets.all(20),
+        Material(
+          color: Colors.transparent,
+          elevation: 3,
+          shape: const CircleBorder(),
+          child: FilledButton(
+            onPressed: onPressed,
+            style: FilledButton.styleFrom(
+              shape: const CircleBorder(),
+              padding: const EdgeInsets.all(20),
+            ),
+            child: Text(label),
           ),
-          child: Text(label),
         ),
       ],
     );
