@@ -442,13 +442,11 @@ class AppState extends ChangeNotifier {
     await _db.collection('match_sessions').doc(sessionId).set(
       <String, dynamic>{
         'userA': userId,
-        'userB': '',
         'mode': 'auto',
         'status': 'searching',
-        'chatRoomId': null,
         'createdAt': FieldValue.serverTimestamp(),
-        'respondedAt': null,
         'expiresAt': Timestamp.fromDate(expiresAt),
+        'updatedAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
     );

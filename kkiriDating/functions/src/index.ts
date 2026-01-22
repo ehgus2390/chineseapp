@@ -4,6 +4,7 @@ import {initializeApp} from "firebase-admin/app";
 import {
   DocumentReference,
   FieldValue,
+  FieldPath,
   getFirestore,
   Timestamp,
 } from "firebase-admin/firestore";
@@ -151,81 +152,240 @@ export const onAutoMatchSessionSearching = onDocumentWritten(
       .collection("match_sessions")
       .where("mode", "==", "auto")
       .where("status", "==", "searching")
-      .orderBy("createdAt")
-      .limit(10)
+      .limit(20)
       .get();
 
-    const partnerDoc = candidates.docs.find((doc) => {
-      if (doc.id === after.id) return false;
-      if (!doc.id.startsWith("queue_")) return false;
-      const data = doc.data() ?? {};
-      const otherUserA = (data.userA ?? "").toString();
-      return otherUserA && otherUserA !== userA;
-    });
-
-    if (!partnerDoc) {
-      console.log("auto-match: no eligible partner");
-      return;
+    let matched = false;
+    for (const doc of candidates.docs) {
+      if (doc.id === after.id) continue;
+      if (!doc.id.startsWith("queue_")) continue;
+      if (matched) break;
+      matched = await tryPairQueues(after.ref, doc.ref, userA);
     }
 
-    const otherUserA = (partnerDoc.data().userA ?? "").toString();
-    if (!otherUserA || otherUserA === userA) return;
-
-    const ids = [userA, otherUserA].sort();
-    const pairSessionId = `${ids[0]}_${ids[1]}`;
-    const pairRef = db.collection("match_sessions").doc(pairSessionId);
-    const expiresAt = Timestamp.fromDate(
-      new Date(Date.now() + 5 * 60 * 1000),
-    );
-
-    await db.runTransaction(async (tx) => {
-      const currentSnap = await tx.get(after.ref);
-      const partnerSnap = await tx.get(partnerDoc.ref);
-      if (!currentSnap.exists || !partnerSnap.exists) return;
-
-      const currentData = currentSnap.data() ?? {};
-      const partnerData = partnerSnap.data() ?? {};
-
-      if (currentData.status?.toString() !== "searching") return;
-      if (partnerData.status?.toString() !== "searching") return;
-
-      const currentUserA = (currentData.userA ?? "").toString();
-      const partnerUserA = (partnerData.userA ?? "").toString();
-      if (!currentUserA || !partnerUserA) return;
-      if (currentUserA === partnerUserA) return;
-
-      const pairSnap = await tx.get(pairRef);
-      if (!pairSnap.exists) {
-        tx.set(pairRef, {
-          userA: ids[0],
-          userB: ids[1],
-          mode: "auto",
-          status: "pending",
-          initiatedBy: userA,
-          chatRoomId: null,
-          createdAt: FieldValue.serverTimestamp(),
-          respondedAt: null,
-          expiresAt,
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-      }
-
-      // Remove both users from the queue to prevent duplicate matches.
-      tx.set(
-        after.ref,
-        {status: "expired", updatedAt: FieldValue.serverTimestamp()},
-        {merge: true},
-      );
-      tx.set(
-        partnerDoc.ref,
-        {status: "expired", updatedAt: FieldValue.serverTimestamp()},
-        {merge: true},
-      );
-    });
-
-    console.log("auto-match: paired", {userA, otherUserA, pairSessionId});
+    if (!matched) {
+      console.log("auto-match: no eligible partner");
+    }
   },
 );
+
+export const cleanupQueueDocs = onSchedule(
+  {
+    schedule: "every 1 minutes",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async () => {
+    const prefixStart = "queue_";
+    const prefixEnd = "queue_~";
+
+    let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    while (true) {
+      let query = db
+        .collection("match_sessions")
+        .orderBy(FieldPath.documentId())
+        .where(FieldPath.documentId(), ">=", prefixStart)
+        .where(FieldPath.documentId(), "<", prefixEnd)
+        .limit(200);
+
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
+      }
+
+      const snapshot = await query.get();
+
+      if (snapshot.empty) break;
+
+      const batch = db.batch();
+      for (const doc of snapshot.docs) {
+        const data = doc.data() ?? {};
+        const updates: Record<string, unknown> = {};
+
+        if ("userB" in data) updates.userB = FieldValue.delete();
+        if ("participants" in data) updates.participants = FieldValue.delete();
+        if ("ready" in data) updates.ready = FieldValue.delete();
+        if ("cancelledBy" in data) updates.cancelledBy = FieldValue.delete();
+        if ("connectedAt" in data) updates.connectedAt = FieldValue.delete();
+
+        if (Object.keys(updates).length > 0) {
+          batch.set(doc.ref, updates, {merge: true});
+        }
+      }
+
+      await batch.commit();
+      lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    }
+  },
+);
+
+async function tryPairQueues(
+  queueARef: FirebaseFirestore.DocumentReference,
+  queueBRef: FirebaseFirestore.DocumentReference,
+  initiatedBy: string,
+): Promise<boolean> {
+  const expiresAt = Timestamp.fromDate(new Date(Date.now() + 10 * 1000));
+  let paired = false;
+
+  await db.runTransaction(async (tx) => {
+    const [queueASnap, queueBSnap] = await Promise.all([
+      tx.get(queueARef),
+      tx.get(queueBRef),
+    ]);
+    if (!queueASnap.exists || !queueBSnap.exists) return;
+
+    const queueAData = queueASnap.data() ?? {};
+    const queueBData = queueBSnap.data() ?? {};
+    if (queueAData.status?.toString() !== "searching") return;
+    if (queueBData.status?.toString() !== "searching") return;
+    if (queueAData.mode?.toString() !== "auto") return;
+    if (queueBData.mode?.toString() !== "auto") return;
+    if (!queueASnap.id.startsWith("queue_")) return;
+    if (!queueBSnap.id.startsWith("queue_")) return;
+
+    const userA = (queueAData.userA ?? "").toString();
+    const userB = (queueBData.userA ?? "").toString();
+    if (!userA || !userB || userA === userB) return;
+
+    const queueAUserB = (queueAData.userB ?? "").toString();
+    const queueBUserB = (queueBData.userB ?? "").toString();
+    if (queueAUserB.trim().length > 0 || queueBUserB.trim().length > 0) return;
+
+    const hydratedA = await hydrateQueueUser(tx, userA, queueAData);
+    const hydratedB = await hydrateQueueUser(tx, userB, queueBData);
+    if (!hydratedA || !hydratedB) return;
+
+    if (!hasCommonInterest(hydratedA.interests, hydratedB.interests)) return;
+    const distanceKm = distanceBetweenKm(hydratedA.location, hydratedB.location);
+    if (distanceKm == null) return;
+    const maxDistance = Math.min(hydratedA.radiusKm, hydratedB.radiusKm);
+    if (distanceKm > maxDistance) return;
+
+    const ids = [userA, userB].sort();
+    const pairSessionId = `${ids[0]}_${ids[1]}`;
+    const pairRef = db.collection("match_sessions").doc(pairSessionId);
+    const pairSnap = await tx.get(pairRef);
+    if (pairSnap.exists) return;
+
+    tx.set(pairRef, {
+      userA: ids[0],
+      userB: ids[1],
+      mode: "auto",
+      status: "pending",
+      initiatedBy,
+      chatRoomId: null,
+      createdAt: FieldValue.serverTimestamp(),
+      respondedAt: null,
+      expiresAt,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    tx.set(
+      queueARef,
+      {status: "expired", updatedAt: FieldValue.serverTimestamp()},
+      {merge: true},
+    );
+    tx.set(
+      queueBRef,
+      {status: "expired", updatedAt: FieldValue.serverTimestamp()},
+      {merge: true},
+    );
+    paired = true;
+  });
+
+  return paired;
+}
+
+async function hydrateQueueUser(
+  tx: FirebaseFirestore.Transaction,
+  userId: string,
+  queueData: FirebaseFirestore.DocumentData,
+): Promise<{
+  interests: string[];
+  location: FirebaseFirestore.GeoPoint;
+  radiusKm: number;
+} | null> {
+  let interests = (queueData.interests ?? []) as unknown[];
+  let location = queueData.location as FirebaseFirestore.GeoPoint | undefined;
+  let radiusKm = Number(queueData.radiusKm);
+
+  if (
+    !Array.isArray(interests) ||
+    interests.length === 0 ||
+    !location ||
+    !Number.isFinite(radiusKm) ||
+    radiusKm <= 0
+  ) {
+    const userSnap = await tx.get(db.collection("users").doc(userId));
+    const userData = userSnap.data() ?? {};
+    interests = (userData.interests ?? []) as unknown[];
+    location = userData.location as FirebaseFirestore.GeoPoint | undefined;
+    const fallbackRadius = Number(userData.distanceKm);
+    radiusKm = Number.isFinite(fallbackRadius) && fallbackRadius > 0
+      ? fallbackRadius
+      : radiusKm;
+
+    if (
+      Array.isArray(interests) &&
+      interests.length > 0 &&
+      location &&
+      Number.isFinite(radiusKm) &&
+      radiusKm > 0
+    ) {
+      tx.set(
+        db.collection("match_sessions").doc(`queue_${userId}`),
+        {
+          interests,
+          location,
+          radiusKm,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        {merge: true},
+      );
+    }
+  }
+
+  if (
+    !Array.isArray(interests) ||
+    interests.length === 0 ||
+    !location ||
+    !Number.isFinite(radiusKm) ||
+    radiusKm <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    interests: interests
+      .map((item) => (typeof item === "string" ? item : item?.toString()))
+      .filter((value): value is string => typeof value === "string" && value.length > 0),
+    location,
+    radiusKm,
+  };
+}
+
+function hasCommonInterest(a: string[], b: string[]): boolean {
+  if (a.length === 0 || b.length === 0) return false;
+  const set = new Set(a);
+  return b.some((interest) => set.has(interest));
+}
+
+function distanceBetweenKm(
+  a: FirebaseFirestore.GeoPoint,
+  b: FirebaseFirestore.GeoPoint,
+): number | null {
+  if (!a || !b) return null;
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const radius = 6371;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return radius * 2 * Math.asin(Math.sqrt(h));
+}
 
 export const onMatchSessionAcceptedNotification = onDocumentWritten(
   {
