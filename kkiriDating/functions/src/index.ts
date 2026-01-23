@@ -1,12 +1,13 @@
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {onDocumentCreated, onDocumentWritten} from "firebase-functions/v2/firestore";
 import {initializeApp} from "firebase-admin/app";
-import {
+import {FieldValue, FieldPath, getFirestore, Timestamp} from "firebase-admin/firestore";
+import type {
+  DocumentData,
   DocumentReference,
-  FieldValue,
-  FieldPath,
-  getFirestore,
-  Timestamp,
+  GeoPoint,
+  QueryDocumentSnapshot,
+  Transaction,
 } from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
 
@@ -23,8 +24,8 @@ export const expireMatchSessions = onSchedule(
     timeoutSeconds: 60,
   },
   async () => {
-    // Expire both pending/searching auto sessions to avoid idle buildup.
-    const statuses = ["pending", "searching"] as const;
+    // Only expire pending matches; queue docs are handled separately.
+    const statuses = ["pending"] as const;
     const now = Timestamp.now();
 
     // Batch + loop avoids unbounded reads and keeps costs predictable.
@@ -43,7 +44,11 @@ export const expireMatchSessions = onSchedule(
       }
 
       const batch = db.batch();
+      const requeueIds = new Set<string>();
       for (const doc of snapshot.docs) {
+        const data = doc.data() ?? {};
+        const userA = (data.userA ?? "").toString();
+        const userB = (data.userB ?? "").toString();
         batch.set(
           doc.ref,
           {
@@ -52,8 +57,11 @@ export const expireMatchSessions = onSchedule(
           },
           {merge: true}
         );
+        if (userA) requeueIds.add(userA);
+        if (userB) requeueIds.add(userB);
       }
       await batch.commit();
+      await Promise.all([...requeueIds].map((uid) => requeueUser(uid)));
     }
   }
 );
@@ -61,12 +69,13 @@ export const expireMatchSessions = onSchedule(
 export const onMatchSessionAccepted = onDocumentWritten(
   "match_sessions/{sessionId}",
   async (event) => {
-    const before = event.data?.before;
-    const after = event.data?.after;
-    if (!after || !after.exists) return;
-
-    const beforeStatus = before?.data()?.status?.toString();
-    const afterData = after.data() ?? {};
+    const beforeSnap = event.data?.before;
+    const afterSnap = event.data?.after;
+    if (!afterSnap || !afterSnap.exists) return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = beforeSnap?.data() ?? {};
+    const afterData = afterSnap.data() ?? {};
+    const beforeStatus = beforeData.status?.toString();
     const afterStatus = afterData.status?.toString();
     if (beforeStatus === "accepted" || afterStatus !== "accepted") return;
 
@@ -115,6 +124,33 @@ export const onMatchSessionAccepted = onDocumentWritten(
         {merge: true}
       );
     });
+
+    const userA = (afterData.userA ?? "").toString();
+    const userB = (afterData.userB ?? "").toString();
+    if (userA && userB) {
+      await db
+        .collection("users")
+        .doc(userA)
+        .collection("notifications")
+        .add({
+          type: "chat",
+          fromUid: userB,
+          refId: sessionId,
+          seen: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      await db
+        .collection("users")
+        .doc(userB)
+        .collection("notifications")
+        .add({
+          type: "chat",
+          fromUid: userA,
+          refId: sessionId,
+          seen: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+    }
   }
 );
 
@@ -126,25 +162,53 @@ export const onAutoMatchSessionSearching = onDocumentWritten(
     timeoutSeconds: 60,
   },
   async (event) => {
-    const after = event.data?.after;
-    const before = event.data?.before;
-    if (!after || !after.exists) return;
+    const beforeSnap = event.data?.before;
+    const afterSnap = event.data?.after;
+    if (!afterSnap || !afterSnap.exists) return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = beforeSnap?.data() ?? {};
+    const afterData = afterSnap.data() ?? {};
 
     const sessionId = event.params.sessionId as string;
-    if (!sessionId.startsWith("queue_")) return;
+    if (!sessionId.startsWith("queue_")) {
+      console.log("auto-match skip: not queue doc", {sessionId});
+      return;
+    }
 
-    const afterData = after.data() ?? {};
     const afterStatus = afterData.status?.toString();
-    const beforeStatus = before?.data()?.status?.toString();
+    const beforeStatus = beforeData.status?.toString();
     const mode = afterData.mode?.toString();
 
+    console.log("auto-match entry", {
+      sessionId,
+      mode,
+      beforeStatus,
+      afterStatus,
+    });
+
     // Only react to auto queue sessions transitioning into searching.
-    if (mode !== "auto") return;
-    if (afterStatus !== "searching") return;
-    if (beforeStatus === "searching") return;
+    // If pairing never creates a pending {uidA}_{uidB} doc, the UI never sees match found.
+    if (mode !== "auto") {
+      console.log("auto-match skip: mode not auto", {sessionId, mode});
+      return;
+    }
+    if (afterStatus !== "searching") {
+      console.log("auto-match skip: status not searching", {
+        sessionId,
+        afterStatus,
+      });
+      return;
+    }
+    if (beforeStatus === "searching") {
+      console.log("auto-match skip: already searching", {sessionId});
+      return;
+    }
 
     const userA = (afterData.userA ?? "").toString();
-    if (!userA) return;
+    if (!userA) {
+      console.log("auto-match skip: missing userA", {sessionId});
+      return;
+    }
 
     console.log("auto-match attempt start", {userA});
 
@@ -157,14 +221,16 @@ export const onAutoMatchSessionSearching = onDocumentWritten(
 
     let matched = false;
     for (const doc of candidates.docs) {
-      if (doc.id === after.id) continue;
+      if (doc.id === afterSnap.id) continue;
       if (!doc.id.startsWith("queue_")) continue;
       if (matched) break;
-      matched = await tryPairQueues(after.ref, doc.ref, userA);
+      matched = await tryPairQueues(afterSnap.ref, doc.ref, userA);
     }
 
     if (!matched) {
       console.log("auto-match: no eligible partner");
+    } else {
+      console.log("auto-match: paired successfully", {userA});
     }
   },
 );
@@ -180,7 +246,7 @@ export const cleanupQueueDocs = onSchedule(
     const prefixStart = "queue_";
     const prefixEnd = "queue_~";
 
-    let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null;
     while (true) {
       let query = db
         .collection("match_sessions")
@@ -220,11 +286,11 @@ export const cleanupQueueDocs = onSchedule(
 );
 
 async function tryPairQueues(
-  queueARef: FirebaseFirestore.DocumentReference,
-  queueBRef: FirebaseFirestore.DocumentReference,
+  queueARef: DocumentReference<DocumentData>,
+  queueBRef: DocumentReference<DocumentData>,
   initiatedBy: string,
 ): Promise<boolean> {
-  const expiresAt = Timestamp.fromDate(new Date(Date.now() + 10 * 1000));
+  const expiresAt = Timestamp.fromMillis(Date.now() + 10 * 1000);
   let paired = false;
 
   await db.runTransaction(async (tx) => {
@@ -247,8 +313,11 @@ async function tryPairQueues(
     const userB = (queueBData.userA ?? "").toString();
     if (!userA || !userB || userA === userB) return;
 
-    const queueAUserB = (queueAData.userB ?? "").toString();
-    const queueBUserB = (queueBData.userB ?? "").toString();
+    // Avoid false positives if legacy queue docs stored non-string userB.
+    const queueAUserB =
+      typeof queueAData.userB === "string" ? queueAData.userB : "";
+    const queueBUserB =
+      typeof queueBData.userB === "string" ? queueBData.userB : "";
     if (queueAUserB.trim().length > 0 || queueBUserB.trim().length > 0) return;
 
     const hydratedA = await hydrateQueueUser(tx, userA, queueAData);
@@ -267,6 +336,17 @@ async function tryPairQueues(
     const pairSnap = await tx.get(pairRef);
     if (pairSnap.exists) return;
 
+    const notifARef = db
+      .collection("users")
+      .doc(ids[0])
+      .collection("notifications")
+      .doc();
+    const notifBRef = db
+      .collection("users")
+      .doc(ids[1])
+      .collection("notifications")
+      .doc();
+
     tx.set(pairRef, {
       userA: ids[0],
       userB: ids[1],
@@ -278,6 +358,21 @@ async function tryPairQueues(
       respondedAt: null,
       expiresAt,
       updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    tx.set(notifARef, {
+      type: "match",
+      fromUid: ids[1],
+      refId: pairSessionId,
+      seen: false,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    tx.set(notifBRef, {
+      type: "match",
+      fromUid: ids[0],
+      refId: pairSessionId,
+      seen: false,
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     tx.set(
@@ -296,17 +391,47 @@ async function tryPairQueues(
   return paired;
 }
 
+export const onMatchSessionRejectedOrExpired = onDocumentWritten(
+  {
+    document: "match_sessions/{sessionId}",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async (event) => {
+    const beforeSnap = event.data?.before;
+    const afterSnap = event.data?.after;
+    if (!afterSnap || !afterSnap.exists) return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = beforeSnap?.data() ?? {};
+    const afterData = afterSnap.data() ?? {};
+
+    const sessionId = event.params.sessionId as string;
+    if (sessionId.startsWith("queue_")) return;
+
+    const afterStatus = afterData.status?.toString();
+    const beforeStatus = beforeData.status?.toString();
+    if (afterStatus !== "expired" && afterStatus !== "rejected") return;
+    if (beforeStatus === afterStatus) return;
+
+    const userA = (afterData.userA ?? "").toString();
+    const userB = (afterData.userB ?? "").toString();
+    await requeueUser(userA);
+    await requeueUser(userB);
+  },
+);
+
 async function hydrateQueueUser(
-  tx: FirebaseFirestore.Transaction,
+  tx: Transaction,
   userId: string,
-  queueData: FirebaseFirestore.DocumentData,
+  queueData: DocumentData,
 ): Promise<{
   interests: string[];
-  location: FirebaseFirestore.GeoPoint;
+  location: GeoPoint;
   radiusKm: number;
 } | null> {
   let interests = (queueData.interests ?? []) as unknown[];
-  let location = queueData.location as FirebaseFirestore.GeoPoint | undefined;
+  let location = queueData.location as GeoPoint | undefined;
   let radiusKm = Number(queueData.radiusKm);
 
   if (
@@ -319,15 +444,15 @@ async function hydrateQueueUser(
     const userSnap = await tx.get(db.collection("users").doc(userId));
     const userData = userSnap.data() ?? {};
     interests = (userData.interests ?? []) as unknown[];
-    location = userData.location as FirebaseFirestore.GeoPoint | undefined;
+    location = userData.location as GeoPoint | undefined;
     const fallbackRadius = Number(userData.distanceKm);
     radiusKm = Number.isFinite(fallbackRadius) && fallbackRadius > 0
       ? fallbackRadius
       : radiusKm;
 
+    const normalizedInterests = normalizeInterests(interests);
     if (
-      Array.isArray(interests) &&
-      interests.length > 0 &&
+      normalizedInterests.length > 0 &&
       location &&
       Number.isFinite(radiusKm) &&
       radiusKm > 0
@@ -335,7 +460,7 @@ async function hydrateQueueUser(
       tx.set(
         db.collection("match_sessions").doc(`queue_${userId}`),
         {
-          interests,
+          interests: normalizedInterests,
           location,
           radiusKm,
           updatedAt: FieldValue.serverTimestamp(),
@@ -345,9 +470,9 @@ async function hydrateQueueUser(
     }
   }
 
+  const normalizedInterests = normalizeInterests(interests);
   if (
-    !Array.isArray(interests) ||
-    interests.length === 0 ||
+    normalizedInterests.length === 0 ||
     !location ||
     !Number.isFinite(radiusKm) ||
     radiusKm <= 0
@@ -356,9 +481,7 @@ async function hydrateQueueUser(
   }
 
   return {
-    interests: interests
-      .map((item) => (typeof item === "string" ? item : item?.toString()))
-      .filter((value): value is string => typeof value === "string" && value.length > 0),
+    interests: normalizedInterests,
     location,
     radiusKm,
   };
@@ -371,8 +494,8 @@ function hasCommonInterest(a: string[], b: string[]): boolean {
 }
 
 function distanceBetweenKm(
-  a: FirebaseFirestore.GeoPoint,
-  b: FirebaseFirestore.GeoPoint,
+  a: GeoPoint,
+  b: GeoPoint,
 ): number | null {
   if (!a || !b) return null;
   const toRad = (value: number) => (value * Math.PI) / 180;
@@ -387,6 +510,40 @@ function distanceBetweenKm(
   return radius * 2 * Math.asin(Math.sqrt(h));
 }
 
+function normalizeInterests(input: unknown[]): string[] {
+  return input
+    .map((item) => (typeof item === "string" ? item : item?.toString()))
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+}
+
+async function requeueUser(userId: string): Promise<void> {
+  if (!userId) return;
+  const userSnap = await db.collection("users").doc(userId).get();
+  const userData = userSnap.data() ?? {};
+  const interests = normalizeInterests(
+    (userData.interests ?? []) as unknown[],
+  );
+  const location = userData.location as GeoPoint | undefined;
+  const radiusKm = Number(userData.distanceKm);
+  if (!location || interests.length === 0 || !Number.isFinite(radiusKm) || radiusKm <= 0) {
+    return;
+  }
+  await db.collection("match_sessions").doc(`queue_${userId}`).set(
+    {
+      userA: userId,
+      interests,
+      location,
+      radiusKm,
+      mode: "auto",
+      status: "searching",
+      createdAt: FieldValue.serverTimestamp(),
+      expiresAt: Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
+}
+
 export const onMatchSessionAcceptedNotification = onDocumentWritten(
   {
     document: "match_sessions/{sessionId}",
@@ -395,12 +552,13 @@ export const onMatchSessionAcceptedNotification = onDocumentWritten(
     timeoutSeconds: 60,
   },
   async (event) => {
-    const before = event.data?.before;
-    const after = event.data?.after;
-    if (!after || !after.exists) return;
-
-    const beforeStatus = before?.data()?.status?.toString();
-    const afterData = after.data() ?? {};
+    const beforeSnap = event.data?.before;
+    const afterSnap = event.data?.after;
+    if (!afterSnap || !afterSnap.exists) return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = beforeSnap?.data() ?? {};
+    const afterData = afterSnap.data() ?? {};
+    const beforeStatus = beforeData.status?.toString();
     const afterStatus = afterData.status?.toString();
     if (beforeStatus === "accepted" || afterStatus !== "accepted") return;
 
@@ -420,8 +578,7 @@ export const onMatchSessionAcceptedNotification = onDocumentWritten(
         title: "💞 매칭이 완료됐어요",
         body: "지금 대화를 시작해보세요",
       },
-      data: {
-        type: "match_accepted",
+      data: {        type: "match_accepted",
         sessionId,
         chatRoomId,
       },
@@ -468,8 +625,7 @@ export const onChatMessageCreatedNotification = onDocumentCreated(
         title: "💬 새 메시지",
         body: "메시지가 도착했어요",
       },
-      data: {
-        type: "new_message",
+      data: {        type: "new_message",
         roomId,
         messageId,
         senderId,

@@ -8,6 +8,8 @@ import 'state/locale_state.dart';
 import 'state/eligible_profiles_provider.dart';
 import 'state/recommendation_provider.dart';
 import 'state/notification_state.dart';
+import 'providers/user_provider.dart';
+import 'providers/notification_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/notification_navigation.dart';
@@ -33,6 +35,20 @@ void main() async {
       ChangeNotifierProvider(create: (_) => localeState),
       ChangeNotifierProvider(create: (_) => AppState()..bootstrap()),
       ChangeNotifierProvider(create: (_) => NotificationState()),
+      ChangeNotifierProxyProvider<AppState, UserProvider>(
+        create: (context) => UserProvider(context.read<AppState>()),
+        update: (_, appState, provider) {
+          provider ??= UserProvider(appState);
+          return provider;
+        },
+      ),
+      ChangeNotifierProxyProvider<AppState, NotificationProvider>(
+        create: (context) => NotificationProvider(context.read<AppState>()),
+        update: (_, appState, provider) {
+          provider ??= NotificationProvider(appState);
+          return provider;
+        },
+      ),
       ChangeNotifierProxyProvider<AppState, EligibleProfilesProvider>(
         create: (_) => EligibleProfilesProvider(),
         update: (_, appState, provider) {

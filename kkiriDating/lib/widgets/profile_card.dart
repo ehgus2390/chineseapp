@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-// import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../models/profile.dart';
 import '../l10n/app_localizations.dart';
 
@@ -152,8 +152,11 @@ class ProfileCard extends StatelessWidget {
                         .map(
                           (label) => Chip(
                             label: Text(label),
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            labelStyle: const TextStyle(color: Colors.white),
+                            backgroundColor: Colors.black.withOpacity(0.35),
+                            labelStyle: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         )
                         .toList(),
@@ -184,15 +187,15 @@ class ProfileCard extends StatelessWidget {
                   ),
                   _ActionButton(
                     icon: Icons.chat_bubble,
-                    // iconWidget: SvgPicture.asset(
-                    //   'assets/icons/Chat_icon.svg',
-                    //   width: 30,
-                    //   height: 30,
-                    //   colorFilter: const ColorFilter.mode(
-                    //     Colors.black87,
-                    //     BlendMode.srcIn,
-                    //   ),
-                    // ),
+                    iconWidget: SvgPicture.asset(
+                      'assets/icons/Chat.svg',
+                      width: 22,
+                      height: 22,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.black87,
+                        BlendMode.srcIn,
+                      ),
+                    ),
                     onPressed: onChat,
                     background: Colors.white.withOpacity(0.85),
                     foreground: Colors.black87,
@@ -219,8 +222,7 @@ class ProfileCard extends StatelessWidget {
 
 class _ActionButton extends StatelessWidget {
   final IconData icon;
-  // final IconData? icon;
-  // final Widget? iconWidget;
+  final Widget? iconWidget;
   final VoidCallback onPressed;
   final Color background;
   final Color foreground;
@@ -228,8 +230,7 @@ class _ActionButton extends StatelessWidget {
 
   const _ActionButton({
     required this.icon,
-    // this.icon,
-    // this.iconWidget,
+    this.iconWidget,
     required this.onPressed,
     required this.background,
     required this.foreground,
@@ -244,8 +245,7 @@ class _ActionButton extends StatelessWidget {
           radius: 26,
           backgroundColor: background,
           child: IconButton(
-            icon: Icon(icon, color: foreground),
-            // icon: iconWidget ?? Icon(icon, color: foreground),
+            icon: iconWidget ?? Icon(icon, color: foreground),
             onPressed: onPressed,
           ),
         ),

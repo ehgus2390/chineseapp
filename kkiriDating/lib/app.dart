@@ -9,6 +9,8 @@ import 'screens/recommendation_screen.dart';
 import 'screens/chat_list_screen.dart';
 import 'screens/chat_room_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/notifications/notifications_inbox_page.dart';
+import 'screens/likes/likes_inbox_page.dart';
 import 'state/app_state.dart';
 import 'state/locale_state.dart';
 import 'state/notification_state.dart';
@@ -73,6 +75,14 @@ class _KkiriAppState extends State<KkiriApp> {
             GoRoute(
               path: '/home/profile',
               builder: (_, __) => const ProfileScreen(),
+            ),
+            GoRoute(
+              path: '/home/notifications',
+              builder: (_, __) => const NotificationsInboxPage(),
+            ),
+            GoRoute(
+              path: '/home/likes',
+              builder: (_, __) => const LikesInboxPage(),
             ),
           ],
         ),

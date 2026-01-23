@@ -98,6 +98,15 @@ class AppLocalizations {
       t('notificationMatchAcceptedToast');
   String get notificationNewMessageToast => t('notificationNewMessageToast');
   String get notificationViewAction => t('notificationViewAction');
+  String get likesInboxTitle => t('likesInboxTitle');
+  String get likesInboxEmpty => t('likesInboxEmpty');
+  String get notificationsInboxTitle => t('notificationsInboxTitle');
+  String get notificationsInboxEmpty => t('notificationsInboxEmpty');
+  String get notificationsLikeText => t('notificationsLikeText');
+  String get notificationsMatchText => t('notificationsMatchText');
+  String get notificationsChatText => t('notificationsChatText');
+  String get notificationsSystemText => t('notificationsSystemText');
+  String get profileSaved => t('profileSaved');
 
   String get matchingSearchingTitle => t('matchingSearchingTitle');
   String get matchingSearchingSubtitle => t('matchingSearchingSubtitle');

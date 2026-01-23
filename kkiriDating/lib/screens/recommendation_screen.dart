@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../state/recommendation_provider.dart';
+import '../providers/notification_provider.dart';
 import '../widgets/profile_card.dart';
 import '../l10n/app_localizations.dart';
 import '../models/profile.dart';
@@ -17,6 +18,7 @@ class RecommendationScreen extends StatefulWidget {
 class _RecommendationScreenState extends State<RecommendationScreen> {
   final Set<String> _dismissedIds = <String>{};
   DateTime? _lastSeenRefresh;
+  int _selectedTab = 0;
 
   void _dismiss(Profile profile, bool liked) {
     if (liked) {
@@ -92,9 +94,18 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
                   ),
                   child: Text(l.refreshRecommendations),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.tune),
-                  onPressed: () => context.go('/home/profile'),
+                StreamBuilder<int>(
+                  stream: context.read<NotificationProvider>().unseenCountStream(),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
+                    return IconButton(
+                      icon: _BadgeIcon(
+                        show: count > 0,
+                        child: const Icon(Icons.notifications),
+                      ),
+                      onPressed: () => context.go('/home/notifications'),
+                    );
+                  },
                 ),
               ],
             ),
@@ -104,9 +115,16 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Row(
             children: [
-              _HeaderTab(label: l.tabRecommend, selected: true),
-              _HeaderTab(label: l.tabNearby, selected: false),
-              _HeaderTab(label: l.tabFeed, selected: false),
+              _HeaderTab(
+                label: l.tabRecommend,
+                selected: _selectedTab == 0,
+                onTap: () => setState(() => _selectedTab = 0),
+              ),
+              _HeaderTab(
+                label: l.tabNearby,
+                selected: _selectedTab == 1,
+                onTap: () => setState(() => _selectedTab = 1),
+              ),
             ],
           ),
         ),
@@ -118,6 +136,8 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
             onStartChat: _startChat,
             onDismiss: _dismiss,
             distanceFor: state.distanceKmTo,
+            showNearbyOnly: _selectedTab == 1,
+            me: me,
           ),
         ),
       ],
@@ -132,6 +152,8 @@ class _RecommendationBody extends StatelessWidget {
   final void Function(Profile target) onStartChat;
   final void Function(Profile profile, bool liked) onDismiss;
   final double? Function(Profile profile) distanceFor;
+  final bool showNearbyOnly;
+  final Profile? me;
 
   const _RecommendationBody({
     required this.profileComplete,
@@ -140,6 +162,8 @@ class _RecommendationBody extends StatelessWidget {
     required this.onStartChat,
     required this.onDismiss,
     required this.distanceFor,
+    required this.showNearbyOnly,
+    required this.me,
   });
 
   @override
@@ -159,7 +183,14 @@ class _RecommendationBody extends StatelessWidget {
       );
     }
     final list = recommendations.recommendations;
-    if (list.isEmpty) {
+    final filteredByTab = showNearbyOnly
+        ? list.where((p) {
+            final distance = distanceFor(p);
+            if (distance == null || me == null) return false;
+            return distance <= me!.distanceKm;
+          }).toList()
+        : list;
+    if (filteredByTab.isEmpty) {
       return _NoMatchState(
         title: l.noMatchTitle,
         subtitle: l.noMatchSubtitle,
@@ -167,7 +198,8 @@ class _RecommendationBody extends StatelessWidget {
         onAction: () => context.go('/home/profile'),
       );
     }
-    final filtered = list.where((p) => !dismissedIds.contains(p.id)).toList();
+    final filtered =
+        filteredByTab.where((p) => !dismissedIds.contains(p.id)).toList();
     if (filtered.isEmpty) {
       return _NoMatchState(
         title: l.noMatchTitle,
@@ -253,33 +285,71 @@ class _RecommendationBody extends StatelessWidget {
 class _HeaderTab extends StatelessWidget {
   final String label;
   final bool selected;
+  final VoidCallback onTap;
 
-  const _HeaderTab({required this.label, required this.selected});
+  const _HeaderTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final color = selected ? Colors.black : Colors.black38;
     return Padding(
       padding: const EdgeInsets.only(right: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontWeight: FontWeight.w700, color: color),
-          ),
-          const SizedBox(height: 6),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 3,
-            width: selected ? 24 : 0,
-            decoration: BoxDecoration(
-              color: selected ? Colors.black : Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontWeight: FontWeight.w700, color: color),
+            ),
+            const SizedBox(height: 6),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 3,
+              width: selected ? 24 : 0,
+              decoration: BoxDecoration(
+                color: selected ? Colors.black : Colors.transparent,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BadgeIcon extends StatelessWidget {
+  final bool show;
+  final Widget child;
+
+  const _BadgeIcon({required this.show, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!show) return child;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          right: -2,
+          top: -2,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -2,6 +2,7 @@
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../state/app_state.dart';
+import '../providers/user_provider.dart';
 import '../state/locale_state.dart';
 import '../state/recommendation_provider.dart';
 import '../l10n/app_localizations.dart';
@@ -103,10 +104,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final state = context.watch<AppState>();
+    final userProvider = context.watch<UserProvider>();
     final localeState = context.watch<LocaleState>();
     _seedFromProfile(state);
 
-    final me = state.meOrNull;
+    final me = userProvider.me ?? state.meOrNull;
     if (me == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -309,18 +311,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         FilledButton(
           onPressed: () async {
             final int age = int.tryParse(ageCtrl.text.trim()) ?? 0;
-            await state.saveProfile(
-              name: nameCtrl.text.trim(),
-              age: age,
-              occupation: occupationCtrl.text.trim(),
-              country: countryCtrl.text.trim(),
-              interests: _interests.toList(),
-              gender: _gender,
-              languages: _languages.toList(),
-              bio: bioCtrl.text.trim(),
-              distanceKm: me.distanceKm,
-              location: me.location,
-            );
+              await userProvider.saveProfile(
+                name: nameCtrl.text.trim(),
+                age: age,
+                occupation: occupationCtrl.text.trim(),
+                country: countryCtrl.text.trim(),
+                interests: _interests.toList(),
+                gender: _gender,
+                languages: _languages.toList(),
+                bio: bioCtrl.text.trim(),
+                distanceKm: me.distanceKm,
+                location: me.location,
+              );
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l.profileSaved)),
+              );
             await context
                 .read<RecommendationProvider>()
                 .refreshRecommendations(reason: RefreshReason.profileUpdated);

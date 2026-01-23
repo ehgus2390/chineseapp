@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onChatMessageCreatedNotification = exports.onMatchSessionAcceptedNotification = exports.cleanupQueueDocs = exports.onAutoMatchSessionSearching = exports.onMatchSessionAccepted = exports.expireMatchSessions = void 0;
+exports.onChatMessageCreatedNotification = exports.onMatchSessionAcceptedNotification = exports.onMatchSessionRejectedOrExpired = exports.cleanupQueueDocs = exports.onAutoMatchSessionSearching = exports.onMatchSessionAccepted = exports.expireMatchSessions = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const app_1 = require("firebase-admin/app");
@@ -16,8 +16,9 @@ exports.expireMatchSessions = (0, scheduler_1.onSchedule)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async () => {
-    // Expire both pending/searching auto sessions to avoid idle buildup.
-    const statuses = ["pending", "searching"];
+    var _a, _b, _c;
+    // Only expire pending matches; queue docs are handled separately.
+    const statuses = ["pending"];
     const now = firestore_2.Timestamp.now();
     // Batch + loop avoids unbounded reads and keeps costs predictable.
     while (true) {
@@ -33,23 +34,34 @@ exports.expireMatchSessions = (0, scheduler_1.onSchedule)({
             break;
         }
         const batch = db.batch();
+        const requeueIds = new Set();
         for (const doc of snapshot.docs) {
+            const data = (_a = doc.data()) !== null && _a !== void 0 ? _a : {};
+            const userA = ((_b = data.userA) !== null && _b !== void 0 ? _b : "").toString();
+            const userB = ((_c = data.userB) !== null && _c !== void 0 ? _c : "").toString();
             batch.set(doc.ref, {
                 status: "expired",
                 updatedAt: firestore_2.FieldValue.serverTimestamp(),
             }, { merge: true });
+            if (userA)
+                requeueIds.add(userA);
+            if (userB)
+                requeueIds.add(userB);
         }
         await batch.commit();
+        await Promise.all([...requeueIds].map((uid) => requeueUser(uid)));
     }
 });
 exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessions/{sessionId}", async (event) => {
-    var _a, _b, _c, _d, _e, _f;
-    const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
-    const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
-    if (!after || !after.exists)
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
+    const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
+    if (!afterSnap || !afterSnap.exists)
         return;
-    const beforeStatus = (_d = (_c = before === null || before === void 0 ? void 0 : before.data()) === null || _c === void 0 ? void 0 : _c.status) === null || _d === void 0 ? void 0 : _d.toString();
-    const afterData = (_e = after.data()) !== null && _e !== void 0 ? _e : {};
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
+    const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
+    const beforeStatus = (_e = beforeData.status) === null || _e === void 0 ? void 0 : _e.toString();
     const afterStatus = (_f = afterData.status) === null || _f === void 0 ? void 0 : _f.toString();
     if (beforeStatus === "accepted" || afterStatus !== "accepted")
         return;
@@ -92,6 +104,32 @@ exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessi
             updatedAt: firestore_2.FieldValue.serverTimestamp(),
         }, { merge: true });
     });
+    const userA = ((_g = afterData.userA) !== null && _g !== void 0 ? _g : "").toString();
+    const userB = ((_h = afterData.userB) !== null && _h !== void 0 ? _h : "").toString();
+    if (userA && userB) {
+        await db
+            .collection("users")
+            .doc(userA)
+            .collection("notifications")
+            .add({
+            type: "chat",
+            fromUid: userB,
+            refId: sessionId,
+            seen: false,
+            createdAt: firestore_2.FieldValue.serverTimestamp(),
+        });
+        await db
+            .collection("users")
+            .doc(userB)
+            .collection("notifications")
+            .add({
+            type: "chat",
+            fromUid: userA,
+            refId: sessionId,
+            seen: false,
+            createdAt: firestore_2.FieldValue.serverTimestamp(),
+        });
+    }
 });
 exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
     document: "match_sessions/{sessionId}",
@@ -99,19 +137,22 @@ exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async (event) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
-    const after = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after;
-    const before = (_b = event.data) === null || _b === void 0 ? void 0 : _b.before;
-    if (!after || !after.exists)
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
+    const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
+    if (!afterSnap || !afterSnap.exists)
         return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
+    const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
     const sessionId = event.params.sessionId;
     if (!sessionId.startsWith("queue_"))
         return;
-    const afterData = (_c = after.data()) !== null && _c !== void 0 ? _c : {};
-    const afterStatus = (_d = afterData.status) === null || _d === void 0 ? void 0 : _d.toString();
-    const beforeStatus = (_f = (_e = before === null || before === void 0 ? void 0 : before.data()) === null || _e === void 0 ? void 0 : _e.status) === null || _f === void 0 ? void 0 : _f.toString();
+    const afterStatus = (_e = afterData.status) === null || _e === void 0 ? void 0 : _e.toString();
+    const beforeStatus = (_f = beforeData.status) === null || _f === void 0 ? void 0 : _f.toString();
     const mode = (_g = afterData.mode) === null || _g === void 0 ? void 0 : _g.toString();
     // Only react to auto queue sessions transitioning into searching.
+    // If pairing never creates a pending {uidA}_{uidB} doc, the UI never sees match found.
     if (mode !== "auto")
         return;
     if (afterStatus !== "searching")
@@ -128,73 +169,19 @@ exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
         .where("status", "==", "searching")
         .limit(20)
         .get();
-    const partnerDoc = candidates.docs.find((doc) => {
-        var _a, _b, _c;
-        if (doc.id === after.id)
-            return false;
+    let matched = false;
+    for (const doc of candidates.docs) {
+        if (doc.id === afterSnap.id)
+            continue;
         if (!doc.id.startsWith("queue_"))
-            return false;
-        const data = (_a = doc.data()) !== null && _a !== void 0 ? _a : {};
-        const otherUserA = ((_b = data.userA) !== null && _b !== void 0 ? _b : "").toString();
-        const otherUserB = ((_c = data.userB) !== null && _c !== void 0 ? _c : "").toString();
-        if (otherUserB.trim().length > 0)
-            return false;
-        return otherUserA && otherUserA !== userA;
-    });
-    if (!partnerDoc) {
-        console.log("auto-match: no eligible partner");
-        return;
+            continue;
+        if (matched)
+            break;
+        matched = await tryPairQueues(afterSnap.ref, doc.ref, userA);
     }
-    const otherUserA = ((_j = partnerDoc.data().userA) !== null && _j !== void 0 ? _j : "").toString();
-    if (!otherUserA || otherUserA === userA)
-        return;
-    const ids = [userA, otherUserA].sort();
-    const pairSessionId = `${ids[0]}_${ids[1]}`;
-    const pairRef = db.collection("match_sessions").doc(pairSessionId);
-    const expiresAt = firestore_2.Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000));
-    await db.runTransaction(async (tx) => {
-        var _a, _b, _c, _d, _e, _f, _g, _h;
-        const currentSnap = await tx.get(after.ref);
-        const partnerSnap = await tx.get(partnerDoc.ref);
-        if (!currentSnap.exists || !partnerSnap.exists)
-            return;
-        const currentData = (_a = currentSnap.data()) !== null && _a !== void 0 ? _a : {};
-        const partnerData = (_b = partnerSnap.data()) !== null && _b !== void 0 ? _b : {};
-        if (((_c = currentData.status) === null || _c === void 0 ? void 0 : _c.toString()) !== "searching")
-            return;
-        if (((_d = partnerData.status) === null || _d === void 0 ? void 0 : _d.toString()) !== "searching")
-            return;
-        const currentUserA = ((_e = currentData.userA) !== null && _e !== void 0 ? _e : "").toString();
-        const partnerUserA = ((_f = partnerData.userA) !== null && _f !== void 0 ? _f : "").toString();
-        if (!currentUserA || !partnerUserA)
-            return;
-        if (currentUserA === partnerUserA)
-            return;
-        const currentUserB = ((_g = currentData.userB) !== null && _g !== void 0 ? _g : "").toString();
-        const partnerUserB = ((_h = partnerData.userB) !== null && _h !== void 0 ? _h : "").toString();
-        if (currentUserB.trim().length > 0 || partnerUserB.trim().length > 0) {
-            return;
-        }
-        const pairSnap = await tx.get(pairRef);
-        if (pairSnap.exists)
-            return;
-        tx.set(pairRef, {
-            userA: ids[0],
-            userB: ids[1],
-            mode: "auto",
-            status: "pending",
-            initiatedBy: userA,
-            chatRoomId: null,
-            createdAt: firestore_2.FieldValue.serverTimestamp(),
-            respondedAt: null,
-            expiresAt,
-            updatedAt: firestore_2.FieldValue.serverTimestamp(),
-        });
-        // Remove both users from the queue to prevent duplicate matches.
-        tx.set(after.ref, { status: "expired", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
-        tx.set(partnerDoc.ref, { status: "expired", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
-    });
-    console.log("auto-match: paired", { userA, otherUserA, pairSessionId });
+    if (!matched) {
+        console.log("auto-match: no eligible partner");
+    }
 });
 exports.cleanupQueueDocs = (0, scheduler_1.onSchedule)({
     schedule: "every 1 minutes",
@@ -241,6 +228,219 @@ exports.cleanupQueueDocs = (0, scheduler_1.onSchedule)({
         lastDoc = snapshot.docs[snapshot.docs.length - 1];
     }
 });
+async function tryPairQueues(queueARef, queueBRef, initiatedBy) {
+    const expiresAt = firestore_2.Timestamp.fromMillis(Date.now() + 10 * 1000);
+    let paired = false;
+    await db.runTransaction(async (tx) => {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        const [queueASnap, queueBSnap] = await Promise.all([
+            tx.get(queueARef),
+            tx.get(queueBRef),
+        ]);
+        if (!queueASnap.exists || !queueBSnap.exists)
+            return;
+        const queueAData = (_a = queueASnap.data()) !== null && _a !== void 0 ? _a : {};
+        const queueBData = (_b = queueBSnap.data()) !== null && _b !== void 0 ? _b : {};
+        if (((_c = queueAData.status) === null || _c === void 0 ? void 0 : _c.toString()) !== "searching")
+            return;
+        if (((_d = queueBData.status) === null || _d === void 0 ? void 0 : _d.toString()) !== "searching")
+            return;
+        if (((_e = queueAData.mode) === null || _e === void 0 ? void 0 : _e.toString()) !== "auto")
+            return;
+        if (((_f = queueBData.mode) === null || _f === void 0 ? void 0 : _f.toString()) !== "auto")
+            return;
+        if (!queueASnap.id.startsWith("queue_"))
+            return;
+        if (!queueBSnap.id.startsWith("queue_"))
+            return;
+        const userA = ((_g = queueAData.userA) !== null && _g !== void 0 ? _g : "").toString();
+        const userB = ((_h = queueBData.userA) !== null && _h !== void 0 ? _h : "").toString();
+        if (!userA || !userB || userA === userB)
+            return;
+        const queueAUserB = ((_j = queueAData.userB) !== null && _j !== void 0 ? _j : "").toString();
+        const queueBUserB = ((_k = queueBData.userB) !== null && _k !== void 0 ? _k : "").toString();
+        if (queueAUserB.trim().length > 0 || queueBUserB.trim().length > 0)
+            return;
+        const hydratedA = await hydrateQueueUser(tx, userA, queueAData);
+        const hydratedB = await hydrateQueueUser(tx, userB, queueBData);
+        if (!hydratedA || !hydratedB)
+            return;
+        if (!hasCommonInterest(hydratedA.interests, hydratedB.interests))
+            return;
+        const distanceKm = distanceBetweenKm(hydratedA.location, hydratedB.location);
+        if (distanceKm == null)
+            return;
+        const maxDistance = Math.min(hydratedA.radiusKm, hydratedB.radiusKm);
+        if (distanceKm > maxDistance)
+            return;
+        const ids = [userA, userB].sort();
+        const pairSessionId = `${ids[0]}_${ids[1]}`;
+        const pairRef = db.collection("match_sessions").doc(pairSessionId);
+        const pairSnap = await tx.get(pairRef);
+        if (pairSnap.exists)
+            return;
+        const notifARef = db
+            .collection("users")
+            .doc(ids[0])
+            .collection("notifications")
+            .doc();
+        const notifBRef = db
+            .collection("users")
+            .doc(ids[1])
+            .collection("notifications")
+            .doc();
+        tx.set(pairRef, {
+            userA: ids[0],
+            userB: ids[1],
+            mode: "auto",
+            status: "pending",
+            initiatedBy,
+            chatRoomId: null,
+            createdAt: firestore_2.FieldValue.serverTimestamp(),
+            respondedAt: null,
+            expiresAt,
+            updatedAt: firestore_2.FieldValue.serverTimestamp(),
+        });
+        tx.set(notifARef, {
+            type: "match",
+            fromUid: ids[1],
+            refId: pairSessionId,
+            seen: false,
+            createdAt: firestore_2.FieldValue.serverTimestamp(),
+        });
+        tx.set(notifBRef, {
+            type: "match",
+            fromUid: ids[0],
+            refId: pairSessionId,
+            seen: false,
+            createdAt: firestore_2.FieldValue.serverTimestamp(),
+        });
+        tx.set(queueARef, { status: "expired", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
+        tx.set(queueBRef, { status: "expired", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
+        paired = true;
+    });
+    return paired;
+}
+exports.onMatchSessionRejectedOrExpired = (0, firestore_1.onDocumentWritten)({
+    document: "match_sessions/{sessionId}",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+}, async (event) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
+    const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
+    if (!afterSnap || !afterSnap.exists)
+        return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
+    const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
+    const sessionId = event.params.sessionId;
+    if (sessionId.startsWith("queue_"))
+        return;
+    const afterStatus = (_e = afterData.status) === null || _e === void 0 ? void 0 : _e.toString();
+    const beforeStatus = (_f = beforeData.status) === null || _f === void 0 ? void 0 : _f.toString();
+    if (afterStatus !== "expired" && afterStatus !== "rejected")
+        return;
+    if (beforeStatus === afterStatus)
+        return;
+    const userA = ((_g = afterData.userA) !== null && _g !== void 0 ? _g : "").toString();
+    const userB = ((_h = afterData.userB) !== null && _h !== void 0 ? _h : "").toString();
+    await requeueUser(userA);
+    await requeueUser(userB);
+});
+async function hydrateQueueUser(tx, userId, queueData) {
+    var _a, _b, _c;
+    let interests = ((_a = queueData.interests) !== null && _a !== void 0 ? _a : []);
+    let location = queueData.location;
+    let radiusKm = Number(queueData.radiusKm);
+    if (!Array.isArray(interests) ||
+        interests.length === 0 ||
+        !location ||
+        !Number.isFinite(radiusKm) ||
+        radiusKm <= 0) {
+        const userSnap = await tx.get(db.collection("users").doc(userId));
+        const userData = (_b = userSnap.data()) !== null && _b !== void 0 ? _b : {};
+        interests = ((_c = userData.interests) !== null && _c !== void 0 ? _c : []);
+        location = userData.location;
+        const fallbackRadius = Number(userData.distanceKm);
+        radiusKm = Number.isFinite(fallbackRadius) && fallbackRadius > 0
+            ? fallbackRadius
+            : radiusKm;
+        const normalizedInterests = normalizeInterests(interests);
+        if (normalizedInterests.length > 0 &&
+            location &&
+            Number.isFinite(radiusKm) &&
+            radiusKm > 0) {
+            tx.set(db.collection("match_sessions").doc(`queue_${userId}`), {
+                interests: normalizedInterests,
+                location,
+                radiusKm,
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+    }
+    const normalizedInterests = normalizeInterests(interests);
+    if (normalizedInterests.length === 0 ||
+        !location ||
+        !Number.isFinite(radiusKm) ||
+        radiusKm <= 0) {
+        return null;
+    }
+    return {
+        interests: normalizedInterests,
+        location,
+        radiusKm,
+    };
+}
+function hasCommonInterest(a, b) {
+    if (a.length === 0 || b.length === 0)
+        return false;
+    const set = new Set(a);
+    return b.some((interest) => set.has(interest));
+}
+function distanceBetweenKm(a, b) {
+    if (!a || !b)
+        return null;
+    const toRad = (value) => (value * Math.PI) / 180;
+    const radius = 6371;
+    const dLat = toRad(b.latitude - a.latitude);
+    const dLon = toRad(b.longitude - a.longitude);
+    const lat1 = toRad(a.latitude);
+    const lat2 = toRad(b.latitude);
+    const h = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    return radius * 2 * Math.asin(Math.sqrt(h));
+}
+function normalizeInterests(input) {
+    return input
+        .map((item) => (typeof item === "string" ? item : item === null || item === void 0 ? void 0 : item.toString()))
+        .filter((value) => typeof value === "string" && value.length > 0);
+}
+async function requeueUser(userId) {
+    var _a, _b;
+    if (!userId)
+        return;
+    const userSnap = await db.collection("users").doc(userId).get();
+    const userData = (_a = userSnap.data()) !== null && _a !== void 0 ? _a : {};
+    const interests = normalizeInterests(((_b = userData.interests) !== null && _b !== void 0 ? _b : []));
+    const location = userData.location;
+    const radiusKm = Number(userData.distanceKm);
+    if (!location || interests.length === 0 || !Number.isFinite(radiusKm) || radiusKm <= 0) {
+        return;
+    }
+    await db.collection("match_sessions").doc(`queue_${userId}`).set({
+        userA: userId,
+        interests,
+        location,
+        radiusKm,
+        mode: "auto",
+        status: "searching",
+        createdAt: firestore_2.FieldValue.serverTimestamp(),
+        expiresAt: firestore_2.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+        updatedAt: firestore_2.FieldValue.serverTimestamp(),
+    }, { merge: true });
+}
 exports.onMatchSessionAcceptedNotification = (0, firestore_1.onDocumentWritten)({
     document: "match_sessions/{sessionId}",
     region: "asia-northeast3",
@@ -248,12 +448,14 @@ exports.onMatchSessionAcceptedNotification = (0, firestore_1.onDocumentWritten)(
     timeoutSeconds: 60,
 }, async (event) => {
     var _a, _b, _c, _d, _e, _f, _g;
-    const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
-    const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
-    if (!after || !after.exists)
+    const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
+    const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
+    if (!afterSnap || !afterSnap.exists)
         return;
-    const beforeStatus = (_d = (_c = before === null || before === void 0 ? void 0 : before.data()) === null || _c === void 0 ? void 0 : _c.status) === null || _d === void 0 ? void 0 : _d.toString();
-    const afterData = (_e = after.data()) !== null && _e !== void 0 ? _e : {};
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
+    const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
+    const beforeStatus = (_e = beforeData.status) === null || _e === void 0 ? void 0 : _e.toString();
     const afterStatus = (_f = afterData.status) === null || _f === void 0 ? void 0 : _f.toString();
     if (beforeStatus === "accepted" || afterStatus !== "accepted")
         return;
@@ -272,8 +474,7 @@ exports.onMatchSessionAcceptedNotification = (0, firestore_1.onDocumentWritten)(
             title: "💞 매칭이 완료됐어요",
             body: "지금 대화를 시작해보세요",
         },
-        data: {
-            type: "match_accepted",
+        data: { type: "match_accepted",
             sessionId,
             chatRoomId,
         },
@@ -317,8 +518,7 @@ exports.onChatMessageCreatedNotification = (0, firestore_1.onDocumentCreated)({
             title: "💬 새 메시지",
             body: "메시지가 도착했어요",
         },
-        data: {
-            type: "new_message",
+        data: { type: "new_message",
             roomId,
             messageId,
             senderId,

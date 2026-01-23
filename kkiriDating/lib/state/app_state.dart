@@ -269,15 +269,6 @@ class AppState extends ChangeNotifier {
   Future<void> _loadMyDecisions() async {
     final Profile? meProfile = _me;
     if (meProfile == null) return;
-    final likesSnap = await _db
-        .collection('users')
-        .doc(meProfile.id)
-        .collection('likes')
-        .get();
-    _likedIds
-      ..clear()
-      ..addAll(likesSnap.docs.map((doc) => doc.id));
-
     final passesSnap = await _db
         .collection('users')
         .doc(meProfile.id)
@@ -438,10 +429,19 @@ class AppState extends ChangeNotifier {
     final String userId = currentUser.uid;
     final String sessionId = 'queue_$userId';
     final DateTime expiresAt = DateTime.now().add(const Duration(minutes: 5));
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    final List<String> normalizedInterests = meProfile.interests
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
     await _db.collection('match_sessions').doc(sessionId).set(
       <String, dynamic>{
         'userA': userId,
+        'interests': normalizedInterests,
+        'location': meProfile.location,
+        'radiusKm': meProfile.distanceKm,
         'mode': 'auto',
         'status': 'searching',
         'createdAt': FieldValue.serverTimestamp(),
@@ -450,6 +450,23 @@ class AppState extends ChangeNotifier {
       },
       SetOptions(merge: true),
     );
+  }
+
+  session_model.MatchSession? get activeAutoMatchSession {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return null;
+    final sessions = _matchSessions.values.where((session) {
+      if (session.id.startsWith('queue_')) return false;
+      if (session.mode != 'auto') return false;
+      final bool isParticipant =
+          session.userA == meProfile.id || session.userB == meProfile.id;
+      if (!isParticipant) return false;
+      return session.status == session_model.MatchStatus.pending ||
+          session.status == session_model.MatchStatus.accepted;
+    }).toList();
+    if (sessions.isEmpty) return null;
+    sessions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return sessions.first;
   }
 
   Future<void> setMatchConsent(String otherUserId, bool ready) async {
@@ -514,21 +531,65 @@ class AppState extends ChangeNotifier {
     if (meProfile == null) return;
 
     _likedIds.add(profile.id);
-    await _db
+    final DocumentReference<Map<String, dynamic>> targetLikeRef = _db
         .collection('users')
-        .doc(meProfile.id)
-        .collection('likes')
         .doc(profile.id)
-        .set(<String, dynamic>{'createdAt': FieldValue.serverTimestamp()});
+        .collection('likes')
+        .doc(meProfile.id);
+    await targetLikeRef.set(<String, dynamic>{
+      'fromUid': meProfile.id,
+      'createdAt': FieldValue.serverTimestamp(),
+      'seen': false,
+    }, SetOptions(merge: true));
+
+    await createNotification(
+      userId: profile.id,
+      type: 'like',
+      fromUid: meProfile.id,
+      refId: null,
+    );
 
     final reciprocal = await _db
         .collection('users')
-        .doc(profile.id)
-        .collection('likes')
         .doc(meProfile.id)
+        .collection('likes')
+        .doc(profile.id)
         .get();
     if (reciprocal.exists) {
-      await ensureMatchSession(otherUserId: profile.id, mode: MatchMode.direct);
+      final List<String> ids = <String>[meProfile.id, profile.id]..sort();
+      final String chatRoomId = ids.join('_');
+      final DocumentReference<Map<String, dynamic>> roomRef =
+          _db.collection('chat_rooms').doc(chatRoomId);
+      await _db.runTransaction((tx) async {
+        final roomSnap = await tx.get(roomRef);
+        if (!roomSnap.exists) {
+          tx.set(roomRef, <String, dynamic>{
+            'participants': ids,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+        tx.set(
+          roomRef,
+          <String, dynamic>{
+            'participants': ids,
+            'createdAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      });
+
+      await createNotification(
+        userId: meProfile.id,
+        type: 'match',
+        fromUid: profile.id,
+        refId: chatRoomId,
+      );
+      await createNotification(
+        userId: profile.id,
+        type: 'match',
+        fromUid: meProfile.id,
+        refId: chatRoomId,
+      );
     }
 
     notifyListeners();
@@ -632,21 +693,43 @@ class AppState extends ChangeNotifier {
     required double distanceKm,
     required GeoPoint? location,
   }) async {
-    final Profile? meProfile = _me;
-    if (meProfile == null) return;
-    await _db.collection('users').doc(meProfile.id).set(<String, dynamic>{
-      'name': name,
-      'age': age,
-      'occupation': occupation,
-      'country': country,
-      'interests': interests,
-      'gender': gender,
-      'languages': languages,
-      'bio': bio,
-      'distanceKm': distanceKm,
-      'location': location,
-    }, SetOptions(merge: true));
-  }
+      final Profile? meProfile = _me;
+      if (meProfile == null) return;
+      final List<String> normalizedInterests = interests
+          .map((e) => e.toString())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      final List<String> normalizedLanguages = languages
+          .map((e) => e.toString())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      await _db.collection('users').doc(meProfile.id).set(<String, dynamic>{
+        'name': name,
+        'age': age,
+        'occupation': occupation,
+        'country': country,
+        'interests': normalizedInterests,
+        'gender': gender,
+        'languages': normalizedLanguages,
+        'bio': bio,
+        'distanceKm': distanceKm,
+        'location': location,
+      }, SetOptions(merge: true));
+      _me = meProfile.copyWith(
+        name: name,
+        age: age,
+        occupation: occupation,
+        country: country,
+        interests: normalizedInterests,
+        gender: gender,
+        languages: normalizedLanguages,
+        bio: bio,
+        distanceKm: distanceKm,
+        location: location,
+      );
+      _profiles[meProfile.id] = _me!;
+      notifyListeners();
+    }
 
   Future<void> updateMatchPreferences({
     required double distanceKm,
@@ -668,6 +751,111 @@ class AppState extends ChangeNotifier {
         'notificationsEnabled': enabled,
       },
       SetOptions(merge: true),
+    );
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchLikesInbox() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+    }
+    return _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('likes')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  Stream<int> watchUnseenLikesCount() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      return const Stream<int>.empty();
+    }
+    return _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('likes')
+        .where('seen', isEqualTo: false)
+        .snapshots()
+        .map((snap) => snap.docs.length);
+  }
+
+  Future<void> markLikesSeen() async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    final snapshot = await _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('likes')
+        .where('seen', isEqualTo: false)
+        .get();
+    if (snapshot.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in snapshot.docs) {
+      batch.set(doc.reference, <String, dynamic>{'seen': true}, SetOptions(merge: true));
+    }
+    await batch.commit();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchNotificationsInbox() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+    }
+    return _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('notifications')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  Stream<int> watchUnseenNotificationsCount() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) {
+      return const Stream<int>.empty();
+    }
+    return _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('notifications')
+        .where('seen', isEqualTo: false)
+        .snapshots()
+        .map((snap) => snap.docs.length);
+  }
+
+  Future<void> markNotificationsSeen() async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    final snapshot = await _db
+        .collection('users')
+        .doc(meProfile.id)
+        .collection('notifications')
+        .where('seen', isEqualTo: false)
+        .get();
+    if (snapshot.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in snapshot.docs) {
+      batch.set(doc.reference, <String, dynamic>{'seen': true}, SetOptions(merge: true));
+    }
+    await batch.commit();
+  }
+
+  Future<void> createNotification({
+    required String userId,
+    required String type,
+    required String? fromUid,
+    required String? refId,
+  }) async {
+    await _db.collection('users').doc(userId).collection('notifications').add(
+      <String, dynamic>{
+        'type': type,
+        'fromUid': fromUid,
+        'refId': refId,
+        'seen': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      },
     );
   }
 

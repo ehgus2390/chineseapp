@@ -4,6 +4,7 @@ enum MatchStatus {
   searching,
   pending,
   accepted,
+  rejected,
   skipped,
   expired,
 }
@@ -71,6 +72,8 @@ class MatchSession {
         return MatchStatus.pending;
       case 'accepted':
         return MatchStatus.accepted;
+      case 'rejected':
+        return MatchStatus.rejected;
       case 'skipped':
         return MatchStatus.skipped;
       case 'expired':
@@ -87,6 +90,8 @@ class MatchSession {
         return 'pending';
       case MatchStatus.accepted:
         return 'accepted';
+      case MatchStatus.rejected:
+        return 'rejected';
       case MatchStatus.skipped:
         return 'skipped';
       case MatchStatus.expired:
