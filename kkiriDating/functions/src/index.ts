@@ -199,10 +199,6 @@ export const onAutoMatchSessionSearching = onDocumentWritten(
       });
       return;
     }
-    if (beforeStatus === "searching") {
-      console.log("auto-match skip: already searching", {sessionId});
-      return;
-    }
 
     const userA = (afterData.userA ?? "").toString();
     if (!userA) {
@@ -298,43 +294,96 @@ async function tryPairQueues(
       tx.get(queueARef),
       tx.get(queueBRef),
     ]);
-    if (!queueASnap.exists || !queueBSnap.exists) return;
+    if (!queueASnap.exists || !queueBSnap.exists) {
+      console.log("auto-match skip: queue missing");
+      return;
+    }
 
     const queueAData = queueASnap.data() ?? {};
     const queueBData = queueBSnap.data() ?? {};
-    if (queueAData.status?.toString() !== "searching") return;
-    if (queueBData.status?.toString() !== "searching") return;
-    if (queueAData.mode?.toString() !== "auto") return;
-    if (queueBData.mode?.toString() !== "auto") return;
-    if (!queueASnap.id.startsWith("queue_")) return;
-    if (!queueBSnap.id.startsWith("queue_")) return;
+    if (queueAData.status?.toString() !== "searching") {
+      console.log("auto-match skip: queueA not searching");
+      return;
+    }
+    if (queueBData.status?.toString() !== "searching") {
+      console.log("auto-match skip: queueB not searching");
+      return;
+    }
+    if (queueAData.mode?.toString() !== "auto") {
+      console.log("auto-match skip: queueA not auto");
+      return;
+    }
+    if (queueBData.mode?.toString() !== "auto") {
+      console.log("auto-match skip: queueB not auto");
+      return;
+    }
+    if (!queueASnap.id.startsWith("queue_")) {
+      console.log("auto-match skip: queueA id not queue_");
+      return;
+    }
+    if (!queueBSnap.id.startsWith("queue_")) {
+      console.log("auto-match skip: queueB id not queue_");
+      return;
+    }
 
     const userA = (queueAData.userA ?? "").toString();
     const userB = (queueBData.userA ?? "").toString();
-    if (!userA || !userB || userA === userB) return;
+    if (!userA || !userB || userA === userB) {
+      console.log("auto-match skip: invalid users", {userA, userB});
+      return;
+    }
 
     // Avoid false positives if legacy queue docs stored non-string userB.
     const queueAUserB =
       typeof queueAData.userB === "string" ? queueAData.userB : "";
     const queueBUserB =
       typeof queueBData.userB === "string" ? queueBData.userB : "";
-    if (queueAUserB.trim().length > 0 || queueBUserB.trim().length > 0) return;
+    if (queueAUserB.trim().length > 0 || queueBUserB.trim().length > 0) {
+      console.log("auto-match skip: legacy queue userB present");
+      return;
+    }
 
     const hydratedA = await hydrateQueueUser(tx, userA, queueAData);
     const hydratedB = await hydrateQueueUser(tx, userB, queueBData);
-    if (!hydratedA || !hydratedB) return;
+    if (!hydratedA || !hydratedB) {
+      console.log("auto-match skip: hydrate failed");
+      return;
+    }
 
-    if (!hasCommonInterest(hydratedA.interests, hydratedB.interests)) return;
+    if (!hasCommonInterest(hydratedA.interests, hydratedB.interests)) {
+      console.log("auto-match skip: no common interests");
+      return;
+    }
     const distanceKm = distanceBetweenKm(hydratedA.location, hydratedB.location);
-    if (distanceKm == null) return;
+    if (distanceKm == null) {
+      console.log("auto-match skip: distance missing");
+      return;
+    }
     const maxDistance = Math.min(hydratedA.radiusKm, hydratedB.radiusKm);
-    if (distanceKm > maxDistance) return;
+    if (distanceKm > maxDistance) {
+      console.log("auto-match skip: outside radius");
+      return;
+    }
 
     const ids = [userA, userB].sort();
     const pairSessionId = `${ids[0]}_${ids[1]}`;
     const pairRef = db.collection("match_sessions").doc(pairSessionId);
     const pairSnap = await tx.get(pairRef);
-    if (pairSnap.exists) return;
+    if (pairSnap.exists) {
+      console.log("auto-match skip: pair already exists", {pairSessionId});
+      return;
+    }
+
+    tx.set(
+      queueARef,
+      {status: "locked", updatedAt: FieldValue.serverTimestamp()},
+      {merge: true},
+    );
+    tx.set(
+      queueBRef,
+      {status: "locked", updatedAt: FieldValue.serverTimestamp()},
+      {merge: true},
+    );
 
     const notifARef = db
       .collection("users")
@@ -385,6 +434,7 @@ async function tryPairQueues(
       {status: "expired", updatedAt: FieldValue.serverTimestamp()},
       {merge: true},
     );
+    console.log("auto-match paired", {pairSessionId});
     paired = true;
   });
 

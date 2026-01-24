@@ -72,12 +72,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Future<void> _enterMatchingQueue() async {
     if (_queueActive) return;
-    try {
-      await context.read<AppState>().enterAutoMatchQueue();
-    } catch (_) {
-      // Keep UI responsive even if queue entry fails.
-    }
-    if (!mounted) return;
     setState(() {
       _queueActive = true;
       _countdown = _queueDurationSeconds;
@@ -85,6 +79,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
       _ignorePendingSession = false;
       _sentExpiry = false;
     });
+    try {
+      await context.read<AppState>().enterAutoMatchQueue();
+    } catch (_) {
+      // Keep UI responsive even if queue entry fails.
+    }
   }
 
   void _openSettingsSheet() {
@@ -224,12 +223,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     _stopCountdown();
+                    if (!_queueActive) {
+                      return _ChatIdleState(
+                        title: l.chatWaitingTitle,
+                        subtitle: l.chatWaitingSubtitle,
+                        connectLabel: l.queueConnect,
+                        onConnect: _enterMatchingQueue,
+                      );
+                    }
                     return _ChatSearchingState(
                       emoji: l.chatSearchingEmoji,
                       title: l.queueSearchingTitle,
                       subtitle: l.queueSearchingSubtitle,
                       countdownText: null,
-                      showConnect: !_queueActive,
+                      showConnect: false,
                       connectLabel: l.queueConnect,
                       onConnect: () => _enterMatchingQueue(),
                     );
@@ -254,6 +261,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         _sentExpiry = true;
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           _setSessionStatus(autoSession, 'expired');
+                          _enterMatchingQueue();
                         });
                       }
                       final expiresAt = autoSession.expiresAt;
@@ -316,6 +324,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                     setState(() => _ignorePendingSession = true);
                                   }
                                   await _setSessionStatus(autoSession, 'rejected');
+                                  if (mounted) {
+                                    await _enterMatchingQueue();
+                                  }
                                 },
                               ),
                             ],
@@ -368,12 +379,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       );
                     }
                     _stopCountdown();
-                    return _ChatSearchingState(
-                      emoji: l.chatSearchingEmoji,
-                      title: l.queueSearchingTitle,
-                      subtitle: l.queueSearchingSubtitle,
-                      countdownText: null,
-                      showConnect: !_queueActive,
+                    return _ChatIdleState(
+                      title: l.chatWaitingTitle,
+                      subtitle: l.chatWaitingSubtitle,
                       connectLabel: l.queueConnect,
                       onConnect: _enterMatchingQueue,
                     );
@@ -389,12 +397,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     );
                   }
 
+                  if (!_queueActive) {
+                    return _ChatIdleState(
+                      title: l.chatWaitingTitle,
+                      subtitle: l.chatWaitingSubtitle,
+                      connectLabel: l.queueConnect,
+                      onConnect: _enterMatchingQueue,
+                    );
+                  }
+
                   return _ChatSearchingState(
                     emoji: l.chatSearchingEmoji,
                     title: l.queueSearchingTitle,
                     subtitle: l.queueSearchingSubtitle,
                     countdownText: null,
-                    showConnect: !_queueActive,
+                    showConnect: false,
                     connectLabel: l.queueConnect,
                     onConnect: _enterMatchingQueue,
                   );
@@ -523,6 +540,39 @@ class _ChatWaitingState extends StatelessWidget {
   }
 }
 
+class _ChatIdleState extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String connectLabel;
+  final VoidCallback onConnect;
+
+  const _ChatIdleState({
+    required this.title,
+    required this.subtitle,
+    required this.connectLabel,
+    required this.onConnect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _CenteredText(
+      children: [
+        Text(title, style: const TextStyle(fontSize: 18)),
+        const SizedBox(height: 10),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54),
+        ),
+        const SizedBox(height: 14),
+        FilledButton(
+          onPressed: onConnect,
+          child: Text(connectLabel),
+        ),
+      ],
+    );
+  }
+}
 class _ChatPendingState extends StatelessWidget {
   final String title;
 
