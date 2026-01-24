@@ -19,18 +19,4 @@ class NotificationProvider extends ChangeNotifier {
   Future<void> markAllSeen() async {
     await _appState.markNotificationsSeen();
   }
-
-  Future<void> createNotification({
-    required String userId,
-    required String type,
-    required String? fromUid,
-    required String? refId,
-  }) async {
-    await _appState.createNotification(
-      userId: userId,
-      type: type,
-      fromUid: fromUid,
-      refId: refId,
-    );
-  }
 }

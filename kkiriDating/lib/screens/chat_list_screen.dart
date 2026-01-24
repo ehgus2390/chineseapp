@@ -36,6 +36,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   bool _timeoutReached = false;
   bool _ignorePendingSession = false;
   bool _sentExpiry = false;
+  String? _handledRejectedSessionId;
   static const int _queueDurationSeconds = 10;
 
   @override
@@ -86,6 +87,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
+  Future<void> _stopMatchingQueue() async {
+    setState(() {
+      _queueActive = false;
+      _ignorePendingSession = true;
+      _timeoutReached = false;
+      _sentExpiry = false;
+    });
+    await context.read<AppState>().stopAutoMatchQueue();
+  }
+
   void _openSettingsSheet() {
     showModalBottomSheet<void>(
       context: context,
@@ -134,13 +145,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
     _queueActive = false;
   }
 
-  Future<void> _setSessionStatus(MatchSession session, String status) async {
+  Future<void> _setMatchResponse(MatchSession session, String response) async {
+    final state = context.read<AppState>();
+    final me = state.meOrNull;
+    if (me == null) return;
     await FirebaseFirestore.instance
         .collection('match_sessions')
         .doc(session.id)
         .set(<String, dynamic>{
-      'status': status,
-      'respondedAt': FieldValue.serverTimestamp(),
+      'responses.${me.id}': response,
     }, SetOptions(merge: true));
   }
 
@@ -194,6 +207,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final state = context.watch<AppState>();
     final l = AppLocalizations.of(context);
     final eligible = context.watch<EligibleProfilesProvider>();
+    final matchState = state.autoMatchState;
 
     final me = state.meOrNull;
     final bool profileComplete = me != null && state.isProfileReady(me);
@@ -223,7 +237,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     _stopCountdown();
-                    if (!_queueActive) {
+                    if (matchState == AutoMatchState.idle && !_queueActive) {
                       return _ChatIdleState(
                         title: l.chatWaitingTitle,
                         subtitle: l.chatWaitingSubtitle,
@@ -237,8 +251,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       subtitle: l.queueSearchingSubtitle,
                       countdownText: null,
                       showConnect: false,
+                      showStop: true,
                       connectLabel: l.queueConnect,
+                      stopLabel: l.queueStop,
                       onConnect: () => _enterMatchingQueue(),
+                      onStop: _stopMatchingQueue,
                     );
                   }
 
@@ -256,11 +273,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   final autoSession = state.activeAutoMatchSession;
                   if (autoSession != null) {
                     if (autoSession.status == MatchStatus.pending) {
+                      // Previously, accepting set status=accepted immediately, so the
+                      // other user never saw MATCH FOUND. We now write responses per user.
                       _navigating = false;
+                      if (_ignorePendingSession) {
+                        return _ChatIdleState(
+                          title: l.chatWaitingTitle,
+                          subtitle: l.chatWaitingSubtitle,
+                          connectLabel: l.queueConnect,
+                          onConnect: _enterMatchingQueue,
+                        );
+                      }
                       if (_timeoutReached && !_sentExpiry) {
                         _sentExpiry = true;
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _setSessionStatus(autoSession, 'expired');
                           _enterMatchingQueue();
                         });
                       }
@@ -287,8 +313,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               subtitle: l.queueSearchingSubtitle,
                               countdownText: null,
                               showConnect: false,
+                              showStop: true,
                               connectLabel: l.queueConnect,
+                              stopLabel: l.queueStop,
                               onConnect: _enterMatchingQueue,
+                              onStop: _stopMatchingQueue,
                             );
                           }
                           return Stack(
@@ -299,8 +328,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 subtitle: l.queueSearchingSubtitle,
                                 countdownText: null,
                                 showConnect: false,
+                                showStop: true,
                                 connectLabel: l.queueConnect,
+                                stopLabel: l.queueStop,
                                 onConnect: _enterMatchingQueue,
+                                onStop: _stopMatchingQueue,
                               ),
                               _MatchPendingOverlay(
                                 profile: profile,
@@ -316,14 +348,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                   if (mounted) {
                                     setState(() => _ignorePendingSession = false);
                                   }
-                                  await _setSessionStatus(autoSession, 'accepted');
+                                  await _setMatchResponse(autoSession, 'accepted');
                                 },
                                 onDecline: () async {
                                   _stopCountdown();
                                   if (mounted) {
                                     setState(() => _ignorePendingSession = true);
                                   }
-                                  await _setSessionStatus(autoSession, 'rejected');
+                                  await _setMatchResponse(autoSession, 'rejected');
                                   if (mounted) {
                                     await _enterMatchingQueue();
                                   }
@@ -332,6 +364,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             ],
                           );
                         },
+                      );
+                    }
+                    if (autoSession.status == MatchStatus.rejected ||
+                        autoSession.status == MatchStatus.expired) {
+                      if (_handledRejectedSessionId != autoSession.id) {
+                        _handledRejectedSessionId = autoSession.id;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (matchState != AutoMatchState.idle) {
+                            _enterMatchingQueue();
+                          }
+                        });
+                      }
+                      return _ChatWaitingState(
+                        title: l.chatWaitingTitle,
+                        subtitle: l.queueResumeSubtitle,
                       );
                     }
                     if (autoSession.status == MatchStatus.accepted) {
@@ -358,7 +405,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                   if (list.isEmpty) {
                     _navigating = false;
-                    if (_queueActive) {
+                    if (matchState == AutoMatchState.searching || _queueActive) {
                       _stopCountdown();
                       return _ChatSearchingState(
                         emoji: l.chatSearchingEmoji,
@@ -366,8 +413,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         subtitle: l.queueSearchingSubtitle,
                         countdownText: null,
                         showConnect: false,
+                        showStop: true,
                         connectLabel: l.queueConnect,
+                        stopLabel: l.queueStop,
                         onConnect: _enterMatchingQueue,
+                        onStop: _stopMatchingQueue,
                       );
                     }
                     _scheduleLongWait();
@@ -397,7 +447,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     );
                   }
 
-                  if (!_queueActive) {
+                  if (matchState == AutoMatchState.idle && !_queueActive) {
                     return _ChatIdleState(
                       title: l.chatWaitingTitle,
                       subtitle: l.chatWaitingSubtitle,
@@ -412,8 +462,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     subtitle: l.queueSearchingSubtitle,
                     countdownText: null,
                     showConnect: false,
+                    showStop: true,
                     connectLabel: l.queueConnect,
+                    stopLabel: l.queueStop,
                     onConnect: _enterMatchingQueue,
+                    onStop: _stopMatchingQueue,
                   );
                 },
               ),
@@ -472,8 +525,11 @@ class _ChatSearchingState extends StatelessWidget {
   final String? subtitle;
   final String? countdownText;
   final bool showConnect;
+  final bool showStop;
   final String connectLabel;
+  final String stopLabel;
   final VoidCallback onConnect;
+  final VoidCallback onStop;
 
   const _ChatSearchingState({
     required this.emoji,
@@ -481,8 +537,11 @@ class _ChatSearchingState extends StatelessWidget {
     required this.subtitle,
     required this.countdownText,
     required this.showConnect,
+    required this.showStop,
     required this.connectLabel,
+    required this.stopLabel,
     required this.onConnect,
+    required this.onStop,
   });
 
   @override
@@ -513,6 +572,13 @@ class _ChatSearchingState extends StatelessWidget {
             onPressed: onConnect,
             child: Text(connectLabel),
           ),
+        if (showStop) ...[
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: onStop,
+            child: Text(stopLabel),
+          ),
+        ],
       ],
     );
   }

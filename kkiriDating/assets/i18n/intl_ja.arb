@@ -1,4 +1,4 @@
-﻿{
+{
   "@@locale": "ja",
   "appTitle": "Kkiri Dating",
   "tabRecommend": "おすすめ",
@@ -69,7 +69,9 @@
   "queueConnect": "接続する",
   "queueAccept": "承諾",
   "queueDecline": "拒否",
+  "queueStop": "マッチング終了",
   "queueRemainingTime": "残り時間 {seconds}秒",
+  "queueResumeSubtitle": "別の相手を探しています 🌱",
   "notificationMatchAcceptedToast": "💞 マッチが成立しました。今すぐ会話を始めましょう。",
   "notificationNewMessageToast": "💬 新しいメッセージが届きました",
   "notificationViewAction": "表示",

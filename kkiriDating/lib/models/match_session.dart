@@ -19,6 +19,7 @@ class MatchSession {
   final DateTime? respondedAt;
   final DateTime? expiresAt;
   final String? mode;
+  final Map<String, String?> responses;
 
   MatchSession({
     required this.id,
@@ -30,6 +31,7 @@ class MatchSession {
     required this.respondedAt,
     this.expiresAt,
     this.mode,
+    required this.responses,
   });
 
   factory MatchSession.fromDoc(
@@ -47,6 +49,7 @@ class MatchSession {
       respondedAt: (data['respondedAt'] as Timestamp?)?.toDate(),
       expiresAt: (data['expiresAt'] as Timestamp?)?.toDate(),
       mode: data['mode'] as String?,
+      responses: _responsesFromMap(data['responses']),
     );
   }
 
@@ -61,6 +64,7 @@ class MatchSession {
           respondedAt == null ? null : Timestamp.fromDate(respondedAt!),
       'expiresAt': expiresAt == null ? null : Timestamp.fromDate(expiresAt!),
       'mode': mode,
+      'responses': responses,
     };
   }
 
@@ -97,5 +101,19 @@ class MatchSession {
       case MatchStatus.expired:
         return 'expired';
     }
+  }
+
+  static Map<String, String?> _responsesFromMap(Object? value) {
+    if (value is Map) {
+      final result = <String, String?>{};
+      for (final entry in value.entries) {
+        final key = entry.key?.toString();
+        if (key == null || key.isEmpty) continue;
+        final response = entry.value?.toString();
+        result[key] = response;
+      }
+      return result;
+    }
+    return <String, String?>{};
   }
 }

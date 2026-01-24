@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isQueueDoc(sessionId) {
+      return sessionId.matches('^queue_.*$');
+    }
+
+    function isParticipant(data) {
+      return signedIn() &&
+        (data.userA == request.auth.uid || data.userB == request.auth.uid);
+    }
+
+    // ─────────────────────────────
+    // users (profiles)
+    // ─────────────────────────────
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+
+      // likes: only the owner can read their inbox;
+      // writing a "like" should be done by the sender to THEIR OWN collection,
+      // or preferably by Functions. Keep minimal surface.
+      match /likes/{docId} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
+
+      // notifications: safest is Functions-only create.
+      match /notifications/{notificationId} {
+        allow read, update, delete: if signedIn() && request.auth.uid == userId;
+        allow create: if false; // Functions-only (prevents spam)
+      }
+
+      match /devices/{deviceId} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // ─────────────────────────────
+    // match_sessions (SSOT)
+    // ─────────────────────────────
+    match /match_sessions/{sessionId} {
+
+      // Read:
+      // - queue docs: only owner can read
+      // - match docs: only participants can read
+      allow read: if isQueueDoc(sessionId)
+        ? (signedIn() && resource.data.userA == request.auth.uid)
+        : isParticipant(resource.data);
+
+      // Queue doc: owner can create/update their own queue only.
+      // Allow status searching/idle so user can stop matching safely.
+      allow create, update: if isQueueDoc(sessionId)
+        && signedIn()
+        && sessionId == 'queue_' + request.auth.uid
+        && request.resource.data.userA == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'userA',
+          'interests',
+          'location',
+          'radiusKm',
+          'mode',
+          'status',
+          'createdAt',
+          'expiresAt',
+          'updatedAt'
+        ])
+        && request.resource.data.mode == 'auto'
+        && request.resource.data.status in ['searching', 'idle'];
+
+      // Match doc:
+      // - Clients cannot create match docs (Functions only).
+      // - Participants can ONLY update their own response.
+      allow create: if false;
+
+      allow update: if !isQueueDoc(sessionId)
+        && isParticipant(resource.data)
+
+        // Only responses can change
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['responses'])
+
+        // Freeze all system fields (Functions-only)
+        && request.resource.data.userA == resource.data.userA
+        && request.resource.data.userB == resource.data.userB
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.chatRoomId == resource.data.chatRoomId
+        && request.resource.data.expiresAt == resource.data.expiresAt
+        && request.resource.data.notified == resource.data.notified
+
+        // My response must be valid and I must not change the other user's response.
+        && (
+          (
+            request.auth.uid == resource.data.userA
+            && request.resource.data.responses[request.auth.uid] in ['accepted', 'rejected']
+            && request.resource.data.responses[resource.data.userB]
+              == resource.data.responses[resource.data.userB]
+          )
+          ||
+          (
+            request.auth.uid == resource.data.userB
+            && request.resource.data.responses[request.auth.uid] in ['accepted', 'rejected']
+            && request.resource.data.responses[resource.data.userA]
+              == resource.data.responses[resource.data.userA]
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────
+    // chat_rooms (Functions ONLY)
+    // ─────────────────────────────
+    match /chat_rooms/{roomId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participants;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if signedIn()
+          && request.auth.uid in get(
+            /databases/$(database)/documents/chat_rooms/$(roomId)
+          ).data.participants;
+
+        // Allow participants to create messages (no notified field from client)
+        allow create: if signedIn()
+          && request.auth.uid in get(
+            /databases/$(database)/documents/chat_rooms/$(roomId)
+          ).data.participants
+          && request.resource.data.senderId == request.auth.uid
+          && !('notified' in request.resource.data);
+
+        allow update, delete: if false;
+      }
+    }
+
+    // ─────────────────────────────
+    // Legacy matches are denied.
+    // ─────────────────────────────
+    match /matches/{matchId} {
+      allow read, write: if false;
+    }
+  }
+}

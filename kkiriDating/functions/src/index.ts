@@ -77,7 +77,15 @@ export const onMatchSessionAccepted = onDocumentWritten(
     const afterData = afterSnap.data() ?? {};
     const beforeStatus = beforeData.status?.toString();
     const afterStatus = afterData.status?.toString();
-    if (beforeStatus === "accepted" || afterStatus !== "accepted") return;
+    const responses = (afterData.responses ?? {}) as Record<string, unknown>;
+    const userA = (afterData.userA ?? "").toString();
+    const userB = (afterData.userB ?? "").toString();
+    const bothAccepted =
+      responses[userA]?.toString() === "accepted" &&
+      responses[userB]?.toString() === "accepted";
+    const shouldAccept = afterStatus === "pending" && bothAccepted;
+    if (beforeStatus === "accepted") return;
+    if (afterStatus !== "accepted" && !shouldAccept) return;
 
     const sessionId = event.params.sessionId as string;
     const sessionRef = db.collection("match_sessions").doc(sessionId);
@@ -87,12 +95,17 @@ export const onMatchSessionAccepted = onDocumentWritten(
       const sessionSnap = await tx.get(sessionRef);
       if (!sessionSnap.exists) return;
       const data = sessionSnap.data() ?? {};
-      if (data.status?.toString() !== "accepted") return;
+      const status = data.status?.toString();
+      const sessionResponses = (data.responses ?? {}) as Record<string, unknown>;
+      const txUserA = (data.userA ?? "").toString();
+      const txUserB = (data.userB ?? "").toString();
+      const txBothAccepted =
+        sessionResponses[txUserA]?.toString() === "accepted" &&
+        sessionResponses[txUserB]?.toString() === "accepted";
+      if (status !== "accepted" && !txBothAccepted) return;
       if (data.chatRoomId != null) return;
 
-      const userA = (data.userA ?? "").toString();
-      const userB = (data.userB ?? "").toString();
-      const participants = [userA, userB].filter((id) => id.trim().length > 0);
+      const participants = [txUserA, txUserB].filter((id) => id.trim().length > 0);
       if (participants.length < 2) return;
       const mode = data.mode?.toString() ?? null;
 
@@ -120,13 +133,12 @@ export const onMatchSessionAccepted = onDocumentWritten(
           chatRoomId: sessionId,
           respondedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
+          status: "accepted",
         },
         {merge: true}
       );
     });
 
-    const userA = (afterData.userA ?? "").toString();
-    const userB = (afterData.userB ?? "").toString();
     if (userA && userB) {
       await db
         .collection("users")
@@ -152,6 +164,59 @@ export const onMatchSessionAccepted = onDocumentWritten(
         });
     }
   }
+);
+
+export const onMatchSessionRejectedByResponse = onDocumentWritten(
+  {
+    document: "match_sessions/{sessionId}",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async (event) => {
+    const beforeSnap = event.data?.before;
+    const afterSnap = event.data?.after;
+    if (!afterSnap || !afterSnap.exists) return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = beforeSnap?.data() ?? {};
+    const afterData = afterSnap.data() ?? {};
+
+    const sessionId = event.params.sessionId as string;
+    if (sessionId.startsWith("queue_")) return;
+
+    const beforeStatus = beforeData.status?.toString();
+    const afterStatus = afterData.status?.toString();
+    if (afterStatus !== "pending") return;
+    if (beforeStatus === "rejected" || beforeStatus === "expired") return;
+
+    const userA = (afterData.userA ?? "").toString();
+    const userB = (afterData.userB ?? "").toString();
+    const responses = (afterData.responses ?? {}) as Record<string, unknown>;
+    const rejected =
+      responses[userA]?.toString() === "rejected" ||
+      responses[userB]?.toString() === "rejected";
+    if (!rejected) return;
+
+    console.log("auto-match response rejected", {sessionId});
+
+    await db.runTransaction(async (tx) => {
+      const ref = db.collection("match_sessions").doc(sessionId);
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const data = snap.data() ?? {};
+      const status = data.status?.toString();
+      if (status !== "pending") return;
+      tx.set(
+        ref,
+        {
+          status: "rejected",
+          respondedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        {merge: true},
+      );
+    });
+  },
 );
 
 export const onAutoMatchSessionSearching = onDocumentWritten(
@@ -403,6 +468,10 @@ async function tryPairQueues(
       status: "pending",
       initiatedBy,
       chatRoomId: null,
+      responses: {
+        [ids[0]]: null,
+        [ids[1]]: null,
+      },
       createdAt: FieldValue.serverTimestamp(),
       respondedAt: null,
       expiresAt,

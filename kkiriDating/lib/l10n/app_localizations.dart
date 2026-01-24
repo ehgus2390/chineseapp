@@ -92,8 +92,10 @@ class AppLocalizations {
   String get queueConnect => t('queueConnect');
   String get queueAccept => t('queueAccept');
   String get queueDecline => t('queueDecline');
+  String get queueStop => t('queueStop');
   String queueRemainingTime(String seconds) =>
       t('queueRemainingTime').replaceAll('{seconds}', seconds);
+  String get queueResumeSubtitle => t('queueResumeSubtitle');
   String get notificationMatchAcceptedToast =>
       t('notificationMatchAcceptedToast');
   String get notificationNewMessageToast => t('notificationNewMessageToast');

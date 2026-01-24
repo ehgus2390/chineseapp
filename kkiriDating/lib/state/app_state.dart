@@ -14,6 +14,7 @@ import '../services/chat_service.dart';
 import '../services/preferences_storage.dart';
 
 enum MatchMode { direct, auto }
+enum AutoMatchState { idle, searching, matched, chatting }
 
 class AppState extends ChangeNotifier {
   AppState() {
@@ -40,10 +41,12 @@ class AppState extends ChangeNotifier {
   bool _isOnboarded = false;
   bool _initialized = false;
   bool _distanceFilterEnabled = true;
+  String _queueStatus = 'idle';
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubA;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubB;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _queueSub;
   StreamSubscription<User?>? _authSub;
 
   Stream<session_model.MatchSession?> watchMatchSession(String otherUserId) {
@@ -77,6 +80,23 @@ class AppState extends ChangeNotifier {
   Set<String> get likedIds => Set<String>.unmodifiable(_likedIds);
   Set<String> get passedIds => Set<String>.unmodifiable(_passedIds);
   bool get distanceFilterEnabled => _distanceFilterEnabled;
+  AutoMatchState get autoMatchState {
+    final session = activeAutoMatchSession;
+    if (session != null) {
+      if (session.status == session_model.MatchStatus.accepted &&
+          session.chatRoomId != null &&
+          session.chatRoomId!.trim().isNotEmpty) {
+        return AutoMatchState.chatting;
+      }
+      if (session.status == session_model.MatchStatus.pending) {
+        return AutoMatchState.matched;
+      }
+    }
+    if (_queueStatus == 'searching') {
+      return AutoMatchState.searching;
+    }
+    return AutoMatchState.idle;
+  }
 
   bool isProfileReady(Profile profile) {
     final String gender = profile.gender.trim().toLowerCase();
@@ -123,6 +143,7 @@ class AppState extends ChangeNotifier {
       await _meSub?.cancel();
       await _matchSessionsSubA?.cancel();
       await _matchSessionsSubB?.cancel();
+      await _queueSub?.cancel();
       notifyListeners();
       return;
     }
@@ -132,6 +153,7 @@ class AppState extends ChangeNotifier {
     await _loadMyDecisions();
     _watchMyProfile();
     _watchMatchSessions();
+    _watchQueueStatus();
     notifyListeners();
   }
 
@@ -211,6 +233,26 @@ class AppState extends ChangeNotifier {
         .where('userB', isEqualTo: meProfile.id)
         .snapshots()
         .listen(_handleMatchSessionsSnapshot);
+  }
+
+  void _watchQueueStatus() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    _queueSub?.cancel();
+    _queueSub = _db
+        .collection('match_sessions')
+        .doc('queue_${meProfile.id}')
+        .snapshots()
+        .listen((snapshot) {
+          if (!snapshot.exists) {
+            _queueStatus = 'idle';
+            notifyListeners();
+            return;
+          }
+          final data = snapshot.data() ?? <String, dynamic>{};
+          _queueStatus = (data['status'] ?? 'idle').toString();
+          notifyListeners();
+        });
   }
 
   void _handleMatchSessionsSnapshot(
@@ -403,6 +445,15 @@ class AppState extends ChangeNotifier {
         'createdAt': FieldValue.serverTimestamp(),
         'respondedAt': isDirect ? FieldValue.serverTimestamp() : null,
         'expiresAt': isDirect ? null : Timestamp.fromDate(expiresAt!),
+        'responses': isDirect
+            ? <String, dynamic>{
+                ids.first: 'accepted',
+                ids.last: 'accepted',
+              }
+            : <String, dynamic>{
+                ids.first: null,
+                ids.last: null,
+              },
       });
       return session_model.MatchSession(
         id: matchId,
@@ -416,6 +467,15 @@ class AppState extends ChangeNotifier {
         respondedAt: isDirect ? now : null,
         expiresAt: expiresAt,
         mode: isDirect ? 'direct' : 'auto',
+        responses: isDirect
+            ? <String, String?>{
+                ids.first: 'accepted',
+                ids.last: 'accepted',
+              }
+            : <String, String?>{
+                ids.first: null,
+                ids.last: null,
+              },
       );
     });
   }
@@ -452,6 +512,19 @@ class AppState extends ChangeNotifier {
     );
   }
 
+  Future<void> stopAutoMatchQueue() async {
+    final User? currentUser = _auth.currentUser;
+    if (currentUser == null || currentUser.isAnonymous) return;
+    final String sessionId = 'queue_${currentUser.uid}';
+    await _db.collection('match_sessions').doc(sessionId).set(
+      <String, dynamic>{
+        'status': 'idle',
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
   session_model.MatchSession? get activeAutoMatchSession {
     final Profile? meProfile = _me;
     if (meProfile == null) return null;
@@ -478,13 +551,11 @@ class AppState extends ChangeNotifier {
       final snap = await tx.get(ref);
       if (!snap.exists) return;
       final data = snap.data() ?? <String, dynamic>{};
-      if (data['status']?.toString() == 'accepted') return;
-      if (ready) {
-        tx.set(ref, <String, dynamic>{
-          'status': 'accepted',
-          'respondedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
+      if (data['status']?.toString() != 'pending') return;
+      if (!ready) return;
+      tx.set(ref, <String, dynamic>{
+        'responses.${meProfile.id}': 'accepted',
+      }, SetOptions(merge: true));
     });
   }
 
@@ -536,18 +607,11 @@ class AppState extends ChangeNotifier {
         .doc(profile.id)
         .collection('likes')
         .doc(meProfile.id);
-    await targetLikeRef.set(<String, dynamic>{
-      'fromUid': meProfile.id,
-      'createdAt': FieldValue.serverTimestamp(),
-      'seen': false,
-    }, SetOptions(merge: true));
-
-    await createNotification(
-      userId: profile.id,
-      type: 'like',
-      fromUid: meProfile.id,
-      refId: null,
-    );
+      await targetLikeRef.set(<String, dynamic>{
+        'fromUid': meProfile.id,
+        'createdAt': FieldValue.serverTimestamp(),
+        'seen': false,
+      }, SetOptions(merge: true));
 
     final reciprocal = await _db
         .collection('users')
@@ -578,19 +642,7 @@ class AppState extends ChangeNotifier {
         );
       });
 
-      await createNotification(
-        userId: meProfile.id,
-        type: 'match',
-        fromUid: profile.id,
-        refId: chatRoomId,
-      );
-      await createNotification(
-        userId: profile.id,
-        type: 'match',
-        fromUid: meProfile.id,
-        refId: chatRoomId,
-      );
-    }
+      }
 
     notifyListeners();
   }
@@ -842,22 +894,6 @@ class AppState extends ChangeNotifier {
     await batch.commit();
   }
 
-  Future<void> createNotification({
-    required String userId,
-    required String type,
-    required String? fromUid,
-    required String? refId,
-  }) async {
-    await _db.collection('users').doc(userId).collection('notifications').add(
-      <String, dynamic>{
-        'type': type,
-        'fromUid': fromUid,
-        'refId': refId,
-        'seen': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-    );
-  }
 
   Future<void> ensureFirstMessageGuide(String matchId, String guideText) async {
     bool shouldSend = false;
