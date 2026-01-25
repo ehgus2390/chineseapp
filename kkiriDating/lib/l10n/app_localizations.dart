@@ -135,6 +135,7 @@ class AppLocalizations {
   String get firstMessageSuggestions => t('firstMessageSuggestions');
   String get chatInputHint => t('chatInputHint');
   String get chatError => t('chatError');
+  String get chatExit => t('chatExit');
 }
 
 class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

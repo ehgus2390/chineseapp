@@ -108,5 +108,5 @@
   "firstMessageGuide": "✨ 대화를 시작해보세요!\n공통 관심사로 이야기를 꺼내면 좋아요.",
   "firstMessageSuggestions": "요즘 {interest} 자주 하세요?|{interest} 좋아하게 된 계기가 뭐예요?|혹시 {interest} 말고도 관심 있는 게 있나요?",
   "chatInputHint": "메시지를 입력하세요",
-  "chatError": "오류가 발생했습니다"
+  "chatError": "오류가 발생했습니다",\n  "chatExit": "채팅 종료하기"
 }

@@ -34,7 +34,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   int _countdown = 10;
   bool _badgeCleared = false;
   bool _timeoutReached = false;
-  bool _ignorePendingSession = false;
   bool _sentExpiry = false;
   String? _handledRejectedSessionId;
   static const int _queueDurationSeconds = 10;
@@ -77,7 +76,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
       _queueActive = true;
       _countdown = _queueDurationSeconds;
       _timeoutReached = false;
-      _ignorePendingSession = false;
       _sentExpiry = false;
     });
     try {
@@ -90,7 +88,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Future<void> _stopMatchingQueue() async {
     setState(() {
       _queueActive = false;
-      _ignorePendingSession = true;
       _timeoutReached = false;
       _sentExpiry = false;
     });
@@ -126,7 +123,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
           _countdown = 0;
           _queueActive = false;
           _timeoutReached = true;
-          _ignorePendingSession = true;
           _sentExpiry = false;
         });
         Timer(const Duration(seconds: 2), () {
@@ -276,14 +272,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       // Previously, accepting set status=accepted immediately, so the
                       // other user never saw MATCH FOUND. We now write responses per user.
                       _navigating = false;
-                      if (_ignorePendingSession) {
-                        return _ChatIdleState(
-                          title: l.chatWaitingTitle,
-                          subtitle: l.chatWaitingSubtitle,
-                          connectLabel: l.queueConnect,
-                          onConnect: _enterMatchingQueue,
-                        );
-                      }
                       if (_timeoutReached && !_sentExpiry) {
                         _sentExpiry = true;
                         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -345,16 +333,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 declineLabel: l.queueDecline,
                                 onAccept: () async {
                                   _stopCountdown();
-                                  if (mounted) {
-                                    setState(() => _ignorePendingSession = false);
-                                  }
                                   await _setMatchResponse(autoSession, 'accepted');
                                 },
                                 onDecline: () async {
                                   _stopCountdown();
-                                  if (mounted) {
-                                    setState(() => _ignorePendingSession = true);
-                                  }
                                   await _setMatchResponse(autoSession, 'rejected');
                                   if (mounted) {
                                     await _enterMatchingQueue();

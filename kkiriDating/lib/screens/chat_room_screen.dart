@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../state/app_state.dart';
 import '../state/notification_state.dart';
 import '../models/message.dart';
@@ -46,7 +47,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final l = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.chatTitle)),
+      appBar: AppBar(
+        title: Text(l.chatTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.exit_to_app),
+            tooltip: l.chatExit,
+            onPressed: () async {
+              await state.exitChatRoom(widget.matchId);
+              if (!context.mounted) return;
+              context.go('/home/chat');
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(

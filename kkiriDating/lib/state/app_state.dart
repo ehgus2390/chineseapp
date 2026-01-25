@@ -894,6 +894,15 @@ class AppState extends ChangeNotifier {
     await batch.commit();
   }
 
+  Future<void> exitChatRoom(String roomId) async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    await _db.collection('chat_rooms').doc(roomId).set(<String, dynamic>{
+      'endedBy': meProfile.id,
+      'endedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
 
   Future<void> ensureFirstMessageGuide(String matchId, String guideText) async {
     bool shouldSend = false;

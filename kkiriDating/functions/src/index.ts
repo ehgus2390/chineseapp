@@ -44,24 +44,19 @@ export const expireMatchSessions = onSchedule(
       }
 
       const batch = db.batch();
-      const requeueIds = new Set<string>();
       for (const doc of snapshot.docs) {
         const data = doc.data() ?? {};
-        const userA = (data.userA ?? "").toString();
-        const userB = (data.userB ?? "").toString();
         batch.set(
           doc.ref,
           {
             status: "expired",
+            respondedAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
           },
           {merge: true}
         );
-        if (userA) requeueIds.add(userA);
-        if (userB) requeueIds.add(userB);
       }
       await batch.commit();
-      await Promise.all([...requeueIds].map((uid) => requeueUser(uid)));
     }
   }
 );
@@ -251,6 +246,15 @@ export const onAutoMatchSessionSearching = onDocumentWritten(
       afterStatus,
     });
 
+    if (beforeStatus === afterStatus) {
+      console.log("auto-match skip: status unchanged", {
+        sessionId,
+        beforeStatus,
+        afterStatus,
+      });
+      return;
+    }
+
     // Only react to auto queue sessions transitioning into searching.
     // If pairing never creates a pending {uidA}_{uidB} doc, the UI never sees match found.
     if (mode !== "auto") {
@@ -391,29 +395,21 @@ async function tryPairQueues(
       return;
     }
 
-    const userA = (queueAData.userA ?? "").toString();
-    const userB = (queueBData.userA ?? "").toString();
-    if (!userA || !userB || userA === userB) {
-      console.log("auto-match skip: invalid users", {userA, userB});
+    const userAId = (queueAData.userA ?? "").toString();
+    const userBId = (queueBData.userA ?? "").toString();
+    if (!userAId || !userBId || userAId === userBId) {
+      console.log("auto-match skip: invalid users", {userAId, userBId});
       return;
     }
 
-    // Avoid false positives if legacy queue docs stored non-string userB.
-    const queueAUserB =
-      typeof queueAData.userB === "string" ? queueAData.userB : "";
-    const queueBUserB =
-      typeof queueBData.userB === "string" ? queueBData.userB : "";
-    if (queueAUserB.trim().length > 0 || queueBUserB.trim().length > 0) {
-      console.log("auto-match skip: legacy queue userB present");
-      return;
-    }
-
-    const hydratedA = await hydrateQueueUser(tx, userA, queueAData);
-    const hydratedB = await hydrateQueueUser(tx, userB, queueBData);
+    const hydratedA = await hydrateQueueUser(tx, userAId, queueAData);
+    const hydratedB = await hydrateQueueUser(tx, userBId, queueBData);
     if (!hydratedA || !hydratedB) {
       console.log("auto-match skip: hydrate failed");
       return;
     }
+
+    console.log("auto-match eligible users", {userAId, userBId});
 
     if (!hasCommonInterest(hydratedA.interests, hydratedB.interests)) {
       console.log("auto-match skip: no common interests");
@@ -430,7 +426,7 @@ async function tryPairQueues(
       return;
     }
 
-    const ids = [userA, userB].sort();
+    const ids = [userAId, userBId].sort();
     const pairSessionId = `${ids[0]}_${ids[1]}`;
     const pairRef = db.collection("match_sessions").doc(pairSessionId);
     const pairSnap = await tx.get(pairRef);
@@ -438,17 +434,6 @@ async function tryPairQueues(
       console.log("auto-match skip: pair already exists", {pairSessionId});
       return;
     }
-
-    tx.set(
-      queueARef,
-      {status: "locked", updatedAt: FieldValue.serverTimestamp()},
-      {merge: true},
-    );
-    tx.set(
-      queueBRef,
-      {status: "locked", updatedAt: FieldValue.serverTimestamp()},
-      {merge: true},
-    );
 
     const notifARef = db
       .collection("users")
@@ -477,6 +462,7 @@ async function tryPairQueues(
       expiresAt,
       updatedAt: FieldValue.serverTimestamp(),
     });
+    console.log("auto-match created match_session", {pairSessionId});
 
     tx.set(notifARef, {
       type: "match",
@@ -495,12 +481,12 @@ async function tryPairQueues(
 
     tx.set(
       queueARef,
-      {status: "expired", updatedAt: FieldValue.serverTimestamp()},
+      {status: "idle", updatedAt: FieldValue.serverTimestamp()},
       {merge: true},
     );
     tx.set(
       queueBRef,
-      {status: "expired", updatedAt: FieldValue.serverTimestamp()},
+      {status: "idle", updatedAt: FieldValue.serverTimestamp()},
       {merge: true},
     );
     console.log("auto-match paired", {pairSessionId});
@@ -533,10 +519,10 @@ export const onMatchSessionRejectedOrExpired = onDocumentWritten(
     if (afterStatus !== "expired" && afterStatus !== "rejected") return;
     if (beforeStatus === afterStatus) return;
 
-    const userA = (afterData.userA ?? "").toString();
-    const userB = (afterData.userB ?? "").toString();
-    await requeueUser(userA);
-    await requeueUser(userB);
+    console.log("auto-match rejected/expired: client should requeue", {
+      sessionId,
+      afterStatus,
+    });
   },
 );
 
@@ -635,33 +621,6 @@ function normalizeInterests(input: unknown[]): string[] {
     .filter((value): value is string => typeof value === "string" && value.length > 0);
 }
 
-async function requeueUser(userId: string): Promise<void> {
-  if (!userId) return;
-  const userSnap = await db.collection("users").doc(userId).get();
-  const userData = userSnap.data() ?? {};
-  const interests = normalizeInterests(
-    (userData.interests ?? []) as unknown[],
-  );
-  const location = userData.location as GeoPoint | undefined;
-  const radiusKm = Number(userData.distanceKm);
-  if (!location || interests.length === 0 || !Number.isFinite(radiusKm) || radiusKm <= 0) {
-    return;
-  }
-  await db.collection("match_sessions").doc(`queue_${userId}`).set(
-    {
-      userA: userId,
-      interests,
-      location,
-      radiusKm,
-      mode: "auto",
-      status: "searching",
-      createdAt: FieldValue.serverTimestamp(),
-      expiresAt: Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    {merge: true},
-  );
-}
 
 export const onMatchSessionAcceptedNotification = onDocumentWritten(
   {
@@ -752,6 +711,60 @@ export const onChatMessageCreatedNotification = onDocumentCreated(
     });
   }
 );
+
+export const onChatRoomEnded = onDocumentWritten(
+  {
+    document: "chat_rooms/{roomId}",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async (event) => {
+    const beforeSnap = event.data?.before;
+    const afterSnap = event.data?.after;
+    if (!afterSnap || !afterSnap.exists) return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = beforeSnap?.data() ?? {};
+    const afterData = afterSnap.data() ?? {};
+
+    const roomId = event.params.roomId as string;
+    const beforeEndedBy = (beforeData.endedBy ?? "").toString();
+    const afterEndedBy = (afterData.endedBy ?? "").toString();
+    if (!afterEndedBy) return;
+
+    if (!beforeEndedBy) {
+      await db
+        .collection("chat_rooms")
+        .doc(roomId)
+        .collection("messages")
+        .add({
+          senderId: "system",
+          text: "상대가 채팅을 종료했습니다",
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      return;
+    }
+
+    if (beforeEndedBy && afterEndedBy && beforeEndedBy !== afterEndedBy) {
+      await deleteChatRoomWithMessages(roomId);
+    }
+  },
+);
+
+async function deleteChatRoomWithMessages(roomId: string): Promise<void> {
+  const roomRef = db.collection("chat_rooms").doc(roomId);
+  const messagesRef = roomRef.collection("messages");
+  while (true) {
+    const snapshot = await messagesRef.limit(200).get();
+    if (snapshot.empty) break;
+    const batch = db.batch();
+    for (const doc of snapshot.docs) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
+  }
+  await roomRef.delete();
+}
 
 async function markMatchAcceptedNotified(sessionId: string): Promise<boolean> {
   const sessionRef = db.collection("match_sessions").doc(sessionId);
