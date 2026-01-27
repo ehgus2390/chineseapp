@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onChatMessageCreatedNotification = exports.onMatchSessionAcceptedNotification = exports.onMatchSessionRejectedOrExpired = exports.cleanupQueueDocs = exports.onAutoMatchSessionSearching = exports.onMatchSessionAccepted = exports.expireMatchSessions = void 0;
+exports.onChatRoomEnded = exports.onChatMessageCreatedNotification = exports.onMatchSessionAcceptedNotification = exports.onMatchSessionRejectedOrExpired = exports.cleanupQueueDocs = exports.onAutoMatchSessionSearching = exports.onMatchSessionRejectedByResponse = exports.onMatchSessionAccepted = exports.expireMatchSessions = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const app_1 = require("firebase-admin/app");
@@ -16,7 +16,7 @@ exports.expireMatchSessions = (0, scheduler_1.onSchedule)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async () => {
-    var _a, _b, _c;
+    var _a;
     // Only expire pending matches; queue docs are handled separately.
     const statuses = ["pending"];
     const now = firestore_2.Timestamp.now();
@@ -34,26 +34,19 @@ exports.expireMatchSessions = (0, scheduler_1.onSchedule)({
             break;
         }
         const batch = db.batch();
-        const requeueIds = new Set();
         for (const doc of snapshot.docs) {
             const data = (_a = doc.data()) !== null && _a !== void 0 ? _a : {};
-            const userA = ((_b = data.userA) !== null && _b !== void 0 ? _b : "").toString();
-            const userB = ((_c = data.userB) !== null && _c !== void 0 ? _c : "").toString();
             batch.set(doc.ref, {
                 status: "expired",
+                respondedAt: firestore_2.FieldValue.serverTimestamp(),
                 updatedAt: firestore_2.FieldValue.serverTimestamp(),
             }, { merge: true });
-            if (userA)
-                requeueIds.add(userA);
-            if (userB)
-                requeueIds.add(userB);
         }
         await batch.commit();
-        await Promise.all([...requeueIds].map((uid) => requeueUser(uid)));
     }
 });
 exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessions/{sessionId}", async (event) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
     const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
     const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
     if (!afterSnap || !afterSnap.exists)
@@ -63,27 +56,39 @@ exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessi
     const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
     const beforeStatus = (_e = beforeData.status) === null || _e === void 0 ? void 0 : _e.toString();
     const afterStatus = (_f = afterData.status) === null || _f === void 0 ? void 0 : _f.toString();
-    if (beforeStatus === "accepted" || afterStatus !== "accepted")
+    const responses = ((_g = afterData.responses) !== null && _g !== void 0 ? _g : {});
+    const userA = ((_h = afterData.userA) !== null && _h !== void 0 ? _h : "").toString();
+    const userB = ((_j = afterData.userB) !== null && _j !== void 0 ? _j : "").toString();
+    const bothAccepted = ((_k = responses[userA]) === null || _k === void 0 ? void 0 : _k.toString()) === "accepted" &&
+        ((_l = responses[userB]) === null || _l === void 0 ? void 0 : _l.toString()) === "accepted";
+    const shouldAccept = afterStatus === "pending" && bothAccepted;
+    if (beforeStatus === "accepted")
+        return;
+    if (afterStatus !== "accepted" && !shouldAccept)
         return;
     const sessionId = event.params.sessionId;
     const sessionRef = db.collection("match_sessions").doc(sessionId);
     const roomRef = db.collection("chat_rooms").doc(sessionId);
     await db.runTransaction(async (tx) => {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         const sessionSnap = await tx.get(sessionRef);
         if (!sessionSnap.exists)
             return;
         const data = (_a = sessionSnap.data()) !== null && _a !== void 0 ? _a : {};
-        if (((_b = data.status) === null || _b === void 0 ? void 0 : _b.toString()) !== "accepted")
+        const status = (_b = data.status) === null || _b === void 0 ? void 0 : _b.toString();
+        const sessionResponses = ((_c = data.responses) !== null && _c !== void 0 ? _c : {});
+        const txUserA = ((_d = data.userA) !== null && _d !== void 0 ? _d : "").toString();
+        const txUserB = ((_e = data.userB) !== null && _e !== void 0 ? _e : "").toString();
+        const txBothAccepted = ((_f = sessionResponses[txUserA]) === null || _f === void 0 ? void 0 : _f.toString()) === "accepted" &&
+            ((_g = sessionResponses[txUserB]) === null || _g === void 0 ? void 0 : _g.toString()) === "accepted";
+        if (status !== "accepted" && !txBothAccepted)
             return;
         if (data.chatRoomId != null)
             return;
-        const userA = ((_c = data.userA) !== null && _c !== void 0 ? _c : "").toString();
-        const userB = ((_d = data.userB) !== null && _d !== void 0 ? _d : "").toString();
-        const participants = [userA, userB].filter((id) => id.trim().length > 0);
+        const participants = [txUserA, txUserB].filter((id) => id.trim().length > 0);
         if (participants.length < 2)
             return;
-        const mode = (_f = (_e = data.mode) === null || _e === void 0 ? void 0 : _e.toString()) !== null && _f !== void 0 ? _f : null;
+        const mode = (_j = (_h = data.mode) === null || _h === void 0 ? void 0 : _h.toString()) !== null && _j !== void 0 ? _j : null;
         const roomSnap = await tx.get(roomRef);
         if (!roomSnap.exists) {
             tx.set(roomRef, {
@@ -102,10 +107,9 @@ exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessi
             chatRoomId: sessionId,
             respondedAt: firestore_2.FieldValue.serverTimestamp(),
             updatedAt: firestore_2.FieldValue.serverTimestamp(),
+            status: "accepted",
         }, { merge: true });
     });
-    const userA = ((_g = afterData.userA) !== null && _g !== void 0 ? _g : "").toString();
-    const userB = ((_h = afterData.userB) !== null && _h !== void 0 ? _h : "").toString();
     if (userA && userB) {
         await db
             .collection("users")
@@ -131,6 +135,54 @@ exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessi
         });
     }
 });
+exports.onMatchSessionRejectedByResponse = (0, firestore_1.onDocumentWritten)({
+    document: "match_sessions/{sessionId}",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+}, async (event) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+    const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
+    const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
+    if (!afterSnap || !afterSnap.exists)
+        return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
+    const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
+    const sessionId = event.params.sessionId;
+    if (sessionId.startsWith("queue_"))
+        return;
+    const beforeStatus = (_e = beforeData.status) === null || _e === void 0 ? void 0 : _e.toString();
+    const afterStatus = (_f = afterData.status) === null || _f === void 0 ? void 0 : _f.toString();
+    if (afterStatus !== "pending")
+        return;
+    if (beforeStatus === "rejected" || beforeStatus === "expired")
+        return;
+    const userA = ((_g = afterData.userA) !== null && _g !== void 0 ? _g : "").toString();
+    const userB = ((_h = afterData.userB) !== null && _h !== void 0 ? _h : "").toString();
+    const responses = ((_j = afterData.responses) !== null && _j !== void 0 ? _j : {});
+    const rejected = ((_k = responses[userA]) === null || _k === void 0 ? void 0 : _k.toString()) === "rejected" ||
+        ((_l = responses[userB]) === null || _l === void 0 ? void 0 : _l.toString()) === "rejected";
+    if (!rejected)
+        return;
+    console.log("auto-match response rejected", { sessionId });
+    await db.runTransaction(async (tx) => {
+        var _a, _b;
+        const ref = db.collection("match_sessions").doc(sessionId);
+        const snap = await tx.get(ref);
+        if (!snap.exists)
+            return;
+        const data = (_a = snap.data()) !== null && _a !== void 0 ? _a : {};
+        const status = (_b = data.status) === null || _b === void 0 ? void 0 : _b.toString();
+        if (status !== "pending")
+            return;
+        tx.set(ref, {
+            status: "rejected",
+            respondedAt: firestore_2.FieldValue.serverTimestamp(),
+            updatedAt: firestore_2.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    });
+});
 exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
     document: "match_sessions/{sessionId}",
     region: "asia-northeast3",
@@ -146,22 +198,45 @@ exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
     const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
     const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
     const sessionId = event.params.sessionId;
-    if (!sessionId.startsWith("queue_"))
+    if (!sessionId.startsWith("queue_")) {
+        console.log("auto-match skip: not queue doc", { sessionId });
         return;
+    }
     const afterStatus = (_e = afterData.status) === null || _e === void 0 ? void 0 : _e.toString();
     const beforeStatus = (_f = beforeData.status) === null || _f === void 0 ? void 0 : _f.toString();
     const mode = (_g = afterData.mode) === null || _g === void 0 ? void 0 : _g.toString();
+    console.log("auto-match entry", {
+        sessionId,
+        mode,
+        beforeStatus,
+        afterStatus,
+    });
+    if (beforeStatus === afterStatus) {
+        console.log("auto-match skip: status unchanged", {
+            sessionId,
+            beforeStatus,
+            afterStatus,
+        });
+        return;
+    }
     // Only react to auto queue sessions transitioning into searching.
     // If pairing never creates a pending {uidA}_{uidB} doc, the UI never sees match found.
-    if (mode !== "auto")
+    if (mode !== "auto") {
+        console.log("auto-match skip: mode not auto", { sessionId, mode });
         return;
-    if (afterStatus !== "searching")
+    }
+    if (afterStatus !== "searching") {
+        console.log("auto-match skip: status not searching", {
+            sessionId,
+            afterStatus,
+        });
         return;
-    if (beforeStatus === "searching")
-        return;
+    }
     const userA = ((_h = afterData.userA) !== null && _h !== void 0 ? _h : "").toString();
-    if (!userA)
+    if (!userA) {
+        console.log("auto-match skip: missing userA", { sessionId });
         return;
+    }
     console.log("auto-match attempt start", { userA });
     const candidates = await db
         .collection("match_sessions")
@@ -181,6 +256,9 @@ exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
     }
     if (!matched) {
         console.log("auto-match: no eligible partner");
+    }
+    else {
+        console.log("auto-match: paired successfully", { userA });
     }
 });
 exports.cleanupQueueDocs = (0, scheduler_1.onSchedule)({
@@ -232,53 +310,76 @@ async function tryPairQueues(queueARef, queueBRef, initiatedBy) {
     const expiresAt = firestore_2.Timestamp.fromMillis(Date.now() + 10 * 1000);
     let paired = false;
     await db.runTransaction(async (tx) => {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        var _a, _b, _c, _d, _e, _f, _g, _h;
         const [queueASnap, queueBSnap] = await Promise.all([
             tx.get(queueARef),
             tx.get(queueBRef),
         ]);
-        if (!queueASnap.exists || !queueBSnap.exists)
+        if (!queueASnap.exists || !queueBSnap.exists) {
+            console.log("auto-match skip: queue missing");
             return;
+        }
         const queueAData = (_a = queueASnap.data()) !== null && _a !== void 0 ? _a : {};
         const queueBData = (_b = queueBSnap.data()) !== null && _b !== void 0 ? _b : {};
-        if (((_c = queueAData.status) === null || _c === void 0 ? void 0 : _c.toString()) !== "searching")
+        if (((_c = queueAData.status) === null || _c === void 0 ? void 0 : _c.toString()) !== "searching") {
+            console.log("auto-match skip: queueA not searching");
             return;
-        if (((_d = queueBData.status) === null || _d === void 0 ? void 0 : _d.toString()) !== "searching")
+        }
+        if (((_d = queueBData.status) === null || _d === void 0 ? void 0 : _d.toString()) !== "searching") {
+            console.log("auto-match skip: queueB not searching");
             return;
-        if (((_e = queueAData.mode) === null || _e === void 0 ? void 0 : _e.toString()) !== "auto")
+        }
+        if (((_e = queueAData.mode) === null || _e === void 0 ? void 0 : _e.toString()) !== "auto") {
+            console.log("auto-match skip: queueA not auto");
             return;
-        if (((_f = queueBData.mode) === null || _f === void 0 ? void 0 : _f.toString()) !== "auto")
+        }
+        if (((_f = queueBData.mode) === null || _f === void 0 ? void 0 : _f.toString()) !== "auto") {
+            console.log("auto-match skip: queueB not auto");
             return;
-        if (!queueASnap.id.startsWith("queue_"))
+        }
+        if (!queueASnap.id.startsWith("queue_")) {
+            console.log("auto-match skip: queueA id not queue_");
             return;
-        if (!queueBSnap.id.startsWith("queue_"))
+        }
+        if (!queueBSnap.id.startsWith("queue_")) {
+            console.log("auto-match skip: queueB id not queue_");
             return;
-        const userA = ((_g = queueAData.userA) !== null && _g !== void 0 ? _g : "").toString();
-        const userB = ((_h = queueBData.userA) !== null && _h !== void 0 ? _h : "").toString();
-        if (!userA || !userB || userA === userB)
+        }
+        const userAId = ((_g = queueAData.userA) !== null && _g !== void 0 ? _g : "").toString();
+        const userBId = ((_h = queueBData.userA) !== null && _h !== void 0 ? _h : "").toString();
+        if (!userAId || !userBId || userAId === userBId) {
+            console.log("auto-match skip: invalid users", { userAId, userBId });
             return;
-        const queueAUserB = ((_j = queueAData.userB) !== null && _j !== void 0 ? _j : "").toString();
-        const queueBUserB = ((_k = queueBData.userB) !== null && _k !== void 0 ? _k : "").toString();
-        if (queueAUserB.trim().length > 0 || queueBUserB.trim().length > 0)
+        }
+        const hydratedA = await hydrateQueueUser(tx, userAId, queueAData);
+        const hydratedB = await hydrateQueueUser(tx, userBId, queueBData);
+        if (!hydratedA || !hydratedB) {
+            console.log("auto-match skip: hydrate failed");
             return;
-        const hydratedA = await hydrateQueueUser(tx, userA, queueAData);
-        const hydratedB = await hydrateQueueUser(tx, userB, queueBData);
-        if (!hydratedA || !hydratedB)
+        }
+        console.log("auto-match eligible users", { userAId, userBId });
+        if (!hasCommonInterest(hydratedA.interests, hydratedB.interests)) {
+            console.log("auto-match skip: no common interests");
             return;
-        if (!hasCommonInterest(hydratedA.interests, hydratedB.interests))
-            return;
+        }
         const distanceKm = distanceBetweenKm(hydratedA.location, hydratedB.location);
-        if (distanceKm == null)
+        if (distanceKm == null) {
+            console.log("auto-match skip: distance missing");
             return;
+        }
         const maxDistance = Math.min(hydratedA.radiusKm, hydratedB.radiusKm);
-        if (distanceKm > maxDistance)
+        if (distanceKm > maxDistance) {
+            console.log("auto-match skip: outside radius");
             return;
-        const ids = [userA, userB].sort();
+        }
+        const ids = [userAId, userBId].sort();
         const pairSessionId = `${ids[0]}_${ids[1]}`;
         const pairRef = db.collection("match_sessions").doc(pairSessionId);
         const pairSnap = await tx.get(pairRef);
-        if (pairSnap.exists)
+        if (pairSnap.exists) {
+            console.log("auto-match skip: pair already exists", { pairSessionId });
             return;
+        }
         const notifARef = db
             .collection("users")
             .doc(ids[0])
@@ -296,11 +397,16 @@ async function tryPairQueues(queueARef, queueBRef, initiatedBy) {
             status: "pending",
             initiatedBy,
             chatRoomId: null,
+            responses: {
+                [ids[0]]: null,
+                [ids[1]]: null,
+            },
             createdAt: firestore_2.FieldValue.serverTimestamp(),
             respondedAt: null,
             expiresAt,
             updatedAt: firestore_2.FieldValue.serverTimestamp(),
         });
+        console.log("auto-match created match_session", { pairSessionId });
         tx.set(notifARef, {
             type: "match",
             fromUid: ids[1],
@@ -315,8 +421,9 @@ async function tryPairQueues(queueARef, queueBRef, initiatedBy) {
             seen: false,
             createdAt: firestore_2.FieldValue.serverTimestamp(),
         });
-        tx.set(queueARef, { status: "expired", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
-        tx.set(queueBRef, { status: "expired", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
+        tx.set(queueARef, { status: "idle", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
+        tx.set(queueBRef, { status: "idle", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
+        console.log("auto-match paired", { pairSessionId });
         paired = true;
     });
     return paired;
@@ -327,7 +434,7 @@ exports.onMatchSessionRejectedOrExpired = (0, firestore_1.onDocumentWritten)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async (event) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f;
     const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
     const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
     if (!afterSnap || !afterSnap.exists)
@@ -344,10 +451,10 @@ exports.onMatchSessionRejectedOrExpired = (0, firestore_1.onDocumentWritten)({
         return;
     if (beforeStatus === afterStatus)
         return;
-    const userA = ((_g = afterData.userA) !== null && _g !== void 0 ? _g : "").toString();
-    const userB = ((_h = afterData.userB) !== null && _h !== void 0 ? _h : "").toString();
-    await requeueUser(userA);
-    await requeueUser(userB);
+    console.log("auto-match rejected/expired: client should requeue", {
+        sessionId,
+        afterStatus,
+    });
 });
 async function hydrateQueueUser(tx, userId, queueData) {
     var _a, _b, _c;
@@ -525,6 +632,56 @@ exports.onChatMessageCreatedNotification = (0, firestore_1.onDocumentCreated)({
         },
     });
 });
+exports.onChatRoomEnded = (0, firestore_1.onDocumentWritten)({
+    document: "chat_rooms/{roomId}",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+}, async (event) => {
+    var _a, _b, _c, _d, _e, _f;
+    const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
+    const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
+    if (!afterSnap || !afterSnap.exists)
+        return;
+    // Extract once to avoid redeclaration bugs.
+    const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
+    const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
+    const roomId = event.params.roomId;
+    const beforeEndedBy = ((_e = beforeData.endedBy) !== null && _e !== void 0 ? _e : "").toString();
+    const afterEndedBy = ((_f = afterData.endedBy) !== null && _f !== void 0 ? _f : "").toString();
+    if (!afterEndedBy)
+        return;
+    if (!beforeEndedBy) {
+        await db
+            .collection("chat_rooms")
+            .doc(roomId)
+            .collection("messages")
+            .add({
+            senderId: "system",
+            text: "상대가 채팅을 종료했습니다",
+            createdAt: firestore_2.FieldValue.serverTimestamp(),
+        });
+        return;
+    }
+    if (beforeEndedBy && afterEndedBy && beforeEndedBy !== afterEndedBy) {
+        await deleteChatRoomWithMessages(roomId);
+    }
+});
+async function deleteChatRoomWithMessages(roomId) {
+    const roomRef = db.collection("chat_rooms").doc(roomId);
+    const messagesRef = roomRef.collection("messages");
+    while (true) {
+        const snapshot = await messagesRef.limit(200).get();
+        if (snapshot.empty)
+            break;
+        const batch = db.batch();
+        for (const doc of snapshot.docs) {
+            batch.delete(doc.ref);
+        }
+        await batch.commit();
+    }
+    await roomRef.delete();
+}
 async function markMatchAcceptedNotified(sessionId) {
     const sessionRef = db.collection("match_sessions").doc(sessionId);
     let shouldSend = false;

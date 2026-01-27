@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
 import 'app.dart';
 import 'state/app_state.dart';
@@ -19,58 +19,73 @@ import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (kIsWeb) {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  } else {
-    await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase init failed: $e');
   }
 
   final localeState = LocaleState();
-  await localeState.load();
+  try {
+    await localeState.load();
+  } catch (e, st) {
+    debugPrint('Locale init failed: $e');
+    debugPrintStack(stackTrace: st);
+  }
 
   final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
-  runApp(MultiProvider(
-    providers: [
-      ChangeNotifierProvider(create: (_) => localeState),
-      ChangeNotifierProvider(create: (_) => AppState()..bootstrap()),
-      ChangeNotifierProvider(create: (_) => NotificationState()),
-      ChangeNotifierProxyProvider<AppState, UserProvider>(
-        create: (context) => UserProvider(context.read<AppState>()),
-        update: (_, appState, provider) {
-          provider ??= UserProvider(appState);
-          return provider;
-        },
-      ),
-      ChangeNotifierProxyProvider<AppState, NotificationProvider>(
-        create: (context) => NotificationProvider(context.read<AppState>()),
-        update: (_, appState, provider) {
-          provider ??= NotificationProvider(appState);
-          return provider;
-        },
-      ),
-      ChangeNotifierProxyProvider<AppState, EligibleProfilesProvider>(
-        create: (_) => EligibleProfilesProvider(),
-        update: (_, appState, provider) {
-          provider!.updateFromAppState(appState);
-          return provider;
-        },
-      ),
-      ChangeNotifierProxyProvider<EligibleProfilesProvider, RecommendationProvider>(
-        create: (context) => RecommendationProvider(
-          eligibleProvider: context.read<EligibleProfilesProvider>(),
+  final appState = AppState();
+  await appState.bootstrap();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => localeState),
+        ChangeNotifierProvider(create: (_) => AppState()),
+        ChangeNotifierProvider(create: (_) => NotificationState()),
+        ChangeNotifierProxyProvider<AppState, UserProvider>(
+          create: (context) => UserProvider(context.read<AppState>()),
+          update: (_, appState, provider) {
+            provider ??= UserProvider(appState);
+            return provider;
+          },
         ),
-        update: (_, eligible, provider) {
-          provider!.updateEligibleProvider(eligible);
-          return provider;
-        },
+        ChangeNotifierProxyProvider<AppState, NotificationProvider>(
+          create: (context) => NotificationProvider(context.read<AppState>()),
+          update: (_, appState, provider) {
+            provider ??= NotificationProvider(appState);
+            return provider;
+          },
+        ),
+        ChangeNotifierProxyProvider<AppState, EligibleProfilesProvider>(
+          create: (_) => EligibleProfilesProvider(),
+          update: (_, appState, provider) {
+            provider!.updateFromAppState(appState);
+            return provider;
+          },
+        ),
+        ChangeNotifierProxyProvider<
+          EligibleProfilesProvider,
+          RecommendationProvider
+        >(
+          create: (context) => RecommendationProvider(
+            eligibleProvider: context.read<EligibleProfilesProvider>(),
+          ),
+          update: (_, eligible, provider) {
+            provider!.updateEligibleProvider(eligible);
+            return provider;
+          },
+        ),
+      ],
+      child: _NotificationListenerHost(
+        scaffoldMessengerKey: scaffoldMessengerKey,
+        child: KkiriApp(scaffoldMessengerKey: scaffoldMessengerKey),
       ),
-    ],
-    child: _NotificationListenerHost(
-      scaffoldMessengerKey: scaffoldMessengerKey,
-      child: KkiriApp(scaffoldMessengerKey: scaffoldMessengerKey),
     ),
-  ));
+  );
 }
 
 class _NotificationListenerHost extends StatefulWidget {
@@ -241,6 +256,3 @@ class _NotificationListenerHostState extends State<_NotificationListenerHost> {
   @override
   Widget build(BuildContext context) => widget.child;
 }
-
-
-

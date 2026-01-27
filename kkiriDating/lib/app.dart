@@ -30,14 +30,18 @@ class _KkiriAppState extends State<KkiriApp> {
   @override
   void initState() {
     super.initState();
-    _router = _buildRouter(context.read<AppState>());
+    final appState = context.read<AppState>();
+    _router = _buildRouter(appState);
   }
 
   GoRouter _buildRouter(AppState state) {
     return GoRouter(
-      initialLocation: '/login',
+      initialLocation: state.isLoggedIn ? '/home/discover' : '/login',
       refreshListenable: state,
       redirect: (context, routerState) {
+        if (routerState.matchedLocation == '/') {
+          return state.isLoggedIn ? '/home/discover' : '/login';
+        }
         final bool loggedIn = state.isLoggedIn;
         final String location = routerState.matchedLocation;
         final bool loggingIn = location == '/login';

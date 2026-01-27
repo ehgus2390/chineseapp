@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "en",
   "appTitle": "Kkiri Dating",
   "tabRecommend": "Recommend",
@@ -108,5 +108,6 @@
   "firstMessageGuide": "✨ Start the conversation!\nIt helps to begin with a shared interest.",
   "firstMessageSuggestions": "Do you do {interest} often these days?|What got you into {interest}?|Are you into anything besides {interest}?",
   "chatInputHint": "Type a message",
-  "chatError": "Something went wrong",\n  "chatExit": "Exit chat"
+  "chatError": "Something went wrong",
+  "chatExit": "Exit chat"
 }

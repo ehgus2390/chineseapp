@@ -621,6 +621,33 @@ function normalizeInterests(input: unknown[]): string[] {
     .filter((value): value is string => typeof value === "string" && value.length > 0);
 }
 
+async function requeueUser(userId: string): Promise<void> {
+  if (!userId) return;
+  const userSnap = await db.collection("users").doc(userId).get();
+  const userData = userSnap.data() ?? {};
+  const interests = normalizeInterests(
+    (userData.interests ?? []) as unknown[],
+  );
+  const location = userData.location as GeoPoint | undefined;
+  const radiusKm = Number(userData.distanceKm);
+  if (!location || interests.length === 0 || !Number.isFinite(radiusKm) || radiusKm <= 0) {
+    return;
+  }
+  await db.collection("match_sessions").doc(`queue_${userId}`).set(
+    {
+      userA: userId,
+      interests,
+      location,
+      radiusKm,
+      mode: "auto",
+      status: "searching",
+      createdAt: FieldValue.serverTimestamp(),
+      expiresAt: Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
+}
 
 export const onMatchSessionAcceptedNotification = onDocumentWritten(
   {

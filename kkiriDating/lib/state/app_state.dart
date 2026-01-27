@@ -124,37 +124,50 @@ class AppState extends ChangeNotifier {
 
   Future<void> bootstrap() async {
     if (_initialized) return;
-    _initialized = true;
-
-    await _restorePersistentState();
+    try {
+      _initialized = true;
+      await _restorePersistentState();
+    } catch (e, st) {
+      debugPrint('BOOTSTRAP FAILED: $e');
+      debugPrintStack(stackTrace: st);
+    } finally {
+      notifyListeners();
+    }
   }
 
   Future<void> _handleAuthChanged(User? user) async {
-    if (user == null || user.isAnonymous) {
-      if (user?.isAnonymous == true) {
-        await _auth.signOut();
+    try {
+      if (user == null || user.isAnonymous) {
+        if (user?.isAnonymous == true) {
+          await _auth.signOut();
+        }
+        _me = null;
+        _profiles.clear();
+        _matchSessions.clear();
+        _matchedUserIds.clear();
+        _likedIds.clear();
+        _passedIds.clear();
+        await _meSub?.cancel();
+        await _matchSessionsSubA?.cancel();
+        await _matchSessionsSubB?.cancel();
+        await _queueSub?.cancel();
+        notifyListeners();
+        return;
       }
-      _me = null;
-      _profiles.clear();
-      _matchSessions.clear();
-      _matchedUserIds.clear();
-      _likedIds.clear();
-      _passedIds.clear();
-      await _meSub?.cancel();
-      await _matchSessionsSubA?.cancel();
-      await _matchSessionsSubB?.cancel();
-      await _queueSub?.cancel();
+      await _ensureProfile();
+      await _syncAuthFields(user);
+      await _loadMeOnce();
+      await _loadMyDecisions();
+      _watchMyProfile();
+      _watchMatchSessions();
+      _watchQueueStatus();
       notifyListeners();
-      return;
+    } catch (e, st) {
+      debugPrint('AUTH FLOW FAILED: $e');
+      debugPrintStack(stackTrace: st);
+    } finally {
+      notifyListeners();
     }
-    await _ensureProfile();
-    await _syncAuthFields(user);
-    await _loadMeOnce();
-    await _loadMyDecisions();
-    _watchMyProfile();
-    _watchMatchSessions();
-    _watchQueueStatus();
-    notifyListeners();
   }
 
   Future<void> _ensureProfile() async {
