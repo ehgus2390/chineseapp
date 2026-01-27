@@ -14,6 +14,8 @@ import {getMessaging} from "firebase-admin/messaging";
 initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
+const SERVER_WRITER = "server";
+const LOCATION_EPS = 1e-6;
 
 // B-step hardening: region/memory/timeout to control cost and latency.
 export const expireMatchSessions = onSchedule(
@@ -27,6 +29,7 @@ export const expireMatchSessions = onSchedule(
     // Only expire pending matches; queue docs are handled separately.
     const statuses = ["pending"] as const;
     const now = Timestamp.now();
+    const minuteKey = formatMinuteKey(new Date());
 
     // Batch + loop avoids unbounded reads and keeps costs predictable.
     while (true) {
@@ -36,27 +39,48 @@ export const expireMatchSessions = onSchedule(
         .where("status", "in", statuses as unknown as string[])
         .where("expiresAt", "<=", now)
         .orderBy("expiresAt")
-        .limit(200)
+        .limit(50)
         .get();
 
       if (snapshot.empty) {
         break;
       }
 
-      const batch = db.batch();
+      // Process per-doc with strong idempotency lock to avoid repeat writes.
       for (const doc of snapshot.docs) {
         const data = doc.data() ?? {};
-        batch.set(
-          doc.ref,
-          {
-            status: "expired",
-            respondedAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          {merge: true}
-        );
+        if (data.status?.toString() !== "pending") continue;
+        const expiresAt = data.expiresAt as Timestamp | undefined;
+        if (!expiresAt || expiresAt.toMillis() > now.toMillis()) continue;
+        const opKey = minuteKey;
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(doc.ref);
+          if (!snap.exists) return;
+          const current = snap.data() ?? {};
+          if (current.status?.toString() !== "pending") return;
+          const currentExpiresAt = current.expiresAt as Timestamp | undefined;
+          if (!currentExpiresAt || currentExpiresAt.toMillis() > now.toMillis()) {
+            return;
+          }
+          const locked = await acquireOpLock(tx, doc.ref, opKey);
+          if (!locked) return;
+          tx.set(
+            doc.ref,
+            {
+              status: "expired",
+              respondedAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
+              serverMeta: {
+                lastOp: opKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+              },
+            },
+            {merge: true},
+          );
+        });
       }
-      await batch.commit();
     }
   }
 );
@@ -70,27 +94,48 @@ export const onMatchSessionAccepted = onDocumentWritten(
     // Extract once to avoid redeclaration bugs.
     const beforeData = beforeSnap?.data() ?? {};
     const afterData = afterSnap.data() ?? {};
+    if (afterData.serverMeta?.source === SERVER_WRITER) return;
     const beforeStatus = beforeData.status?.toString();
     const afterStatus = afterData.status?.toString();
     const responses = (afterData.responses ?? {}) as Record<string, unknown>;
     const userA = (afterData.userA ?? "").toString();
     const userB = (afterData.userB ?? "").toString();
+    const beforeResponses = (beforeData.responses ?? {}) as Record<string, unknown>;
+    const responsesChanged =
+      JSON.stringify(beforeResponses) !== JSON.stringify(responses);
+    const beforeHash = stableHash({
+      status: beforeStatus,
+      responses: beforeResponses,
+      chatRoomId: beforeData.chatRoomId ?? null,
+    });
+    const afterHash = stableHash({
+      status: afterStatus,
+      responses,
+      chatRoomId: afterData.chatRoomId ?? null,
+    });
+    if (beforeHash === afterHash) return;
     const bothAccepted =
       responses[userA]?.toString() === "accepted" &&
       responses[userB]?.toString() === "accepted";
     const shouldAccept = afterStatus === "pending" && bothAccepted;
+    if (beforeStatus === afterStatus && !responsesChanged) return;
     if (beforeStatus === "accepted") return;
     if (afterStatus !== "accepted" && !shouldAccept) return;
 
     const sessionId = event.params.sessionId as string;
     const sessionRef = db.collection("match_sessions").doc(sessionId);
     const roomRef = db.collection("chat_rooms").doc(sessionId);
+    const opKey = `onMatchSessionAccepted:${sessionId}:${afterStatus}:${JSON.stringify(responses)}`;
+    if (afterData.serverMeta?.lastOp === opKey) return;
 
     await db.runTransaction(async (tx) => {
       const sessionSnap = await tx.get(sessionRef);
       if (!sessionSnap.exists) return;
       const data = sessionSnap.data() ?? {};
       const status = data.status?.toString();
+      if (data.serverMeta?.lastOp === opKey) return;
+      const locked = await acquireOpLock(tx, sessionRef, opKey);
+      if (!locked) return;
       const sessionResponses = (data.responses ?? {}) as Record<string, unknown>;
       const txUserA = (data.userA ?? "").toString();
       const txUserB = (data.userB ?? "").toString();
@@ -98,7 +143,7 @@ export const onMatchSessionAccepted = onDocumentWritten(
         sessionResponses[txUserA]?.toString() === "accepted" &&
         sessionResponses[txUserB]?.toString() === "accepted";
       if (status !== "accepted" && !txBothAccepted) return;
-      if (data.chatRoomId != null) return;
+      if (data.chatRoomId != null && status === "accepted") return;
 
       const participants = [txUserA, txUserB].filter((id) => id.trim().length > 0);
       if (participants.length < 2) return;
@@ -122,13 +167,20 @@ export const onMatchSessionAccepted = onDocumentWritten(
         );
       }
       // Idempotent: always link the session to the room if accepted.
+      const alreadyAccepted = status?.toString() === "accepted";
       tx.set(
         sessionRef,
         {
           chatRoomId: sessionId,
           respondedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
-          status: "accepted",
+          status: alreadyAccepted ? status : "accepted",
+          serverMeta: {
+            lastOp: opKey,
+            lastWriter: SERVER_WRITER,
+            updatedAt: FieldValue.serverTimestamp(),
+            source: SERVER_WRITER,
+          },
         },
         {merge: true}
       );
@@ -175,24 +227,35 @@ export const onMatchSessionRejectedByResponse = onDocumentWritten(
     // Extract once to avoid redeclaration bugs.
     const beforeData = beforeSnap?.data() ?? {};
     const afterData = afterSnap.data() ?? {};
+    if (afterData.serverMeta?.source === SERVER_WRITER) return;
 
     const sessionId = event.params.sessionId as string;
     if (sessionId.startsWith("queue_")) return;
 
     const beforeStatus = beforeData.status?.toString();
     const afterStatus = afterData.status?.toString();
+    const beforeResponses = (beforeData.responses ?? {}) as Record<string, unknown>;
+    const afterResponses = (afterData.responses ?? {}) as Record<string, unknown>;
+    const responsesChanged =
+      JSON.stringify(beforeResponses) !== JSON.stringify(afterResponses);
+    const beforeHash = stableHash({status: beforeStatus, responses: beforeResponses});
+    const afterHash = stableHash({status: afterStatus, responses: afterResponses});
+    if (beforeHash === afterHash) return;
+    if (beforeStatus === afterStatus && !responsesChanged) return;
     if (afterStatus !== "pending") return;
     if (beforeStatus === "rejected" || beforeStatus === "expired") return;
 
     const userA = (afterData.userA ?? "").toString();
     const userB = (afterData.userB ?? "").toString();
-    const responses = (afterData.responses ?? {}) as Record<string, unknown>;
+    const responses = afterResponses;
     const rejected =
       responses[userA]?.toString() === "rejected" ||
       responses[userB]?.toString() === "rejected";
     if (!rejected) return;
 
     console.log("auto-match response rejected", {sessionId});
+    const opKey = `onMatchSessionRejectedByResponse:${sessionId}:${JSON.stringify(responses)}`;
+    if (afterData.serverMeta?.lastOp === opKey) return;
 
     await db.runTransaction(async (tx) => {
       const ref = db.collection("match_sessions").doc(sessionId);
@@ -200,13 +263,23 @@ export const onMatchSessionRejectedByResponse = onDocumentWritten(
       if (!snap.exists) return;
       const data = snap.data() ?? {};
       const status = data.status?.toString();
+      if (data.serverMeta?.lastOp === opKey) return;
+      const locked = await acquireOpLock(tx, ref, opKey);
+      if (!locked) return;
       if (status !== "pending") return;
+      if (status === "rejected") return;
       tx.set(
         ref,
         {
           status: "rejected",
           respondedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
+          serverMeta: {
+            lastOp: opKey,
+            lastWriter: SERVER_WRITER,
+            updatedAt: FieldValue.serverTimestamp(),
+            source: SERVER_WRITER,
+          },
         },
         {merge: true},
       );
@@ -228,6 +301,7 @@ export const onAutoMatchSessionSearching = onDocumentWritten(
     // Extract once to avoid redeclaration bugs.
     const beforeData = beforeSnap?.data() ?? {};
     const afterData = afterSnap.data() ?? {};
+    if (afterData.serverMeta?.source === SERVER_WRITER) return;
 
     const sessionId = event.params.sessionId as string;
     if (!sessionId.startsWith("queue_")) {
@@ -238,6 +312,27 @@ export const onAutoMatchSessionSearching = onDocumentWritten(
     const afterStatus = afterData.status?.toString();
     const beforeStatus = beforeData.status?.toString();
     const mode = afterData.mode?.toString();
+    const beforeInterests = beforeData.interests ?? [];
+    const afterInterests = afterData.interests ?? [];
+    const beforeLocation = locationKey(beforeData.location);
+    const afterLocation = locationKey(afterData.location);
+    const beforeHash = stableHash({
+      status: beforeStatus,
+      userA: beforeData.userA ?? null,
+      mode: beforeData.mode ?? null,
+      interests: beforeInterests,
+      location: beforeLocation,
+      radiusKm: beforeData.radiusKm ?? null,
+    });
+    const afterHash = stableHash({
+      status: afterStatus,
+      userA: afterData.userA ?? null,
+      mode: afterData.mode ?? null,
+      interests: afterInterests,
+      location: afterLocation,
+      radiusKm: afterData.radiusKm ?? null,
+    });
+    const fieldsChanged = beforeHash !== afterHash;
 
     console.log("auto-match entry", {
       sessionId,
@@ -246,12 +341,8 @@ export const onAutoMatchSessionSearching = onDocumentWritten(
       afterStatus,
     });
 
-    if (beforeStatus === afterStatus) {
-      console.log("auto-match skip: status unchanged", {
-        sessionId,
-        beforeStatus,
-        afterStatus,
-      });
+    if (!fieldsChanged) {
+      console.log("auto-match skip: no relevant field changes", {sessionId});
       return;
     }
 
@@ -310,6 +401,8 @@ export const cleanupQueueDocs = onSchedule(
   async () => {
     const prefixStart = "queue_";
     const prefixEnd = "queue_~";
+    const now = Date.now();
+    const minuteKey = formatMinuteKey(new Date());
 
     let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null;
     while (true) {
@@ -328,9 +421,32 @@ export const cleanupQueueDocs = onSchedule(
 
       if (snapshot.empty) break;
 
-      const batch = db.batch();
       for (const doc of snapshot.docs) {
         const data = doc.data() ?? {};
+        if (data.status?.toString() === "searching") {
+          lastDoc = doc;
+          continue;
+        }
+        const updatedAt = data.updatedAt as Timestamp | undefined;
+        if (updatedAt && now - updatedAt.toMillis() < 60 * 1000) {
+          lastDoc = doc;
+          continue;
+        }
+        const locked = await db.runTransaction(async (tx) => {
+          const snap = await tx.get(doc.ref);
+          if (!snap.exists) return false;
+          const current = snap.data() ?? {};
+          if (current.status?.toString() === "searching") return false;
+          const currentUpdatedAt = current.updatedAt as Timestamp | undefined;
+          if (currentUpdatedAt && now - currentUpdatedAt.toMillis() < 60 * 1000) {
+            return false;
+          }
+          return acquireOpLock(tx, doc.ref, minuteKey);
+        });
+        if (!locked) {
+          lastDoc = doc;
+          continue;
+        }
         const updates: Record<string, unknown> = {};
 
         if ("userB" in data) updates.userB = FieldValue.delete();
@@ -340,12 +456,21 @@ export const cleanupQueueDocs = onSchedule(
         if ("connectedAt" in data) updates.connectedAt = FieldValue.delete();
 
         if (Object.keys(updates).length > 0) {
-          batch.set(doc.ref, updates, {merge: true});
+          await doc.ref.set(
+            {
+              ...updates,
+              serverMeta: {
+                lastOp: minuteKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+              },
+            },
+            {merge: true},
+          );
         }
+        lastDoc = doc;
       }
-
-      await batch.commit();
-      lastDoc = snapshot.docs[snapshot.docs.length - 1];
     }
   },
 );
@@ -434,6 +559,9 @@ async function tryPairQueues(
       console.log("auto-match skip: pair already exists", {pairSessionId});
       return;
     }
+    const opKey = `tryPairQueues:${pairSessionId}:${expiresAt.toMillis()}`;
+    const locked = await acquireOpLock(tx, pairRef, opKey);
+    if (!locked) return;
 
     const notifARef = db
       .collection("users")
@@ -461,6 +589,12 @@ async function tryPairQueues(
       respondedAt: null,
       expiresAt,
       updatedAt: FieldValue.serverTimestamp(),
+      serverMeta: {
+        lastOp: opKey,
+        lastWriter: SERVER_WRITER,
+        updatedAt: FieldValue.serverTimestamp(),
+        source: SERVER_WRITER,
+      },
     });
     console.log("auto-match created match_session", {pairSessionId});
 
@@ -481,12 +615,30 @@ async function tryPairQueues(
 
     tx.set(
       queueARef,
-      {status: "idle", updatedAt: FieldValue.serverTimestamp()},
+      {
+        status: "idle",
+        updatedAt: FieldValue.serverTimestamp(),
+        serverMeta: {
+          lastOp: opKey,
+          lastWriter: SERVER_WRITER,
+          updatedAt: FieldValue.serverTimestamp(),
+          source: SERVER_WRITER,
+        },
+      },
       {merge: true},
     );
     tx.set(
       queueBRef,
-      {status: "idle", updatedAt: FieldValue.serverTimestamp()},
+      {
+        status: "idle",
+        updatedAt: FieldValue.serverTimestamp(),
+        serverMeta: {
+          lastOp: opKey,
+          lastWriter: SERVER_WRITER,
+          updatedAt: FieldValue.serverTimestamp(),
+          source: SERVER_WRITER,
+        },
+      },
       {merge: true},
     );
     console.log("auto-match paired", {pairSessionId});
@@ -510,14 +662,18 @@ export const onMatchSessionRejectedOrExpired = onDocumentWritten(
     // Extract once to avoid redeclaration bugs.
     const beforeData = beforeSnap?.data() ?? {};
     const afterData = afterSnap.data() ?? {};
+    if (afterData.serverMeta?.source === SERVER_WRITER) return;
 
     const sessionId = event.params.sessionId as string;
     if (sessionId.startsWith("queue_")) return;
 
     const afterStatus = afterData.status?.toString();
     const beforeStatus = beforeData.status?.toString();
-    if (afterStatus !== "expired" && afterStatus !== "rejected") return;
+    const beforeHash = stableHash({status: beforeStatus});
+    const afterHash = stableHash({status: afterStatus});
+    if (beforeHash === afterHash) return;
     if (beforeStatus === afterStatus) return;
+    if (afterStatus !== "expired" && afterStatus !== "rejected") return;
 
     console.log("auto-match rejected/expired: client should requeue", {
       sessionId,
@@ -546,6 +702,12 @@ async function hydrateQueueUser(
     !Number.isFinite(radiusKm) ||
     radiusKm <= 0
   ) {
+    console.log("auto-match hydrate: queue missing fields", {
+      userId,
+      hasInterests: Array.isArray(interests) && interests.length > 0,
+      hasLocation: !!location,
+      radiusKm,
+    });
     const userSnap = await tx.get(db.collection("users").doc(userId));
     const userData = userSnap.data() ?? {};
     interests = (userData.interests ?? []) as unknown[];
@@ -582,6 +744,12 @@ async function hydrateQueueUser(
     !Number.isFinite(radiusKm) ||
     radiusKm <= 0
   ) {
+    console.log("auto-match hydrate: invalid user data", {
+      userId,
+      interestsCount: normalizedInterests.length,
+      hasLocation: !!location,
+      radiusKm,
+    });
     return null;
   }
 
@@ -621,32 +789,53 @@ function normalizeInterests(input: unknown[]): string[] {
     .filter((value): value is string => typeof value === "string" && value.length > 0);
 }
 
-async function requeueUser(userId: string): Promise<void> {
-  if (!userId) return;
-  const userSnap = await db.collection("users").doc(userId).get();
-  const userData = userSnap.data() ?? {};
-  const interests = normalizeInterests(
-    (userData.interests ?? []) as unknown[],
-  );
-  const location = userData.location as GeoPoint | undefined;
-  const radiusKm = Number(userData.distanceKm);
-  if (!location || interests.length === 0 || !Number.isFinite(radiusKm) || radiusKm <= 0) {
-    return;
+function stableHash(input: Record<string, unknown>): string {
+  return JSON.stringify(sortObject(input));
+}
+
+function sortObject(input: Record<string, unknown>): Record<string, unknown> {
+  const keys = Object.keys(input).sort();
+  const result: Record<string, unknown> = {};
+  for (const key of keys) {
+    const value = input[key];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      result[key] = sortObject(value as Record<string, unknown>);
+    } else {
+      result[key] = value;
+    }
   }
-  await db.collection("match_sessions").doc(`queue_${userId}`).set(
-    {
-      userA: userId,
-      interests,
-      location,
-      radiusKm,
-      mode: "auto",
-      status: "searching",
-      createdAt: FieldValue.serverTimestamp(),
-      expiresAt: Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    {merge: true},
-  );
+  return result;
+}
+
+function locationKey(value: unknown): string {
+  const loc = value as GeoPoint | undefined;
+  if (!loc) return "null";
+  const lat = Math.round(loc.latitude / LOCATION_EPS) * LOCATION_EPS;
+  const lng = Math.round(loc.longitude / LOCATION_EPS) * LOCATION_EPS;
+  return `${lat}:${lng}`;
+}
+
+function formatMinuteKey(date: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return [
+    date.getUTCFullYear(),
+    pad(date.getUTCMonth() + 1),
+    pad(date.getUTCDate()),
+    pad(date.getUTCHours()),
+    pad(date.getUTCMinutes()),
+  ].join("");
+}
+
+async function acquireOpLock(
+  tx: Transaction,
+  sessionRef: DocumentReference<DocumentData>,
+  opKey: string,
+): Promise<boolean> {
+  const opRef = sessionRef.collection("_ops").doc(opKey);
+  const opSnap = await tx.get(opRef);
+  if (opSnap.exists) return false;
+  tx.set(opRef, {createdAt: FieldValue.serverTimestamp()});
+  return true;
 }
 
 export const onMatchSessionAcceptedNotification = onDocumentWritten(
@@ -663,8 +852,18 @@ export const onMatchSessionAcceptedNotification = onDocumentWritten(
     // Extract once to avoid redeclaration bugs.
     const beforeData = beforeSnap?.data() ?? {};
     const afterData = afterSnap.data() ?? {};
+    if (afterData.serverMeta?.source === SERVER_WRITER) return;
     const beforeStatus = beforeData.status?.toString();
     const afterStatus = afterData.status?.toString();
+    const beforeHash = stableHash({
+      status: beforeStatus,
+      chatRoomId: beforeData.chatRoomId ?? null,
+    });
+    const afterHash = stableHash({
+      status: afterStatus,
+      chatRoomId: afterData.chatRoomId ?? null,
+    });
+    if (beforeHash === afterHash) return;
     if (beforeStatus === "accepted" || afterStatus !== "accepted") return;
 
     const sessionId = event.params.sessionId as string;
@@ -704,6 +903,7 @@ export const onChatMessageCreatedNotification = onDocumentCreated(
     const roomId = event.params.roomId as string;
     const messageId = event.params.messageId as string;
     const messageData = messageSnap.data() ?? {};
+    if (messageData.serverMeta?.source === SERVER_WRITER) return;
 
     if (messageData.notified === true) return;
 
@@ -753,10 +953,14 @@ export const onChatRoomEnded = onDocumentWritten(
     // Extract once to avoid redeclaration bugs.
     const beforeData = beforeSnap?.data() ?? {};
     const afterData = afterSnap.data() ?? {};
+    if (afterData.serverMeta?.source === SERVER_WRITER) return;
 
     const roomId = event.params.roomId as string;
     const beforeEndedBy = (beforeData.endedBy ?? "").toString();
     const afterEndedBy = (afterData.endedBy ?? "").toString();
+    const beforeHash = stableHash({endedBy: beforeEndedBy});
+    const afterHash = stableHash({endedBy: afterEndedBy});
+    if (beforeHash === afterHash) return;
     if (!afterEndedBy) return;
 
     if (!beforeEndedBy) {
@@ -802,6 +1006,10 @@ async function markMatchAcceptedNotified(sessionId: string): Promise<boolean> {
     const data = snap.data() ?? {};
     const notified = (data.notified ?? {}) as Record<string, unknown>;
     if (notified.accepted === true) return;
+    const opKey = `markMatchAcceptedNotified:${sessionId}`;
+    if (data.serverMeta?.lastOp === opKey) return;
+    const locked = await acquireOpLock(tx, sessionRef, opKey);
+    if (!locked) return;
     tx.set(
       sessionRef,
       {
@@ -809,6 +1017,12 @@ async function markMatchAcceptedNotified(sessionId: string): Promise<boolean> {
           ...notified,
           accepted: true,
           acceptedAt: FieldValue.serverTimestamp(),
+        },
+        serverMeta: {
+          lastOp: opKey,
+          lastWriter: SERVER_WRITER,
+          updatedAt: FieldValue.serverTimestamp(),
+          source: SERVER_WRITER,
         },
       },
       {merge: true}
@@ -833,11 +1047,21 @@ async function markMessageNotified(
     if (!snap.exists) return;
     const data = snap.data() ?? {};
     if (data.notified === true) return;
+    const opKey = `markMessageNotified:${roomId}:${messageId}`;
+    if (data.serverMeta?.lastOp === opKey) return;
+    const locked = await acquireOpLock(tx, messageRef, opKey);
+    if (!locked) return;
     tx.set(
       messageRef,
       {
         notified: true,
         notifiedAt: FieldValue.serverTimestamp(),
+        serverMeta: {
+          lastOp: opKey,
+          lastWriter: SERVER_WRITER,
+          updatedAt: FieldValue.serverTimestamp(),
+          source: SERVER_WRITER,
+        },
       },
       {merge: true}
     );
@@ -912,7 +1136,19 @@ async function sendMulticast(
   if (invalidRefs.length > 0) {
     const batch = db.batch();
     for (const ref of invalidRefs) {
-      batch.set(ref, {enabled: false, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+      batch.set(
+        ref,
+        {
+          enabled: false,
+          updatedAt: FieldValue.serverTimestamp(),
+          serverMeta: {
+            lastWriter: SERVER_WRITER,
+            updatedAt: FieldValue.serverTimestamp(),
+            source: SERVER_WRITER,
+          },
+        },
+        {merge: true},
+      );
     }
     await batch.commit();
   }

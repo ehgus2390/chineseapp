@@ -42,6 +42,7 @@ class AppState extends ChangeNotifier {
   bool _initialized = false;
   bool _distanceFilterEnabled = true;
   String _queueStatus = 'idle';
+  bool _stopMatch = false;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubA;
@@ -80,6 +81,7 @@ class AppState extends ChangeNotifier {
   Set<String> get likedIds => Set<String>.unmodifiable(_likedIds);
   Set<String> get passedIds => Set<String>.unmodifiable(_passedIds);
   bool get distanceFilterEnabled => _distanceFilterEnabled;
+  bool get stopMatchEnabled => _stopMatch;
   AutoMatchState get autoMatchState {
     final session = activeAutoMatchSession;
     if (session != null) {
@@ -445,19 +447,12 @@ class AppState extends ChangeNotifier {
       }
       final bool isDirect = mode == MatchMode.direct;
       final DateTime now = DateTime.now();
-      final DateTime? expiresAt = isDirect
-          ? null
-          : now.add(const Duration(minutes: 5));
       tx.set(ref, <String, dynamic>{
         'userA': ids.first,
         'userB': ids.last,
         'mode': isDirect ? 'direct' : 'auto',
-        'status': isDirect ? 'accepted' : 'pending',
-        'chatRoomId': null,
         'initiatedBy': meProfile.id,
         'createdAt': FieldValue.serverTimestamp(),
-        'respondedAt': isDirect ? FieldValue.serverTimestamp() : null,
-        'expiresAt': isDirect ? null : Timestamp.fromDate(expiresAt!),
         'responses': isDirect
             ? <String, dynamic>{
                 ids.first: 'accepted',
@@ -478,7 +473,7 @@ class AppState extends ChangeNotifier {
         chatRoomId: null,
         createdAt: now,
         respondedAt: isDirect ? now : null,
-        expiresAt: expiresAt,
+        expiresAt: null,
         mode: isDirect ? 'direct' : 'auto',
         responses: isDirect
             ? <String, String?>{
@@ -498,10 +493,11 @@ class AppState extends ChangeNotifier {
     if (currentUser == null || currentUser.isAnonymous) {
       throw StateError('No signed-in user.');
     }
+    if (_queueStatus == 'searching') return;
+    _stopMatch = false;
 
     final String userId = currentUser.uid;
     final String sessionId = 'queue_$userId';
-    final DateTime expiresAt = DateTime.now().add(const Duration(minutes: 5));
     final Profile? meProfile = _me;
     if (meProfile == null) return;
     final List<String> normalizedInterests = meProfile.interests
@@ -518,7 +514,6 @@ class AppState extends ChangeNotifier {
         'mode': 'auto',
         'status': 'searching',
         'createdAt': FieldValue.serverTimestamp(),
-        'expiresAt': Timestamp.fromDate(expiresAt),
         'updatedAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
@@ -529,6 +524,7 @@ class AppState extends ChangeNotifier {
     final User? currentUser = _auth.currentUser;
     if (currentUser == null || currentUser.isAnonymous) return;
     final String sessionId = 'queue_${currentUser.uid}';
+    _stopMatch = true;
     await _db.collection('match_sessions').doc(sessionId).set(
       <String, dynamic>{
         'status': 'idle',
@@ -549,6 +545,19 @@ class AppState extends ChangeNotifier {
       if (!isParticipant) return false;
       return session.status == session_model.MatchStatus.pending ||
           session.status == session_model.MatchStatus.accepted;
+    }).toList();
+    if (sessions.isEmpty) return null;
+    sessions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return sessions.first;
+  }
+
+  session_model.MatchSession? get latestAutoMatchSession {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return null;
+    final sessions = _matchSessions.values.where((session) {
+      if (session.id.startsWith('queue_')) return false;
+      if (session.mode != 'auto') return false;
+      return session.userA == meProfile.id || session.userB == meProfile.id;
     }).toList();
     if (sessions.isEmpty) return null;
     sessions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -577,8 +586,7 @@ class AppState extends ChangeNotifier {
     if (meProfile == null) return;
     final String matchId = _matchIdFor(targetUserId);
     await _db.collection('match_sessions').doc(matchId).set(<String, dynamic>{
-      'status': 'skipped',
-      'respondedAt': FieldValue.serverTimestamp(),
+      'responses.${meProfile.id}': 'rejected',
     }, SetOptions(merge: true));
     notifyListeners();
   }

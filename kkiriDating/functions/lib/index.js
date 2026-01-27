@@ -211,14 +211,6 @@ exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
         beforeStatus,
         afterStatus,
     });
-    if (beforeStatus === afterStatus) {
-        console.log("auto-match skip: status unchanged", {
-            sessionId,
-            beforeStatus,
-            afterStatus,
-        });
-        return;
-    }
     // Only react to auto queue sessions transitioning into searching.
     // If pairing never creates a pending {uidA}_{uidB} doc, the UI never sees match found.
     if (mode !== "auto") {
@@ -466,6 +458,12 @@ async function hydrateQueueUser(tx, userId, queueData) {
         !location ||
         !Number.isFinite(radiusKm) ||
         radiusKm <= 0) {
+        console.log("auto-match hydrate: queue missing fields", {
+            userId,
+            hasInterests: Array.isArray(interests) && interests.length > 0,
+            hasLocation: !!location,
+            radiusKm,
+        });
         const userSnap = await tx.get(db.collection("users").doc(userId));
         const userData = (_b = userSnap.data()) !== null && _b !== void 0 ? _b : {};
         interests = ((_c = userData.interests) !== null && _c !== void 0 ? _c : []);
@@ -492,6 +490,12 @@ async function hydrateQueueUser(tx, userId, queueData) {
         !location ||
         !Number.isFinite(radiusKm) ||
         radiusKm <= 0) {
+        console.log("auto-match hydrate: invalid user data", {
+            userId,
+            interestsCount: normalizedInterests.length,
+            hasLocation: !!location,
+            radiusKm,
+        });
         return null;
     }
     return {
@@ -523,30 +527,6 @@ function normalizeInterests(input) {
     return input
         .map((item) => (typeof item === "string" ? item : item === null || item === void 0 ? void 0 : item.toString()))
         .filter((value) => typeof value === "string" && value.length > 0);
-}
-async function requeueUser(userId) {
-    var _a, _b;
-    if (!userId)
-        return;
-    const userSnap = await db.collection("users").doc(userId).get();
-    const userData = (_a = userSnap.data()) !== null && _a !== void 0 ? _a : {};
-    const interests = normalizeInterests(((_b = userData.interests) !== null && _b !== void 0 ? _b : []));
-    const location = userData.location;
-    const radiusKm = Number(userData.distanceKm);
-    if (!location || interests.length === 0 || !Number.isFinite(radiusKm) || radiusKm <= 0) {
-        return;
-    }
-    await db.collection("match_sessions").doc(`queue_${userId}`).set({
-        userA: userId,
-        interests,
-        location,
-        radiusKm,
-        mode: "auto",
-        status: "searching",
-        createdAt: firestore_2.FieldValue.serverTimestamp(),
-        expiresAt: firestore_2.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
-        updatedAt: firestore_2.FieldValue.serverTimestamp(),
-    }, { merge: true });
 }
 exports.onMatchSessionAcceptedNotification = (0, firestore_1.onDocumentWritten)({
     document: "match_sessions/{sessionId}",

@@ -1,4 +1,3 @@
-﻿import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,25 +9,11 @@ import 'app_state.dart';
 
 class EligibleProfilesProvider extends ChangeNotifier {
   EligibleProfilesProvider({FirebaseFirestore? db})
-      : _db = db ?? FirebaseFirestore.instance {
-    _controller.add(<Profile>[]);
-    _usersSub = _db.collection('users').snapshots().listen(
-      _handleUsers,
-      onError: (error) {
-        debugPrint('watchCandidates error: $error');
-        debugPrint('watchNearbyUsers error: $error');
-        _controller.addError(error);
-      },
-    );
-  }
+      : _db = db ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _db;
   final MatchService _matchService = MatchService();
-  final StreamController<List<Profile>> _controller =
-      StreamController<List<Profile>>.broadcast();
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSub;
 
-  List<Profile> _allUsers = <Profile>[];
   Profile? _me;
   Set<String> _likedIds = <String>{};
   Set<String> _passedIds = <String>{};
@@ -36,7 +21,10 @@ class EligibleProfilesProvider extends ChangeNotifier {
   bool _distanceFilterEnabled = true;
   List<String> _preferredLanguages = <String>[];
 
-  Stream<List<Profile>> get stream => _controller.stream;
+  List<Profile> _cachedFirstPage = <Profile>[];
+  DocumentSnapshot<Map<String, dynamic>>? _cachedLastDoc;
+  bool _cachedHasMore = true;
+  int _fetchCount = 0;
 
   void updateFromAppState(AppState state) {
     _me = state.meOrNull;
@@ -45,22 +33,41 @@ class EligibleProfilesProvider extends ChangeNotifier {
     _matchedUserIds = state.matchedUserIds;
     _distanceFilterEnabled = state.distanceFilterEnabled;
     _preferredLanguages = state.myPreferredLanguages;
-    _emitEligible();
   }
 
-  void _handleUsers(QuerySnapshot<Map<String, dynamic>> snapshot) {
-    _allUsers = snapshot.docs.map(Profile.fromDoc).toList();
-    _emitEligible();
-  }
+  List<Profile> get cachedFirstPage =>
+      List<Profile>.unmodifiable(_cachedFirstPage);
+  DocumentSnapshot<Map<String, dynamic>>? get cachedLastDoc => _cachedLastDoc;
+  bool get cachedHasMore => _cachedHasMore;
 
-  void _emitEligible() {
+  Future<EligiblePage> fetchEligibleProfiles({
+    int limit = 20,
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+  }) async {
+    _fetchCount += 1;
+    debugPrint('eligible fetch count: $_fetchCount');
     if (_me == null || !isProfileComplete(_me!)) {
-      _controller.add(<Profile>[]);
-      return;
+      return EligiblePage(
+        profiles: <Profile>[],
+        lastDoc: null,
+        hasMore: false,
+      );
     }
+
+    Query<Map<String, dynamic>> query = _db
+        .collection('users')
+        .orderBy(FieldPath.documentId())
+        .limit(limit);
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+
+    final snap = await query.get();
+    final docs = snap.docs;
+    final users = docs.map(Profile.fromDoc).toList();
     final eligible = applyEligibility(
       me: _me!,
-      allUsers: _allUsers,
+      allUsers: users,
       distanceFilterEnabled: _distanceFilterEnabled,
     );
     eligible.sort((a, b) {
@@ -68,24 +75,21 @@ class EligibleProfilesProvider extends ChangeNotifier {
       final double scoreA = _matchService.score(_me!, a, _preferredLanguages);
       return scoreB.compareTo(scoreA);
     });
-    _controller.add(eligible);
-  }
 
-  List<Profile> buildEligibleSnapshot() {
-    if (_me == null || !isProfileComplete(_me!)) {
-      return <Profile>[];
+    final lastDoc = docs.isNotEmpty ? docs.last : null;
+    final hasMore = docs.length == limit;
+
+    if (startAfter == null) {
+      _cachedFirstPage = eligible;
+      _cachedLastDoc = lastDoc;
+      _cachedHasMore = hasMore;
     }
-    final eligible = applyEligibility(
-      me: _me!,
-      allUsers: _allUsers,
-      distanceFilterEnabled: _distanceFilterEnabled,
+
+    return EligiblePage(
+      profiles: eligible,
+      lastDoc: lastDoc,
+      hasMore: hasMore,
     );
-    eligible.sort((a, b) {
-      final double scoreB = _matchService.score(_me!, b, _preferredLanguages);
-      final double scoreA = _matchService.score(_me!, a, _preferredLanguages);
-      return scoreB.compareTo(scoreA);
-    });
-    return eligible;
   }
 
   List<Profile> applyEligibility({
@@ -151,11 +155,16 @@ class EligibleProfilesProvider extends ChangeNotifier {
   }
 
   double _deg2rad(double deg) => deg * (pi / 180.0);
+}
 
-  @override
-  void dispose() {
-    _usersSub?.cancel();
-    _controller.close();
-    super.dispose();
-  }
+class EligiblePage {
+  final List<Profile> profiles;
+  final DocumentSnapshot<Map<String, dynamic>>? lastDoc;
+  final bool hasMore;
+
+  EligiblePage({
+    required this.profiles,
+    required this.lastDoc,
+    required this.hasMore,
+  });
 }

@@ -39,7 +39,8 @@ class RecommendationProvider extends ChangeNotifier {
     }
     _loading = true;
     notifyListeners();
-    final List<Profile> next = _eligibleProvider.buildEligibleSnapshot();
+    final result = await _eligibleProvider.fetchEligibleProfiles(limit: 30);
+    final List<Profile> next = result.profiles;
     _cachedRecommendations
       ..clear()
       ..addAll(next);

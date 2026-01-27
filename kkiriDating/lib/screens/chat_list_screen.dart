@@ -34,9 +34,28 @@ class _ChatListScreenState extends State<ChatListScreen> {
   int _countdown = 10;
   bool _badgeCleared = false;
   bool _timeoutReached = false;
-  bool _sentExpiry = false;
-  String? _handledRejectedSessionId;
+  bool _ignorePendingSession = false;
+  EligiblePage? _eligiblePage;
+  Future<EligiblePage>? _eligibleFuture;
   static const int _queueDurationSeconds = 10;
+
+  @override
+  void initState() {
+    super.initState();
+    final eligibleProvider = context.read<EligibleProfilesProvider>();
+    debugPrint('eligible listeners active: 0 (one-shot fetch)');
+    if (eligibleProvider.cachedFirstPage.isNotEmpty ||
+        !eligibleProvider.cachedHasMore) {
+      _eligiblePage = EligiblePage(
+        profiles: eligibleProvider.cachedFirstPage,
+        lastDoc: eligibleProvider.cachedLastDoc,
+        hasMore: eligibleProvider.cachedHasMore,
+      );
+      _eligibleFuture = Future.value(_eligiblePage!);
+    } else {
+      _eligibleFuture = _loadEligibleFirstPage();
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -70,47 +89,28 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
+  Future<EligiblePage> _loadEligibleFirstPage() async {
+    final eligibleProvider = context.read<EligibleProfilesProvider>();
+    final result = await eligibleProvider.fetchEligibleProfiles(limit: 20);
+    if (!mounted) return result;
+    setState(() => _eligiblePage = result);
+    return result;
+  }
+
   Future<void> _enterMatchingQueue() async {
     if (_queueActive) return;
-    setState(() {
-      _queueActive = true;
-      _countdown = _queueDurationSeconds;
-      _timeoutReached = false;
-      _sentExpiry = false;
-    });
     try {
       await context.read<AppState>().enterAutoMatchQueue();
     } catch (_) {
       // Keep UI responsive even if queue entry fails.
     }
-  }
-
-  Future<void> _stopMatchingQueue() async {
+    if (!mounted) return;
     setState(() {
-      _queueActive = false;
+      _queueActive = true;
+      _countdown = _queueDurationSeconds;
       _timeoutReached = false;
-      _sentExpiry = false;
+      _ignorePendingSession = false;
     });
-    await context.read<AppState>().stopAutoMatchQueue();
-  }
-
-  void _openSettingsSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            child: const DistanceFilterWidget(),
-          ),
-        );
-      },
-    );
   }
 
   void _startCountdownIfNeeded() {
@@ -123,7 +123,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           _countdown = 0;
           _queueActive = false;
           _timeoutReached = true;
-          _sentExpiry = false;
+          _ignorePendingSession = true;
         });
         Timer(const Duration(seconds: 2), () {
           if (!mounted) return;
@@ -139,18 +139,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     _countdownTimer?.cancel();
     _countdownTimer = null;
     _queueActive = false;
-  }
-
-  Future<void> _setMatchResponse(MatchSession session, String response) async {
-    final state = context.read<AppState>();
-    final me = state.meOrNull;
-    if (me == null) return;
-    await FirebaseFirestore.instance
-        .collection('match_sessions')
-        .doc(session.id)
-        .set(<String, dynamic>{
-      'responses.${me.id}': response,
-    }, SetOptions(merge: true));
   }
 
   void _syncAnimation(int count) {
@@ -202,8 +190,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final l = AppLocalizations.of(context);
-    final eligible = context.watch<EligibleProfilesProvider>();
-    final matchState = state.autoMatchState;
 
     final me = state.meOrNull;
     final bool profileComplete = me != null && state.isProfileReady(me);
@@ -213,15 +199,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _Header(
-              title: l.chatTitle,
-              onOpenSettings: profileComplete ? _openSettingsSheet : null,
-            ),
+            _Header(title: l.chatTitle),
+            if (profileComplete) const DistanceFilterWidget(),
             Expanded(
-              child: StreamBuilder<List<Profile>>(
-                // IndexedStack keeps this widget mounted; no side effects on rebuild.
-                stream: eligible.stream,
-                initialData: const <Profile>[],
+              child: FutureBuilder<EligiblePage>(
+                // One-shot fetch + cached first page to avoid refetch on rebuild.
+                future: _eligibleFuture,
                 builder: (context, snapshot) {
                   if (!profileComplete) {
                     return _ProfileCompletionPrompt(
@@ -233,25 +216,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     _stopCountdown();
-                    if (matchState == AutoMatchState.idle && !_queueActive) {
-                      return _ChatIdleState(
-                        title: l.chatWaitingTitle,
-                        subtitle: l.chatWaitingSubtitle,
-                        connectLabel: l.queueConnect,
-                        onConnect: _enterMatchingQueue,
-                      );
-                    }
                     return _ChatSearchingState(
                       emoji: l.chatSearchingEmoji,
                       title: l.queueSearchingTitle,
                       subtitle: l.queueSearchingSubtitle,
                       countdownText: null,
-                      showConnect: false,
-                      showStop: true,
+                      showConnect: !_queueActive,
                       connectLabel: l.queueConnect,
-                      stopLabel: l.queueStop,
                       onConnect: () => _enterMatchingQueue(),
-                      onStop: _stopMatchingQueue,
                     );
                   }
 
@@ -263,131 +235,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     );
                   }
 
-                  final list = snapshot.data ?? const <Profile>[];
+                  final list =
+                      snapshot.data?.profiles ?? const <Profile>[];
                   _syncAnimation(list.length);
-
-                  final autoSession = state.activeAutoMatchSession;
-                  if (autoSession != null) {
-                    if (autoSession.status == MatchStatus.pending) {
-                      // Previously, accepting set status=accepted immediately, so the
-                      // other user never saw MATCH FOUND. We now write responses per user.
-                      _navigating = false;
-                      if (_timeoutReached && !_sentExpiry) {
-                        _sentExpiry = true;
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _enterMatchingQueue();
-                        });
-                      }
-                      final expiresAt = autoSession.expiresAt;
-                      if (expiresAt != null && _countdownTimer == null) {
-                        final secondsLeft = expiresAt
-                            .difference(DateTime.now())
-                            .inSeconds
-                            .clamp(0, _queueDurationSeconds);
-                        _countdown = secondsLeft;
-                      }
-                      _startCountdownIfNeeded();
-                      final String opponentId = autoSession.userA == me!.id
-                          ? autoSession.userB
-                          : autoSession.userA;
-                      return FutureBuilder<Profile?>(
-                        future: state.fetchProfile(opponentId),
-                        builder: (context, profileSnap) {
-                          final profile = profileSnap.data;
-                          if (profile == null) {
-                            return _ChatSearchingState(
-                              emoji: l.chatSearchingEmoji,
-                              title: l.queueSearchingTitle,
-                              subtitle: l.queueSearchingSubtitle,
-                              countdownText: null,
-                              showConnect: false,
-                              showStop: true,
-                              connectLabel: l.queueConnect,
-                              stopLabel: l.queueStop,
-                              onConnect: _enterMatchingQueue,
-                              onStop: _stopMatchingQueue,
-                            );
-                          }
-                          return Stack(
-                            children: [
-                              _ChatSearchingState(
-                                emoji: l.chatSearchingEmoji,
-                                title: l.queueSearchingTitle,
-                                subtitle: l.queueSearchingSubtitle,
-                                countdownText: null,
-                                showConnect: false,
-                                showStop: true,
-                                connectLabel: l.queueConnect,
-                                stopLabel: l.queueStop,
-                                onConnect: _enterMatchingQueue,
-                                onStop: _stopMatchingQueue,
-                              ),
-                              _MatchPendingOverlay(
-                                profile: profile,
-                                countdownSeconds: _countdown,
-                                totalSeconds: _queueDurationSeconds,
-                                remainingLabel: l.queueRemainingTime(
-                                  _countdown.toString(),
-                                ),
-                                acceptLabel: l.queueAccept,
-                                declineLabel: l.queueDecline,
-                                onAccept: () async {
-                                  _stopCountdown();
-                                  await _setMatchResponse(autoSession, 'accepted');
-                                },
-                                onDecline: () async {
-                                  _stopCountdown();
-                                  await _setMatchResponse(autoSession, 'rejected');
-                                  if (mounted) {
-                                    await _enterMatchingQueue();
-                                  }
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    }
-                    if (autoSession.status == MatchStatus.rejected ||
-                        autoSession.status == MatchStatus.expired) {
-                      if (_handledRejectedSessionId != autoSession.id) {
-                        _handledRejectedSessionId = autoSession.id;
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (matchState != AutoMatchState.idle) {
-                            _enterMatchingQueue();
-                          }
-                        });
-                      }
-                      return _ChatWaitingState(
-                        title: l.chatWaitingTitle,
-                        subtitle: l.queueResumeSubtitle,
-                      );
-                    }
-                    if (autoSession.status == MatchStatus.accepted) {
-                      if (autoSession.chatRoomId == null ||
-                          autoSession.chatRoomId!.trim().isEmpty) {
-                        return _ChatWaitingState(
-                          title: l.chatWaitingTitle,
-                          subtitle: l.chatWaitingSubtitle,
-                        );
-                      }
-                      if (!_navigating) {
-                        _navigating = true;
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (!context.mounted) return;
-                          context.go('/home/chat/room/${autoSession.chatRoomId}');
-                        });
-                      }
-                      return _ChatWaitingState(
-                        title: l.chatWaitingTitle,
-                        subtitle: l.chatWaitingSubtitle,
-                      );
-                    }
-                  }
 
                   if (list.isEmpty) {
                     _navigating = false;
-                    if (matchState == AutoMatchState.searching || _queueActive) {
+                    if (_queueActive) {
                       _stopCountdown();
                       return _ChatSearchingState(
                         emoji: l.chatSearchingEmoji,
@@ -395,11 +249,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         subtitle: l.queueSearchingSubtitle,
                         countdownText: null,
                         showConnect: false,
-                        showStop: true,
                         connectLabel: l.queueConnect,
-                        stopLabel: l.queueStop,
                         onConnect: _enterMatchingQueue,
-                        onStop: _stopMatchingQueue,
                       );
                     }
                     _scheduleLongWait();
@@ -411,9 +262,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       );
                     }
                     _stopCountdown();
-                    return _ChatIdleState(
-                      title: l.chatWaitingTitle,
-                      subtitle: l.chatWaitingSubtitle,
+                    return _ChatSearchingState(
+                      emoji: l.chatSearchingEmoji,
+                      title: l.queueSearchingTitle,
+                      subtitle: l.queueSearchingSubtitle,
+                      countdownText: null,
+                      showConnect: !_queueActive,
                       connectLabel: l.queueConnect,
                       onConnect: _enterMatchingQueue,
                     );
@@ -421,34 +275,143 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                   _resetWaiting();
 
-                  if (_timeoutReached) {
-                    _navigating = false;
-                    _stopCountdown();
-                    return _ChatTimeoutState(
-                      title: l.queueTimeout,
-                    );
-                  }
+                  final Profile target = list.first;
 
-                  if (matchState == AutoMatchState.idle && !_queueActive) {
-                    return _ChatIdleState(
-                      title: l.chatWaitingTitle,
-                      subtitle: l.chatWaitingSubtitle,
-                      connectLabel: l.queueConnect,
-                      onConnect: _enterMatchingQueue,
-                    );
-                  }
+                  return StreamBuilder<MatchSession?>(
+                    stream: _matchSessionStream(me, target),
+                    builder: (context, snapshot) {
+                      final session = snapshot.data;
 
-                  return _ChatSearchingState(
-                    emoji: l.chatSearchingEmoji,
-                    title: l.queueSearchingTitle,
-                    subtitle: l.queueSearchingSubtitle,
-                    countdownText: null,
-                    showConnect: false,
-                    showStop: true,
-                    connectLabel: l.queueConnect,
-                    stopLabel: l.queueStop,
-                    onConnect: _enterMatchingQueue,
-                    onStop: _stopMatchingQueue,
+                      if (_timeoutReached) {
+                        _navigating = false;
+                        _stopCountdown();
+                        return _ChatTimeoutState(title: l.queueTimeout);
+                      }
+
+                      // Null/non-accepted sessions stay in queue UX without navigation.
+                      if (session == null) {
+                        _navigating = false;
+                        _stopCountdown();
+                        return _ChatSearchingState(
+                          emoji: l.chatSearchingEmoji,
+                          title: l.queueSearchingTitle,
+                          subtitle: l.queueSearchingSubtitle,
+                          countdownText: null,
+                          showConnect: !_queueActive,
+                          connectLabel: l.queueConnect,
+                          onConnect: _enterMatchingQueue,
+                        );
+                      }
+                      if (session.status == MatchStatus.searching) {
+                        _navigating = false;
+                        _stopCountdown();
+                        return _ChatSearchingState(
+                          emoji: l.chatSearchingEmoji,
+                          title: l.queueSearchingTitle,
+                          subtitle: l.queueSearchingSubtitle,
+                          countdownText: null,
+                          showConnect: false,
+                          connectLabel: l.queueConnect,
+                          onConnect: _enterMatchingQueue,
+                        );
+                      }
+                      if (session.status == MatchStatus.pending) {
+                        _navigating = false;
+                        if (_ignorePendingSession) {
+                          _stopCountdown();
+                          return _ChatSearchingState(
+                            emoji: l.chatSearchingEmoji,
+                            title: l.queueSearchingTitle,
+                            subtitle: l.queueSearchingSubtitle,
+                            countdownText: null,
+                            showConnect: true,
+                            connectLabel: l.queueConnect,
+                            onConnect: _enterMatchingQueue,
+                          );
+                        }
+                        _startCountdownIfNeeded();
+                        return Stack(
+                          children: [
+                            _ChatSearchingState(
+                              emoji: l.chatSearchingEmoji,
+                              title: l.queueSearchingTitle,
+                              subtitle: l.queueSearchingSubtitle,
+                              countdownText: null,
+                              showConnect: false,
+                              connectLabel: l.queueConnect,
+                              onConnect: _enterMatchingQueue,
+                            ),
+                            _MatchPendingOverlay(
+                              profile: target,
+                              countdownSeconds: _countdown,
+                              totalSeconds: _queueDurationSeconds,
+                              remainingLabel: l.queueRemainingTime(
+                                _countdown.toString(),
+                              ),
+                              acceptLabel: l.queueAccept,
+                              declineLabel: l.queueDecline,
+                              onAccept: () async {
+                                _stopCountdown();
+                                if (mounted) {
+                                  setState(() => _ignorePendingSession = false);
+                                }
+                                final uid = context.read<AppState>().me.id;
+                                await FirebaseFirestore.instance
+                                    .collection('match_sessions')
+                                    .doc(session.id)
+                                    .set({
+                                      'responses.$uid': 'accepted',
+                                    }, SetOptions(merge: true));
+                              },
+                              onDecline: () async {
+                                _stopCountdown();
+                                if (mounted) {
+                                  setState(() => _ignorePendingSession = true);
+                                }
+                                final uid = context.read<AppState>().me.id;
+                                await FirebaseFirestore.instance
+                                    .collection('match_sessions')
+                                    .doc(session.id)
+                                    .set({
+                                      'responses.$uid': 'rejected',
+                                    }, SetOptions(merge: true));
+                              },
+                            ),
+                          ],
+                        );
+                      }
+                      if (session.status != MatchStatus.accepted) {
+                        _navigating = false;
+                        _stopCountdown();
+                        return _ChatWaitingState(
+                          title: l.chatWaitingTitle,
+                          subtitle: l.chatWaitingSubtitle,
+                        );
+                      }
+
+                      if (session.chatRoomId == null ||
+                          session.chatRoomId!.trim().isEmpty) {
+                        _stopCountdown();
+                        return _ChatWaitingState(
+                          title: l.chatWaitingTitle,
+                          subtitle: l.chatWaitingSubtitle,
+                        );
+                      }
+
+                      if (!_navigating) {
+                        _navigating = true;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!context.mounted) return;
+                          // Guarded navigation avoids rebuild loops.
+                          context.go('/home/chat/room/${session.chatRoomId}');
+                        });
+                      }
+
+                      return _ChatWaitingState(
+                        title: l.chatWaitingTitle,
+                        subtitle: l.chatWaitingSubtitle,
+                      );
+                    },
                   );
                 },
               ),
@@ -460,18 +423,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 }
 
+Stream<MatchSession?> _matchSessionStream(Profile me, Profile target) {
+  final List<String> ids = <String>[me.id, target.id]..sort();
+  final String sessionId = ids.join('_');
+  return FirebaseFirestore.instance
+      .collection('match_sessions')
+      .doc(sessionId)
+      .snapshots()
+      .map((doc) {
+        if (!doc.exists) return null;
+        return MatchSession.fromDoc(doc);
+      });
+}
+
 /* ───────────────────────── UI Components ───────────────────────── */
 
 class _Header extends StatelessWidget {
   final String title;
-  final VoidCallback? onSearch;
-  final VoidCallback? onOpenSettings;
-
-  const _Header({
-    required this.title,
-    this.onSearch,
-    this.onOpenSettings,
-  });
+  const _Header({required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -489,11 +458,11 @@ class _Header extends StatelessWidget {
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: onSearch,
+            onPressed: () {},
           ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.black),
-            onPressed: onOpenSettings,
+            onPressed: () {},
           ),
         ],
       ),
@@ -507,11 +476,8 @@ class _ChatSearchingState extends StatelessWidget {
   final String? subtitle;
   final String? countdownText;
   final bool showConnect;
-  final bool showStop;
   final String connectLabel;
-  final String stopLabel;
   final VoidCallback onConnect;
-  final VoidCallback onStop;
 
   const _ChatSearchingState({
     required this.emoji,
@@ -519,11 +485,8 @@ class _ChatSearchingState extends StatelessWidget {
     required this.subtitle,
     required this.countdownText,
     required this.showConnect,
-    required this.showStop,
     required this.connectLabel,
-    required this.stopLabel,
     required this.onConnect,
-    required this.onStop,
   });
 
   @override
@@ -543,24 +506,11 @@ class _ChatSearchingState extends StatelessWidget {
         ],
         const SizedBox(height: 14),
         if (countdownText != null) ...[
-          Text(
-            countdownText!,
-            style: const TextStyle(color: Colors.black54),
-          ),
+          Text(countdownText!, style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 10),
         ],
         if (showConnect)
-          FilledButton(
-            onPressed: onConnect,
-            child: Text(connectLabel),
-          ),
-        if (showStop) ...[
-          const SizedBox(height: 10),
-          OutlinedButton(
-            onPressed: onStop,
-            child: Text(stopLabel),
-          ),
-        ],
+          FilledButton(onPressed: onConnect, child: Text(connectLabel)),
       ],
     );
   }
@@ -588,39 +538,6 @@ class _ChatWaitingState extends StatelessWidget {
   }
 }
 
-class _ChatIdleState extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String connectLabel;
-  final VoidCallback onConnect;
-
-  const _ChatIdleState({
-    required this.title,
-    required this.subtitle,
-    required this.connectLabel,
-    required this.onConnect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _CenteredText(
-      children: [
-        Text(title, style: const TextStyle(fontSize: 18)),
-        const SizedBox(height: 10),
-        Text(
-          subtitle,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.black54),
-        ),
-        const SizedBox(height: 14),
-        FilledButton(
-          onPressed: onConnect,
-          child: Text(connectLabel),
-        ),
-      ],
-    );
-  }
-}
 class _ChatPendingState extends StatelessWidget {
   final String title;
 
@@ -650,9 +567,7 @@ class _ChatTimeoutState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CenteredText(
-      children: [
-        Text(title, style: const TextStyle(fontSize: 18)),
-      ],
+      children: [Text(title, style: const TextStyle(fontSize: 18))],
     );
   }
 }
@@ -779,8 +694,7 @@ class _MatchPendingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double progress =
-        (countdownSeconds / totalSeconds).clamp(0.0, 1.0);
+    final double progress = (countdownSeconds / totalSeconds).clamp(0.0, 1.0);
     final String ageText = profile.age > 0 ? profile.age.toString() : '';
     final String nameText = profile.name.trim();
     final String title = ageText.isEmpty ? nameText : '$nameText, $ageText';
@@ -823,11 +737,13 @@ class _MatchPendingOverlay extends StatelessWidget {
                   ),
                   child: CircleAvatar(
                     radius: 32,
-                    backgroundImage: profile.photoUrl != null &&
+                    backgroundImage:
+                        profile.photoUrl != null &&
                             profile.photoUrl!.trim().isNotEmpty
                         ? NetworkImage(profile.photoUrl!)
                         : null,
-                    child: profile.photoUrl == null ||
+                    child:
+                        profile.photoUrl == null ||
                             profile.photoUrl!.trim().isEmpty
                         ? const Icon(Icons.person, size: 32)
                         : null,
@@ -909,6 +825,3 @@ class _CircularAcceptButton extends StatelessWidget {
     );
   }
 }
-
-
-
