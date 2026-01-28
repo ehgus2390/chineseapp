@@ -9,7 +9,7 @@ import 'app_state.dart';
 
 class EligibleProfilesProvider extends ChangeNotifier {
   EligibleProfilesProvider({FirebaseFirestore? db})
-      : _db = db ?? FirebaseFirestore.instance;
+    : _db = db ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _db;
   final MatchService _matchService = MatchService();
@@ -47,16 +47,12 @@ class EligibleProfilesProvider extends ChangeNotifier {
     _fetchCount += 1;
     debugPrint('eligible fetch count: $_fetchCount');
     if (_me == null || !isProfileComplete(_me!)) {
-      return EligiblePage(
-        profiles: <Profile>[],
-        lastDoc: null,
-        hasMore: false,
-      );
+      return EligiblePage(profiles: <Profile>[], lastDoc: null, hasMore: false);
     }
 
     Query<Map<String, dynamic>> query = _db
         .collection('users')
-        .orderBy(FieldPath.documentId())
+        .orderBy(FieldPath.documentId)
         .limit(limit);
     if (startAfter != null) {
       query = query.startAfterDocument(startAfter);
@@ -85,11 +81,22 @@ class EligibleProfilesProvider extends ChangeNotifier {
       _cachedHasMore = hasMore;
     }
 
-    return EligiblePage(
-      profiles: eligible,
-      lastDoc: lastDoc,
-      hasMore: hasMore,
-    );
+    return EligiblePage(profiles: eligible, lastDoc: lastDoc, hasMore: hasMore);
+  }
+
+  Future<EligiblePage> fetchFirstPage({int limit = 20}) {
+    return fetchEligibleProfiles(limit: limit);
+  }
+
+  Future<EligiblePage> fetchNextPage({int limit = 20}) async {
+    if (_cachedLastDoc == null || !_cachedHasMore) {
+      return EligiblePage(
+        profiles: <Profile>[],
+        lastDoc: _cachedLastDoc,
+        hasMore: false,
+      );
+    }
+    return fetchEligibleProfiles(limit: limit, startAfter: _cachedLastDoc);
   }
 
   List<Profile> applyEligibility({
@@ -98,15 +105,17 @@ class EligibleProfilesProvider extends ChangeNotifier {
     required bool distanceFilterEnabled,
   }) {
     return allUsers
-        .where((p) =>
-            isProfileComplete(p) &&
-            p.id != me.id &&
-            isOppositeGender(me, p) &&
-            hasCommonInterest(me, p) &&
-            _passesDistanceFilter(me, p, distanceFilterEnabled) &&
-            !_likedIds.contains(p.id) &&
-            !_passedIds.contains(p.id) &&
-            !_matchedUserIds.contains(p.id))
+        .where(
+          (p) =>
+              isProfileComplete(p) &&
+              p.id != me.id &&
+              isOppositeGender(me, p) &&
+              hasCommonInterest(me, p) &&
+              _passesDistanceFilter(me, p, distanceFilterEnabled) &&
+              !_likedIds.contains(p.id) &&
+              !_passedIds.contains(p.id) &&
+              !_matchedUserIds.contains(p.id),
+        )
         .toList();
   }
 
@@ -135,7 +144,10 @@ class EligibleProfilesProvider extends ChangeNotifier {
   }
 
   bool _passesDistanceFilter(
-      Profile me, Profile other, bool distanceFilterEnabled) {
+    Profile me,
+    Profile other,
+    bool distanceFilterEnabled,
+  ) {
     if (!distanceFilterEnabled) return true;
     if (me.location == null || other.location == null) return true;
     if (me.distanceKm <= 0) return true;
@@ -149,8 +161,8 @@ class EligibleProfilesProvider extends ChangeNotifier {
     final double dLon = _deg2rad(b.longitude - a.longitude);
     final double lat1 = _deg2rad(a.latitude);
     final double lat2 = _deg2rad(b.latitude);
-    final double h = pow(sin(dLat / 2), 2) +
-        cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2);
+    final double h =
+        pow(sin(dLat / 2), 2) + cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2);
     return radius * 2 * asin(sqrt(h));
   }
 

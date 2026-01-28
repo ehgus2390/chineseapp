@@ -118,6 +118,7 @@ export const onMatchSessionAccepted = onDocumentWritten(
       responses[userA]?.toString() === "accepted" &&
       responses[userB]?.toString() === "accepted";
     const shouldAccept = afterStatus === "pending" && bothAccepted;
+    // Guard: ignore writes with no relevant change.
     if (beforeStatus === afterStatus && !responsesChanged) return;
     if (beforeStatus === "accepted") return;
     if (afterStatus !== "accepted" && !shouldAccept) return;
@@ -241,6 +242,7 @@ export const onMatchSessionRejectedByResponse = onDocumentWritten(
     const beforeHash = stableHash({status: beforeStatus, responses: beforeResponses});
     const afterHash = stableHash({status: afterStatus, responses: afterResponses});
     if (beforeHash === afterHash) return;
+    // Guard: ignore writes with no relevant change.
     if (beforeStatus === afterStatus && !responsesChanged) return;
     if (afterStatus !== "pending") return;
     if (beforeStatus === "rejected" || beforeStatus === "expired") return;
@@ -671,6 +673,7 @@ export const onMatchSessionRejectedOrExpired = onDocumentWritten(
     const beforeStatus = beforeData.status?.toString();
     const beforeHash = stableHash({status: beforeStatus});
     const afterHash = stableHash({status: afterStatus});
+    // Guard: ignore writes with no relevant change.
     if (beforeHash === afterHash) return;
     if (beforeStatus === afterStatus) return;
     if (afterStatus !== "expired" && afterStatus !== "rejected") return;
@@ -863,6 +866,7 @@ export const onMatchSessionAcceptedNotification = onDocumentWritten(
       status: afterStatus,
       chatRoomId: afterData.chatRoomId ?? null,
     });
+    // Guard: ignore writes with no relevant change.
     if (beforeHash === afterHash) return;
     if (beforeStatus === "accepted" || afterStatus !== "accepted") return;
 
