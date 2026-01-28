@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../state/recommendation_provider.dart';
+import '../state/eligible_profiles_provider.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/profile_card.dart';
 import '../l10n/app_localizations.dart';
@@ -118,12 +119,24 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
               _HeaderTab(
                 label: l.tabRecommend,
                 selected: _selectedTab == 0,
-                onTap: () => setState(() => _selectedTab = 0),
+                onTap: () {
+                  setState(() => _selectedTab = 0);
+                  recommendations.setMode(RecommendationTab.recommend);
+                  recommendations.refreshRecommendations(
+                    reason: RefreshReason.manual,
+                  );
+                },
               ),
               _HeaderTab(
                 label: l.tabNearby,
                 selected: _selectedTab == 1,
-                onTap: () => setState(() => _selectedTab = 1),
+                onTap: () {
+                  setState(() => _selectedTab = 1);
+                  recommendations.setMode(RecommendationTab.nearby);
+                  recommendations.refreshRecommendations(
+                    reason: RefreshReason.manual,
+                  );
+                },
               ),
             ],
           ),
@@ -183,13 +196,7 @@ class _RecommendationBody extends StatelessWidget {
       );
     }
     final list = recommendations.recommendations;
-    final filteredByTab = showNearbyOnly
-        ? list.where((p) {
-            final distance = distanceFor(p);
-            if (distance == null || me == null) return false;
-            return distance <= me!.distanceKm;
-          }).toList()
-        : list;
+    final filteredByTab = list;
     if (filteredByTab.isEmpty) {
       return _NoMatchState(
         title: l.noMatchTitle,

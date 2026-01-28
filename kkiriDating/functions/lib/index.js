@@ -9,6 +9,8 @@ const messaging_1 = require("firebase-admin/messaging");
 (0, app_1.initializeApp)();
 const db = (0, firestore_2.getFirestore)();
 const messaging = (0, messaging_1.getMessaging)();
+const SERVER_WRITER = "server";
+const LOCATION_EPS = 1e-6;
 // B-step hardening: region/memory/timeout to control cost and latency.
 exports.expireMatchSessions = (0, scheduler_1.onSchedule)({
     schedule: "every 1 minutes",
@@ -16,10 +18,11 @@ exports.expireMatchSessions = (0, scheduler_1.onSchedule)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async () => {
-    var _a;
+    var _a, _b;
     // Only expire pending matches; queue docs are handled separately.
     const statuses = ["pending"];
     const now = firestore_2.Timestamp.now();
+    const minuteKey = formatMinuteKey(new Date());
     // Batch + loop avoids unbounded reads and keeps costs predictable.
     while (true) {
         const snapshot = await db
@@ -28,25 +31,52 @@ exports.expireMatchSessions = (0, scheduler_1.onSchedule)({
             .where("status", "in", statuses)
             .where("expiresAt", "<=", now)
             .orderBy("expiresAt")
-            .limit(200)
+            .limit(50)
             .get();
         if (snapshot.empty) {
             break;
         }
-        const batch = db.batch();
+        // Process per-doc with strong idempotency lock to avoid repeat writes.
         for (const doc of snapshot.docs) {
             const data = (_a = doc.data()) !== null && _a !== void 0 ? _a : {};
-            batch.set(doc.ref, {
-                status: "expired",
-                respondedAt: firestore_2.FieldValue.serverTimestamp(),
-                updatedAt: firestore_2.FieldValue.serverTimestamp(),
-            }, { merge: true });
+            if (((_b = data.status) === null || _b === void 0 ? void 0 : _b.toString()) !== "pending")
+                continue;
+            const expiresAt = data.expiresAt;
+            if (!expiresAt || expiresAt.toMillis() > now.toMillis())
+                continue;
+            const opKey = minuteKey;
+            await db.runTransaction(async (tx) => {
+                var _a, _b;
+                const snap = await tx.get(doc.ref);
+                if (!snap.exists)
+                    return;
+                const current = (_a = snap.data()) !== null && _a !== void 0 ? _a : {};
+                if (((_b = current.status) === null || _b === void 0 ? void 0 : _b.toString()) !== "pending")
+                    return;
+                const currentExpiresAt = current.expiresAt;
+                if (!currentExpiresAt || currentExpiresAt.toMillis() > now.toMillis()) {
+                    return;
+                }
+                const locked = await acquireOpLock(tx, doc.ref, opKey);
+                if (!locked)
+                    return;
+                tx.set(doc.ref, {
+                    status: "expired",
+                    respondedAt: firestore_2.FieldValue.serverTimestamp(),
+                    updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                    serverMeta: {
+                        lastOp: opKey,
+                        lastWriter: SERVER_WRITER,
+                        updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                        source: SERVER_WRITER,
+                    },
+                }, { merge: true });
+            });
         }
-        await batch.commit();
     }
 });
 exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessions/{sessionId}", async (event) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
     const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
     const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
     if (!afterSnap || !afterSnap.exists)
@@ -54,14 +84,33 @@ exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessi
     // Extract once to avoid redeclaration bugs.
     const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
     const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
-    const beforeStatus = (_e = beforeData.status) === null || _e === void 0 ? void 0 : _e.toString();
-    const afterStatus = (_f = afterData.status) === null || _f === void 0 ? void 0 : _f.toString();
-    const responses = ((_g = afterData.responses) !== null && _g !== void 0 ? _g : {});
-    const userA = ((_h = afterData.userA) !== null && _h !== void 0 ? _h : "").toString();
-    const userB = ((_j = afterData.userB) !== null && _j !== void 0 ? _j : "").toString();
-    const bothAccepted = ((_k = responses[userA]) === null || _k === void 0 ? void 0 : _k.toString()) === "accepted" &&
-        ((_l = responses[userB]) === null || _l === void 0 ? void 0 : _l.toString()) === "accepted";
+    if (((_e = afterData.serverMeta) === null || _e === void 0 ? void 0 : _e.source) === SERVER_WRITER)
+        return;
+    const beforeStatus = (_f = beforeData.status) === null || _f === void 0 ? void 0 : _f.toString();
+    const afterStatus = (_g = afterData.status) === null || _g === void 0 ? void 0 : _g.toString();
+    const responses = ((_h = afterData.responses) !== null && _h !== void 0 ? _h : {});
+    const userA = ((_j = afterData.userA) !== null && _j !== void 0 ? _j : "").toString();
+    const userB = ((_k = afterData.userB) !== null && _k !== void 0 ? _k : "").toString();
+    const beforeResponses = ((_l = beforeData.responses) !== null && _l !== void 0 ? _l : {});
+    const responsesChanged = JSON.stringify(beforeResponses) !== JSON.stringify(responses);
+    const beforeHash = stableHash({
+        status: beforeStatus,
+        responses: beforeResponses,
+        chatRoomId: (_m = beforeData.chatRoomId) !== null && _m !== void 0 ? _m : null,
+    });
+    const afterHash = stableHash({
+        status: afterStatus,
+        responses,
+        chatRoomId: (_o = afterData.chatRoomId) !== null && _o !== void 0 ? _o : null,
+    });
+    if (beforeHash === afterHash)
+        return;
+    const bothAccepted = ((_p = responses[userA]) === null || _p === void 0 ? void 0 : _p.toString()) === "accepted" &&
+        ((_q = responses[userB]) === null || _q === void 0 ? void 0 : _q.toString()) === "accepted";
     const shouldAccept = afterStatus === "pending" && bothAccepted;
+    // Guard: ignore writes with no relevant change.
+    if (beforeStatus === afterStatus && !responsesChanged)
+        return;
     if (beforeStatus === "accepted")
         return;
     if (afterStatus !== "accepted" && !shouldAccept)
@@ -69,26 +118,34 @@ exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessi
     const sessionId = event.params.sessionId;
     const sessionRef = db.collection("match_sessions").doc(sessionId);
     const roomRef = db.collection("chat_rooms").doc(sessionId);
+    const opKey = `onMatchSessionAccepted:${sessionId}:${afterStatus}:${JSON.stringify(responses)}`;
+    if (((_r = afterData.serverMeta) === null || _r === void 0 ? void 0 : _r.lastOp) === opKey)
+        return;
     await db.runTransaction(async (tx) => {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         const sessionSnap = await tx.get(sessionRef);
         if (!sessionSnap.exists)
             return;
         const data = (_a = sessionSnap.data()) !== null && _a !== void 0 ? _a : {};
         const status = (_b = data.status) === null || _b === void 0 ? void 0 : _b.toString();
-        const sessionResponses = ((_c = data.responses) !== null && _c !== void 0 ? _c : {});
-        const txUserA = ((_d = data.userA) !== null && _d !== void 0 ? _d : "").toString();
-        const txUserB = ((_e = data.userB) !== null && _e !== void 0 ? _e : "").toString();
-        const txBothAccepted = ((_f = sessionResponses[txUserA]) === null || _f === void 0 ? void 0 : _f.toString()) === "accepted" &&
-            ((_g = sessionResponses[txUserB]) === null || _g === void 0 ? void 0 : _g.toString()) === "accepted";
+        if (((_c = data.serverMeta) === null || _c === void 0 ? void 0 : _c.lastOp) === opKey)
+            return;
+        const locked = await acquireOpLock(tx, sessionRef, opKey);
+        if (!locked)
+            return;
+        const sessionResponses = ((_d = data.responses) !== null && _d !== void 0 ? _d : {});
+        const txUserA = ((_e = data.userA) !== null && _e !== void 0 ? _e : "").toString();
+        const txUserB = ((_f = data.userB) !== null && _f !== void 0 ? _f : "").toString();
+        const txBothAccepted = ((_g = sessionResponses[txUserA]) === null || _g === void 0 ? void 0 : _g.toString()) === "accepted" &&
+            ((_h = sessionResponses[txUserB]) === null || _h === void 0 ? void 0 : _h.toString()) === "accepted";
         if (status !== "accepted" && !txBothAccepted)
             return;
-        if (data.chatRoomId != null)
+        if (data.chatRoomId != null && status === "accepted")
             return;
         const participants = [txUserA, txUserB].filter((id) => id.trim().length > 0);
         if (participants.length < 2)
             return;
-        const mode = (_j = (_h = data.mode) === null || _h === void 0 ? void 0 : _h.toString()) !== null && _j !== void 0 ? _j : null;
+        const mode = (_k = (_j = data.mode) === null || _j === void 0 ? void 0 : _j.toString()) !== null && _k !== void 0 ? _k : null;
         const roomSnap = await tx.get(roomRef);
         if (!roomSnap.exists) {
             tx.set(roomRef, {
@@ -103,11 +160,18 @@ exports.onMatchSessionAccepted = (0, firestore_1.onDocumentWritten)("match_sessi
             }, { merge: true });
         }
         // Idempotent: always link the session to the room if accepted.
+        const alreadyAccepted = (status === null || status === void 0 ? void 0 : status.toString()) === "accepted";
         tx.set(sessionRef, {
             chatRoomId: sessionId,
             respondedAt: firestore_2.FieldValue.serverTimestamp(),
             updatedAt: firestore_2.FieldValue.serverTimestamp(),
-            status: "accepted",
+            status: alreadyAccepted ? status : "accepted",
+            serverMeta: {
+                lastOp: opKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+            },
         }, { merge: true });
     });
     if (userA && userB) {
@@ -141,7 +205,7 @@ exports.onMatchSessionRejectedByResponse = (0, firestore_1.onDocumentWritten)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async (event) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
     const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
     const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
     if (!afterSnap || !afterSnap.exists)
@@ -149,37 +213,65 @@ exports.onMatchSessionRejectedByResponse = (0, firestore_1.onDocumentWritten)({
     // Extract once to avoid redeclaration bugs.
     const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
     const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
+    if (((_e = afterData.serverMeta) === null || _e === void 0 ? void 0 : _e.source) === SERVER_WRITER)
+        return;
     const sessionId = event.params.sessionId;
     if (sessionId.startsWith("queue_"))
         return;
-    const beforeStatus = (_e = beforeData.status) === null || _e === void 0 ? void 0 : _e.toString();
-    const afterStatus = (_f = afterData.status) === null || _f === void 0 ? void 0 : _f.toString();
+    const beforeStatus = (_f = beforeData.status) === null || _f === void 0 ? void 0 : _f.toString();
+    const afterStatus = (_g = afterData.status) === null || _g === void 0 ? void 0 : _g.toString();
+    const beforeResponses = ((_h = beforeData.responses) !== null && _h !== void 0 ? _h : {});
+    const afterResponses = ((_j = afterData.responses) !== null && _j !== void 0 ? _j : {});
+    const responsesChanged = JSON.stringify(beforeResponses) !== JSON.stringify(afterResponses);
+    const beforeHash = stableHash({ status: beforeStatus, responses: beforeResponses });
+    const afterHash = stableHash({ status: afterStatus, responses: afterResponses });
+    if (beforeHash === afterHash)
+        return;
+    // Guard: ignore writes with no relevant change.
+    if (beforeStatus === afterStatus && !responsesChanged)
+        return;
     if (afterStatus !== "pending")
         return;
     if (beforeStatus === "rejected" || beforeStatus === "expired")
         return;
-    const userA = ((_g = afterData.userA) !== null && _g !== void 0 ? _g : "").toString();
-    const userB = ((_h = afterData.userB) !== null && _h !== void 0 ? _h : "").toString();
-    const responses = ((_j = afterData.responses) !== null && _j !== void 0 ? _j : {});
-    const rejected = ((_k = responses[userA]) === null || _k === void 0 ? void 0 : _k.toString()) === "rejected" ||
-        ((_l = responses[userB]) === null || _l === void 0 ? void 0 : _l.toString()) === "rejected";
+    const userA = ((_k = afterData.userA) !== null && _k !== void 0 ? _k : "").toString();
+    const userB = ((_l = afterData.userB) !== null && _l !== void 0 ? _l : "").toString();
+    const responses = afterResponses;
+    const rejected = ((_m = responses[userA]) === null || _m === void 0 ? void 0 : _m.toString()) === "rejected" ||
+        ((_o = responses[userB]) === null || _o === void 0 ? void 0 : _o.toString()) === "rejected";
     if (!rejected)
         return;
     console.log("auto-match response rejected", { sessionId });
+    const opKey = `onMatchSessionRejectedByResponse:${sessionId}:${JSON.stringify(responses)}`;
+    if (((_p = afterData.serverMeta) === null || _p === void 0 ? void 0 : _p.lastOp) === opKey)
+        return;
     await db.runTransaction(async (tx) => {
-        var _a, _b;
+        var _a, _b, _c;
         const ref = db.collection("match_sessions").doc(sessionId);
         const snap = await tx.get(ref);
         if (!snap.exists)
             return;
         const data = (_a = snap.data()) !== null && _a !== void 0 ? _a : {};
         const status = (_b = data.status) === null || _b === void 0 ? void 0 : _b.toString();
+        if (((_c = data.serverMeta) === null || _c === void 0 ? void 0 : _c.lastOp) === opKey)
+            return;
+        const locked = await acquireOpLock(tx, ref, opKey);
+        if (!locked)
+            return;
         if (status !== "pending")
+            return;
+        if (status === "rejected")
             return;
         tx.set(ref, {
             status: "rejected",
             respondedAt: firestore_2.FieldValue.serverTimestamp(),
             updatedAt: firestore_2.FieldValue.serverTimestamp(),
+            serverMeta: {
+                lastOp: opKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+            },
         }, { merge: true });
     });
 });
@@ -189,7 +281,7 @@ exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async (event) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
     const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
     const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
     if (!afterSnap || !afterSnap.exists)
@@ -197,20 +289,47 @@ exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
     // Extract once to avoid redeclaration bugs.
     const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
     const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
+    if (((_e = afterData.serverMeta) === null || _e === void 0 ? void 0 : _e.source) === SERVER_WRITER)
+        return;
     const sessionId = event.params.sessionId;
     if (!sessionId.startsWith("queue_")) {
         console.log("auto-match skip: not queue doc", { sessionId });
         return;
     }
-    const afterStatus = (_e = afterData.status) === null || _e === void 0 ? void 0 : _e.toString();
-    const beforeStatus = (_f = beforeData.status) === null || _f === void 0 ? void 0 : _f.toString();
-    const mode = (_g = afterData.mode) === null || _g === void 0 ? void 0 : _g.toString();
+    const afterStatus = (_f = afterData.status) === null || _f === void 0 ? void 0 : _f.toString();
+    const beforeStatus = (_g = beforeData.status) === null || _g === void 0 ? void 0 : _g.toString();
+    const mode = (_h = afterData.mode) === null || _h === void 0 ? void 0 : _h.toString();
+    const beforeInterests = (_j = beforeData.interests) !== null && _j !== void 0 ? _j : [];
+    const afterInterests = (_k = afterData.interests) !== null && _k !== void 0 ? _k : [];
+    const beforeLocation = locationKey(beforeData.location);
+    const afterLocation = locationKey(afterData.location);
+    const beforeHash = stableHash({
+        status: beforeStatus,
+        userA: (_l = beforeData.userA) !== null && _l !== void 0 ? _l : null,
+        mode: (_m = beforeData.mode) !== null && _m !== void 0 ? _m : null,
+        interests: beforeInterests,
+        location: beforeLocation,
+        radiusKm: (_o = beforeData.radiusKm) !== null && _o !== void 0 ? _o : null,
+    });
+    const afterHash = stableHash({
+        status: afterStatus,
+        userA: (_p = afterData.userA) !== null && _p !== void 0 ? _p : null,
+        mode: (_q = afterData.mode) !== null && _q !== void 0 ? _q : null,
+        interests: afterInterests,
+        location: afterLocation,
+        radiusKm: (_r = afterData.radiusKm) !== null && _r !== void 0 ? _r : null,
+    });
+    const fieldsChanged = beforeHash !== afterHash;
     console.log("auto-match entry", {
         sessionId,
         mode,
         beforeStatus,
         afterStatus,
     });
+    if (!fieldsChanged) {
+        console.log("auto-match skip: no relevant field changes", { sessionId });
+        return;
+    }
     // Only react to auto queue sessions transitioning into searching.
     // If pairing never creates a pending {uidA}_{uidB} doc, the UI never sees match found.
     if (mode !== "auto") {
@@ -224,7 +343,7 @@ exports.onAutoMatchSessionSearching = (0, firestore_1.onDocumentWritten)({
         });
         return;
     }
-    const userA = ((_h = afterData.userA) !== null && _h !== void 0 ? _h : "").toString();
+    const userA = ((_s = afterData.userA) !== null && _s !== void 0 ? _s : "").toString();
     if (!userA) {
         console.log("auto-match skip: missing userA", { sessionId });
         return;
@@ -259,9 +378,11 @@ exports.cleanupQueueDocs = (0, scheduler_1.onSchedule)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async () => {
-    var _a;
+    var _a, _b;
     const prefixStart = "queue_";
     const prefixEnd = "queue_~";
+    const now = Date.now();
+    const minuteKey = formatMinuteKey(new Date());
     let lastDoc = null;
     while (true) {
         let query = db
@@ -276,9 +397,35 @@ exports.cleanupQueueDocs = (0, scheduler_1.onSchedule)({
         const snapshot = await query.get();
         if (snapshot.empty)
             break;
-        const batch = db.batch();
         for (const doc of snapshot.docs) {
             const data = (_a = doc.data()) !== null && _a !== void 0 ? _a : {};
+            if (((_b = data.status) === null || _b === void 0 ? void 0 : _b.toString()) === "searching") {
+                lastDoc = doc;
+                continue;
+            }
+            const updatedAt = data.updatedAt;
+            if (updatedAt && now - updatedAt.toMillis() < 60 * 1000) {
+                lastDoc = doc;
+                continue;
+            }
+            const locked = await db.runTransaction(async (tx) => {
+                var _a, _b;
+                const snap = await tx.get(doc.ref);
+                if (!snap.exists)
+                    return false;
+                const current = (_a = snap.data()) !== null && _a !== void 0 ? _a : {};
+                if (((_b = current.status) === null || _b === void 0 ? void 0 : _b.toString()) === "searching")
+                    return false;
+                const currentUpdatedAt = current.updatedAt;
+                if (currentUpdatedAt && now - currentUpdatedAt.toMillis() < 60 * 1000) {
+                    return false;
+                }
+                return acquireOpLock(tx, doc.ref, minuteKey);
+            });
+            if (!locked) {
+                lastDoc = doc;
+                continue;
+            }
             const updates = {};
             if ("userB" in data)
                 updates.userB = firestore_2.FieldValue.delete();
@@ -291,11 +438,15 @@ exports.cleanupQueueDocs = (0, scheduler_1.onSchedule)({
             if ("connectedAt" in data)
                 updates.connectedAt = firestore_2.FieldValue.delete();
             if (Object.keys(updates).length > 0) {
-                batch.set(doc.ref, updates, { merge: true });
+                await doc.ref.set(Object.assign(Object.assign({}, updates), { serverMeta: {
+                        lastOp: minuteKey,
+                        lastWriter: SERVER_WRITER,
+                        updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                        source: SERVER_WRITER,
+                    } }), { merge: true });
             }
+            lastDoc = doc;
         }
-        await batch.commit();
-        lastDoc = snapshot.docs[snapshot.docs.length - 1];
     }
 });
 async function tryPairQueues(queueARef, queueBRef, initiatedBy) {
@@ -372,6 +523,10 @@ async function tryPairQueues(queueARef, queueBRef, initiatedBy) {
             console.log("auto-match skip: pair already exists", { pairSessionId });
             return;
         }
+        const opKey = `tryPairQueues:${pairSessionId}:${expiresAt.toMillis()}`;
+        const locked = await acquireOpLock(tx, pairRef, opKey);
+        if (!locked)
+            return;
         const notifARef = db
             .collection("users")
             .doc(ids[0])
@@ -397,6 +552,12 @@ async function tryPairQueues(queueARef, queueBRef, initiatedBy) {
             respondedAt: null,
             expiresAt,
             updatedAt: firestore_2.FieldValue.serverTimestamp(),
+            serverMeta: {
+                lastOp: opKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+            },
         });
         console.log("auto-match created match_session", { pairSessionId });
         tx.set(notifARef, {
@@ -413,8 +574,26 @@ async function tryPairQueues(queueARef, queueBRef, initiatedBy) {
             seen: false,
             createdAt: firestore_2.FieldValue.serverTimestamp(),
         });
-        tx.set(queueARef, { status: "idle", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
-        tx.set(queueBRef, { status: "idle", updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
+        tx.set(queueARef, {
+            status: "idle",
+            updatedAt: firestore_2.FieldValue.serverTimestamp(),
+            serverMeta: {
+                lastOp: opKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+            },
+        }, { merge: true });
+        tx.set(queueBRef, {
+            status: "idle",
+            updatedAt: firestore_2.FieldValue.serverTimestamp(),
+            serverMeta: {
+                lastOp: opKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+            },
+        }, { merge: true });
         console.log("auto-match paired", { pairSessionId });
         paired = true;
     });
@@ -426,7 +605,7 @@ exports.onMatchSessionRejectedOrExpired = (0, firestore_1.onDocumentWritten)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async (event) => {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g;
     const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
     const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
     if (!afterSnap || !afterSnap.exists)
@@ -434,14 +613,21 @@ exports.onMatchSessionRejectedOrExpired = (0, firestore_1.onDocumentWritten)({
     // Extract once to avoid redeclaration bugs.
     const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
     const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
+    if (((_e = afterData.serverMeta) === null || _e === void 0 ? void 0 : _e.source) === SERVER_WRITER)
+        return;
     const sessionId = event.params.sessionId;
     if (sessionId.startsWith("queue_"))
         return;
-    const afterStatus = (_e = afterData.status) === null || _e === void 0 ? void 0 : _e.toString();
-    const beforeStatus = (_f = beforeData.status) === null || _f === void 0 ? void 0 : _f.toString();
-    if (afterStatus !== "expired" && afterStatus !== "rejected")
+    const afterStatus = (_f = afterData.status) === null || _f === void 0 ? void 0 : _f.toString();
+    const beforeStatus = (_g = beforeData.status) === null || _g === void 0 ? void 0 : _g.toString();
+    const beforeHash = stableHash({ status: beforeStatus });
+    const afterHash = stableHash({ status: afterStatus });
+    // Guard: ignore writes with no relevant change.
+    if (beforeHash === afterHash)
         return;
     if (beforeStatus === afterStatus)
+        return;
+    if (afterStatus !== "expired" && afterStatus !== "rejected")
         return;
     console.log("auto-match rejected/expired: client should requeue", {
         sessionId,
@@ -528,13 +714,56 @@ function normalizeInterests(input) {
         .map((item) => (typeof item === "string" ? item : item === null || item === void 0 ? void 0 : item.toString()))
         .filter((value) => typeof value === "string" && value.length > 0);
 }
+function stableHash(input) {
+    return JSON.stringify(sortObject(input));
+}
+function sortObject(input) {
+    const keys = Object.keys(input).sort();
+    const result = {};
+    for (const key of keys) {
+        const value = input[key];
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+            result[key] = sortObject(value);
+        }
+        else {
+            result[key] = value;
+        }
+    }
+    return result;
+}
+function locationKey(value) {
+    const loc = value;
+    if (!loc)
+        return "null";
+    const lat = Math.round(loc.latitude / LOCATION_EPS) * LOCATION_EPS;
+    const lng = Math.round(loc.longitude / LOCATION_EPS) * LOCATION_EPS;
+    return `${lat}:${lng}`;
+}
+function formatMinuteKey(date) {
+    const pad = (n) => n.toString().padStart(2, "0");
+    return [
+        date.getUTCFullYear(),
+        pad(date.getUTCMonth() + 1),
+        pad(date.getUTCDate()),
+        pad(date.getUTCHours()),
+        pad(date.getUTCMinutes()),
+    ].join("");
+}
+async function acquireOpLock(tx, sessionRef, opKey) {
+    const opRef = sessionRef.collection("_ops").doc(opKey);
+    const opSnap = await tx.get(opRef);
+    if (opSnap.exists)
+        return false;
+    tx.set(opRef, { createdAt: firestore_2.FieldValue.serverTimestamp() });
+    return true;
+}
 exports.onMatchSessionAcceptedNotification = (0, firestore_1.onDocumentWritten)({
     document: "match_sessions/{sessionId}",
     region: "asia-northeast3",
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async (event) => {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
     const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
     if (!afterSnap || !afterSnap.exists)
@@ -542,12 +771,25 @@ exports.onMatchSessionAcceptedNotification = (0, firestore_1.onDocumentWritten)(
     // Extract once to avoid redeclaration bugs.
     const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
     const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
-    const beforeStatus = (_e = beforeData.status) === null || _e === void 0 ? void 0 : _e.toString();
-    const afterStatus = (_f = afterData.status) === null || _f === void 0 ? void 0 : _f.toString();
+    if (((_e = afterData.serverMeta) === null || _e === void 0 ? void 0 : _e.source) === SERVER_WRITER)
+        return;
+    const beforeStatus = (_f = beforeData.status) === null || _f === void 0 ? void 0 : _f.toString();
+    const afterStatus = (_g = afterData.status) === null || _g === void 0 ? void 0 : _g.toString();
+    const beforeHash = stableHash({
+        status: beforeStatus,
+        chatRoomId: (_h = beforeData.chatRoomId) !== null && _h !== void 0 ? _h : null,
+    });
+    const afterHash = stableHash({
+        status: afterStatus,
+        chatRoomId: (_j = afterData.chatRoomId) !== null && _j !== void 0 ? _j : null,
+    });
+    // Guard: ignore writes with no relevant change.
+    if (beforeHash === afterHash)
+        return;
     if (beforeStatus === "accepted" || afterStatus !== "accepted")
         return;
     const sessionId = event.params.sessionId;
-    const chatRoomId = ((_g = afterData.chatRoomId) === null || _g === void 0 ? void 0 : _g.toString()) || sessionId;
+    const chatRoomId = ((_k = afterData.chatRoomId) === null || _k === void 0 ? void 0 : _k.toString()) || sessionId;
     // Idempotency: mark notified.accepted once to prevent duplicates.
     const shouldSend = await markMatchAcceptedNotified(sessionId);
     if (!shouldSend)
@@ -573,25 +815,27 @@ exports.onChatMessageCreatedNotification = (0, firestore_1.onDocumentCreated)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async (event) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     const messageSnap = event.data;
     if (!(messageSnap === null || messageSnap === void 0 ? void 0 : messageSnap.exists))
         return;
     const roomId = event.params.roomId;
     const messageId = event.params.messageId;
     const messageData = (_a = messageSnap.data()) !== null && _a !== void 0 ? _a : {};
+    if (((_b = messageData.serverMeta) === null || _b === void 0 ? void 0 : _b.source) === SERVER_WRITER)
+        return;
     if (messageData.notified === true)
         return;
     // Idempotency: mark notified once per message before sending.
     const shouldSend = await markMessageNotified(roomId, messageId);
     if (!shouldSend)
         return;
-    const senderId = ((_b = messageData.senderId) !== null && _b !== void 0 ? _b : "").toString();
+    const senderId = ((_c = messageData.senderId) !== null && _c !== void 0 ? _c : "").toString();
     if (!senderId)
         return;
     const roomSnap = await db.collection("chat_rooms").doc(roomId).get();
-    const roomData = (_c = roomSnap.data()) !== null && _c !== void 0 ? _c : {};
-    const participants = ((_d = roomData.participants) !== null && _d !== void 0 ? _d : []);
+    const roomData = (_d = roomSnap.data()) !== null && _d !== void 0 ? _d : {};
+    const participants = ((_e = roomData.participants) !== null && _e !== void 0 ? _e : []);
     const recipients = participants
         .map((id) => id === null || id === void 0 ? void 0 : id.toString())
         .filter((id) => id && id !== senderId);
@@ -618,7 +862,7 @@ exports.onChatRoomEnded = (0, firestore_1.onDocumentWritten)({
     memory: "256MiB",
     timeoutSeconds: 60,
 }, async (event) => {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g;
     const beforeSnap = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before;
     const afterSnap = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after;
     if (!afterSnap || !afterSnap.exists)
@@ -626,9 +870,15 @@ exports.onChatRoomEnded = (0, firestore_1.onDocumentWritten)({
     // Extract once to avoid redeclaration bugs.
     const beforeData = (_c = beforeSnap === null || beforeSnap === void 0 ? void 0 : beforeSnap.data()) !== null && _c !== void 0 ? _c : {};
     const afterData = (_d = afterSnap.data()) !== null && _d !== void 0 ? _d : {};
+    if (((_e = afterData.serverMeta) === null || _e === void 0 ? void 0 : _e.source) === SERVER_WRITER)
+        return;
     const roomId = event.params.roomId;
-    const beforeEndedBy = ((_e = beforeData.endedBy) !== null && _e !== void 0 ? _e : "").toString();
-    const afterEndedBy = ((_f = afterData.endedBy) !== null && _f !== void 0 ? _f : "").toString();
+    const beforeEndedBy = ((_f = beforeData.endedBy) !== null && _f !== void 0 ? _f : "").toString();
+    const afterEndedBy = ((_g = afterData.endedBy) !== null && _g !== void 0 ? _g : "").toString();
+    const beforeHash = stableHash({ endedBy: beforeEndedBy });
+    const afterHash = stableHash({ endedBy: afterEndedBy });
+    if (beforeHash === afterHash)
+        return;
     if (!afterEndedBy)
         return;
     if (!beforeEndedBy) {
@@ -666,7 +916,7 @@ async function markMatchAcceptedNotified(sessionId) {
     const sessionRef = db.collection("match_sessions").doc(sessionId);
     let shouldSend = false;
     await db.runTransaction(async (tx) => {
-        var _a, _b;
+        var _a, _b, _c;
         const snap = await tx.get(sessionRef);
         if (!snap.exists)
             return;
@@ -674,8 +924,20 @@ async function markMatchAcceptedNotified(sessionId) {
         const notified = ((_b = data.notified) !== null && _b !== void 0 ? _b : {});
         if (notified.accepted === true)
             return;
+        const opKey = `markMatchAcceptedNotified:${sessionId}`;
+        if (((_c = data.serverMeta) === null || _c === void 0 ? void 0 : _c.lastOp) === opKey)
+            return;
+        const locked = await acquireOpLock(tx, sessionRef, opKey);
+        if (!locked)
+            return;
         tx.set(sessionRef, {
             notified: Object.assign(Object.assign({}, notified), { accepted: true, acceptedAt: firestore_2.FieldValue.serverTimestamp() }),
+            serverMeta: {
+                lastOp: opKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+            },
         }, { merge: true });
         shouldSend = true;
     });
@@ -689,16 +951,28 @@ async function markMessageNotified(roomId, messageId) {
         .doc(messageId);
     let shouldSend = false;
     await db.runTransaction(async (tx) => {
-        var _a;
+        var _a, _b;
         const snap = await tx.get(messageRef);
         if (!snap.exists)
             return;
         const data = (_a = snap.data()) !== null && _a !== void 0 ? _a : {};
         if (data.notified === true)
             return;
+        const opKey = `markMessageNotified:${roomId}:${messageId}`;
+        if (((_b = data.serverMeta) === null || _b === void 0 ? void 0 : _b.lastOp) === opKey)
+            return;
+        const locked = await acquireOpLock(tx, messageRef, opKey);
+        if (!locked)
+            return;
         tx.set(messageRef, {
             notified: true,
             notifiedAt: firestore_2.FieldValue.serverTimestamp(),
+            serverMeta: {
+                lastOp: opKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+            },
         }, { merge: true });
         shouldSend = true;
     });
@@ -757,7 +1031,15 @@ async function sendMulticast(records, message) {
     if (invalidRefs.length > 0) {
         const batch = db.batch();
         for (const ref of invalidRefs) {
-            batch.set(ref, { enabled: false, updatedAt: firestore_2.FieldValue.serverTimestamp() }, { merge: true });
+            batch.set(ref, {
+                enabled: false,
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                serverMeta: {
+                    lastWriter: SERVER_WRITER,
+                    updatedAt: firestore_2.FieldValue.serverTimestamp(),
+                    source: SERVER_WRITER,
+                },
+            }, { merge: true });
         }
         await batch.commit();
     }

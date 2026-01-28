@@ -188,9 +188,9 @@ class ProfileCard extends StatelessWidget {
                   _ActionButton(
                     icon: Icons.chat_bubble,
                     iconWidget: SvgPicture.asset(
-                      'assets/icons/Chat.svg',
-                      width: 22,
-                      height: 22,
+                      'assets/icons/Chat_icon.svg',
+                      width: 30,
+                      height: 30,
                       colorFilter: const ColorFilter.mode(
                         Colors.black87,
                         BlendMode.srcIn,

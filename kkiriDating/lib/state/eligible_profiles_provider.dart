@@ -7,6 +7,8 @@ import '../models/profile.dart';
 import '../services/match_service.dart';
 import 'app_state.dart';
 
+enum RecommendationTab { recommend, nearby }
+
 class EligibleProfilesProvider extends ChangeNotifier {
   EligibleProfilesProvider({FirebaseFirestore? db})
     : _db = db ?? FirebaseFirestore.instance;
@@ -43,6 +45,7 @@ class EligibleProfilesProvider extends ChangeNotifier {
   Future<EligiblePage> fetchEligibleProfiles({
     int limit = 20,
     DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    RecommendationTab mode = RecommendationTab.recommend,
   }) async {
     _fetchCount += 1;
     debugPrint('eligible fetch count: $_fetchCount');
@@ -65,12 +68,24 @@ class EligibleProfilesProvider extends ChangeNotifier {
       me: _me!,
       allUsers: users,
       distanceFilterEnabled: _distanceFilterEnabled,
+      mode: mode,
     );
-    eligible.sort((a, b) {
-      final double scoreB = _matchService.score(_me!, b, _preferredLanguages);
-      final double scoreA = _matchService.score(_me!, a, _preferredLanguages);
-      return scoreB.compareTo(scoreA);
-    });
+    if (mode == RecommendationTab.recommend) {
+      eligible.sort((a, b) {
+        final int overlapB = _commonInterestCount(_me!, b);
+        final int overlapA = _commonInterestCount(_me!, a);
+        if (overlapB != overlapA) return overlapB.compareTo(overlapA);
+        final double scoreB = _matchService.score(_me!, b, _preferredLanguages);
+        final double scoreA = _matchService.score(_me!, a, _preferredLanguages);
+        return scoreB.compareTo(scoreA);
+      });
+    } else {
+      eligible.sort((a, b) {
+        final double distA = _distanceTo(_me!, a) ?? double.maxFinite;
+        final double distB = _distanceTo(_me!, b) ?? double.maxFinite;
+        return distA.compareTo(distB);
+      });
+    }
 
     final lastDoc = docs.isNotEmpty ? docs.last : null;
     final hasMore = docs.length == limit;
@@ -103,6 +118,7 @@ class EligibleProfilesProvider extends ChangeNotifier {
     required Profile me,
     required List<Profile> allUsers,
     required bool distanceFilterEnabled,
+    RecommendationTab mode = RecommendationTab.recommend,
   }) {
     return allUsers
         .where(
@@ -110,8 +126,10 @@ class EligibleProfilesProvider extends ChangeNotifier {
               isProfileComplete(p) &&
               p.id != me.id &&
               isOppositeGender(me, p) &&
-              hasCommonInterest(me, p) &&
-              _passesDistanceFilter(me, p, distanceFilterEnabled) &&
+              (mode == RecommendationTab.nearby ||
+                  hasCommonInterest(me, p)) &&
+              (mode == RecommendationTab.recommend ||
+                  _passesDistanceFilter(me, p, distanceFilterEnabled)) &&
               !_likedIds.contains(p.id) &&
               !_passedIds.contains(p.id) &&
               !_matchedUserIds.contains(p.id),
@@ -141,6 +159,17 @@ class EligibleProfilesProvider extends ChangeNotifier {
   bool hasCommonInterest(Profile me, Profile other) {
     if (me.interests.isEmpty || other.interests.isEmpty) return false;
     return other.interests.any(me.interests.contains);
+  }
+
+  int _commonInterestCount(Profile me, Profile other) {
+    if (me.interests.isEmpty || other.interests.isEmpty) return 0;
+    final set = me.interests.toSet();
+    return other.interests.where(set.contains).length;
+  }
+
+  double? _distanceTo(Profile me, Profile other) {
+    if (me.location == null || other.location == null) return null;
+    return _distanceKm(me.location!, other.location!);
   }
 
   bool _passesDistanceFilter(

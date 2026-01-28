@@ -16,6 +16,7 @@ class RecommendationProvider extends ChangeNotifier {
   }
 
   EligibleProfilesProvider _eligibleProvider;
+  RecommendationTab _mode = RecommendationTab.recommend;
   final List<Profile> _cachedRecommendations = <Profile>[];
   DateTime? _lastUpdatedAt;
   bool _loading = false;
@@ -25,10 +26,19 @@ class RecommendationProvider extends ChangeNotifier {
       List<Profile>.unmodifiable(_cachedRecommendations);
   DateTime? get lastUpdatedAt => _lastUpdatedAt;
   bool get isLoading => _loading;
+  RecommendationTab get mode => _mode;
 
   void updateEligibleProvider(EligibleProfilesProvider provider) {
     if (identical(_eligibleProvider, provider)) return;
     _eligibleProvider = provider;
+  }
+
+  void setMode(RecommendationTab mode) {
+    if (_mode == mode) return;
+    _mode = mode;
+    _cachedRecommendations.clear();
+    _lastUpdatedAt = null;
+    notifyListeners();
   }
 
   Future<void> refreshRecommendations({
@@ -39,7 +49,10 @@ class RecommendationProvider extends ChangeNotifier {
     }
     _loading = true;
     notifyListeners();
-    final result = await _eligibleProvider.fetchEligibleProfiles(limit: 30);
+    final result = await _eligibleProvider.fetchEligibleProfiles(
+      limit: 30,
+      mode: _mode,
+    );
     final List<Profile> next = result.profiles;
     _cachedRecommendations
       ..clear()
