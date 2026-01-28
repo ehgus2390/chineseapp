@@ -151,7 +151,8 @@ class Profile {
         ? notificationsValue
         : null;
     final Object? photoValue = updates['photoUrl'];
-    final String? photoUrl = photoValue is String && photoValue.trim().isNotEmpty
+    final String? photoUrl =
+        photoValue is String && photoValue.trim().isNotEmpty
         ? photoValue
         : (photoValue is String ? null : null);
 
