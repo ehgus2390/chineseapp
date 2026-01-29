@@ -42,6 +42,9 @@ class _KkiriAppState extends State<KkiriApp> {
         if (routerState.matchedLocation == '/') {
           return state.isLoggedIn ? '/home/discover' : '/login';
         }
+        if (state.authFlowInProgress) {
+          return routerState.matchedLocation == '/login' ? null : '/login';
+        }
         final bool loggedIn = state.isLoggedIn;
         final String location = routerState.matchedLocation;
         final bool loggingIn = location == '/login';

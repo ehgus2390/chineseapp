@@ -43,6 +43,7 @@ class AppState extends ChangeNotifier {
   bool _distanceFilterEnabled = true;
   String _queueStatus = 'idle';
   bool _stopMatch = false;
+  bool _authFlowInProgress = false;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubA;
@@ -70,6 +71,7 @@ class AppState extends ChangeNotifier {
 
   User? get user => _auth.currentUser;
   bool get isLoggedIn => user != null && !user!.isAnonymous;
+  bool get authFlowInProgress => _authFlowInProgress;
 
   bool get isOnboarded => _isOnboarded;
   Profile get me => _me!;
@@ -751,6 +753,12 @@ class AppState extends ChangeNotifier {
   Future<void> signOut() async {
     await _auth.signOut();
     await GoogleSignIn().signOut();
+    notifyListeners();
+  }
+
+  void setAuthFlowInProgress(bool value) {
+    if (_authFlowInProgress == value) return;
+    _authFlowInProgress = value;
     notifyListeners();
   }
 
