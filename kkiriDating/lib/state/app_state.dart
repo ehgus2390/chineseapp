@@ -44,6 +44,7 @@ class AppState extends ChangeNotifier {
   String _queueStatus = 'idle';
   bool _stopMatch = false;
   bool _authFlowInProgress = false;
+  bool _profileCompletedFlag = false;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubA;
@@ -76,6 +77,11 @@ class AppState extends ChangeNotifier {
   bool get isOnboarded => _isOnboarded;
   Profile get me => _me!;
   Profile? get meOrNull => _me;
+  bool get isProfileComplete {
+    final me = _me;
+    if (me == null) return false;
+    return _computeProfileComplete(me);
+  }
   Set<String> get matchedUserIds => Set<String>.unmodifiable(_matchedUserIds);
   final Set<String> _matchedUserIds = <String>{};
   List<String> get myPreferredLanguages =>
@@ -212,6 +218,8 @@ class AppState extends ChangeNotifier {
     if (currentUser == null) return;
     final doc = await _db.collection('users').doc(currentUser.uid).get();
     if (!doc.exists) return;
+    final data = doc.data();
+    _profileCompletedFlag = data?['profileCompleted'] == true;
     _me = Profile.fromDoc(doc);
     _profiles[_me!.id] = _me!;
     if (_preferredLanguages.isEmpty) {
@@ -229,6 +237,8 @@ class AppState extends ChangeNotifier {
     _meSub = _db.collection('users').doc(currentUser.uid).snapshots().listen((
       doc,
     ) {
+      final data = doc.data();
+      _profileCompletedFlag = data?['profileCompleted'] == true;
       _me = Profile.fromDoc(doc);
       _profiles[_me!.id] = _me!;
       notifyListeners();
@@ -760,6 +770,32 @@ class AppState extends ChangeNotifier {
     if (_authFlowInProgress == value) return;
     _authFlowInProgress = value;
     notifyListeners();
+  }
+
+  Future<void> setProfileCompleted() async {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    await _db.collection('users').doc(meProfile.id).set(
+      <String, dynamic>{
+        'profileCompleted': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+    _profileCompletedFlag = true;
+    notifyListeners();
+  }
+
+  bool _computeProfileComplete(Profile profile) {
+    final hasPhoto =
+        profile.photoUrl != null && profile.photoUrl!.trim().isNotEmpty;
+    final bio = profile.bio.trim();
+    final hasBio =
+        bio.length >= 20 && bio != '안녕하세요' && bio != '안녕하세요!';
+    final hasGender = profile.gender.trim().isNotEmpty;
+    final hasAge = profile.age > 0;
+    final hasPreference = _preferredLanguages.isNotEmpty;
+    return hasPhoto && hasBio && hasGender && hasAge && hasPreference;
   }
 
   Future<void> saveProfile({

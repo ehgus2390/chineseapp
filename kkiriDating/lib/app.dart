@@ -9,6 +9,7 @@ import 'screens/recommendation_screen.dart';
 import 'screens/chat_list_screen.dart';
 import 'screens/chat_room_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/profile_completion_screen.dart';
 import 'screens/notifications/notifications_inbox_page.dart';
 import 'screens/likes/likes_inbox_page.dart';
 import 'state/app_state.dart';
@@ -45,12 +46,21 @@ class _KkiriAppState extends State<KkiriApp> {
         if (state.authFlowInProgress) {
           return routerState.matchedLocation == '/login' ? null : '/login';
         }
+        final bool profileComplete = state.isProfileComplete;
         final bool loggedIn = state.isLoggedIn;
         final String location = routerState.matchedLocation;
         final bool loggingIn = location == '/login';
+        final bool completingProfile = location == '/profile-completion';
+        final bool profileRoute = location == '/home/profile';
 
         if (!loggedIn) {
           return loggingIn ? null : '/login';
+        }
+        if (profileComplete && completingProfile) {
+          return '/home/discover';
+        }
+        if (!profileComplete && !completingProfile && !profileRoute) {
+          return '/profile-completion';
         }
         if (loggingIn) {
           return '/home/discover';
@@ -59,6 +69,10 @@ class _KkiriAppState extends State<KkiriApp> {
       },
       routes: [
         GoRoute(path: '/login', builder: (_, __) => const AuthScreen()),
+        GoRoute(
+          path: '/profile-completion',
+          builder: (_, __) => const ProfileCompletionScreen(),
+        ),
         ShellRoute(
           builder: (context, state, child) {
             return _HomeShell(child: child);
