@@ -88,39 +88,40 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   String _friendlyAuthError(Object error) {
+    final l = AppLocalizations.of(context);
     if (error is FirebaseAuthException) {
       switch (error.code) {
         case 'invalid-email':
-          return '이메일 형식이 올바르지 않아요.';
+          return l.authErrorInvalidEmail;
         case 'email-already-in-use':
-          return '이미 사용 중인 이메일이에요.';
+          return l.authErrorEmailInUse;
         case 'wrong-password':
-          return '비밀번호가 올바르지 않아요.';
+          return l.authErrorWrongPassword;
         case 'user-not-found':
-          return '등록된 계정을 찾을 수 없어요.';
+          return l.authErrorUserNotFound;
         case 'too-many-requests':
-          return '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.';
+          return l.authErrorTooManyRequests;
         case 'invalid-verification-code':
-          return '인증번호가 올바르지 않아요.';
+          return l.authErrorInvalidVerificationCode;
         case 'invalid-verification-id':
-          return '인증 세션이 만료되었어요. 다시 시도해 주세요.';
+          return l.authErrorInvalidVerificationId;
         default:
-          return '인증 처리에 실패했어요. 잠시 후 다시 시도해 주세요.';
+          return l.authErrorVerificationFailed;
       }
     }
     if (error is StateError && error.message == 'verification_required') {
-      return '인증을 완료해야 회원가입할 수 있어요.';
+      return l.authErrorVerificationRequired;
     }
     if (error is StateError && error.message == 'empty') {
-      return '이메일과 비밀번호를 입력해 주세요.';
+      return l.authErrorEmptyEmailPassword;
     }
     if (error is StateError && error.message == 'phone_empty') {
-      return '전화번호를 입력해 주세요.';
+      return l.authErrorPhoneEmpty;
     }
     if (error is StateError && error.message == 'code_empty') {
-      return '인증번호를 입력해 주세요.';
+      return l.authErrorCodeEmpty;
     }
-    return '요청을 처리할 수 없어요. 다시 시도해 주세요.';
+    return l.authErrorGeneric;
   }
 
   void _resetVerificationState() {
@@ -303,7 +304,7 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(height: 32),
               if (!_isLogin) ...[
                 Text(
-                  '안전한 가입을 위해 인증이 필요합니다',
+                  l.authVerifyIntro,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 12),
@@ -316,7 +317,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             : () => setState(() {
                                 _verificationMethod = 'phone';
                               }),
-                        child: const Text('휴대폰 인증'),
+                        child: Text(l.authVerifyPhoneButton),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -327,7 +328,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             : () => setState(() {
                                 _verificationMethod = 'email';
                               }),
-                        child: const Text('이메일 인증'),
+                        child: Text(l.authVerifyEmailButton),
                       ),
                     ),
                   ],
@@ -337,7 +338,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   TextField(
                     controller: phoneCtrl,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(labelText: '전화번호'),
+                    decoration: InputDecoration(labelText: l.authPhoneLabel),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
@@ -352,7 +353,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               width: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('인증번호 보내기'),
+                          : Text(l.authSendCode),
                     ),
                   ),
                   if (_verificationId != null) ...[
@@ -360,7 +361,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     TextField(
                       controller: smsCtrl,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: '인증번호 입력'),
+                      decoration: InputDecoration(labelText: l.authCodeLabel),
                     ),
                     const SizedBox(height: 8),
                     SizedBox(
@@ -375,7 +376,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text('인증 완료'),
+                            : Text(l.authVerifyCompleteButton),
                       ),
                     ),
                   ],
@@ -384,13 +385,13 @@ class _AuthScreenState extends State<AuthScreen> {
                   TextField(
                     controller: verifyEmailCtrl,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(labelText: '이메일'),
+                    decoration: InputDecoration(labelText: l.email),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: verifyPasswordCtrl,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: '비밀번호'),
+                    decoration: InputDecoration(labelText: l.password),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
@@ -405,7 +406,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               width: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('인증 메일 보내기'),
+                          : Text(l.authSendEmailVerification),
                     ),
                   ),
                   if (_verificationEmailSent) ...[
@@ -416,7 +417,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         onPressed: _verificationBusy
                             ? null
                             : _checkEmailVerified,
-                        child: const Text('인증 완료 확인'),
+                        child: Text(l.authCheckEmailVerified),
                       ),
                     ),
                   ],

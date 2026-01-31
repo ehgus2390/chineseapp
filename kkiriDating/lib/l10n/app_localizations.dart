@@ -64,6 +64,9 @@ class AppLocalizations {
   String get locationServiceOff => t('locationServiceOff');
   String get locationPermissionDenied => t('locationPermissionDenied');
   String get appLanguage => t('appLanguage');
+  String get languageNameKorean => t('languageNameKorean');
+  String get languageNameJapanese => t('languageNameJapanese');
+  String get languageNameEnglish => t('languageNameEnglish');
   String get preferredLanguages => t('preferredLanguages');
   String get onboardingTitle => t('onboardingTitle');
   String get cont => t('continue');
@@ -88,6 +91,13 @@ class AppLocalizations {
   String get notificationsSubtitle => t('notificationsSubtitle');
   String get queueSearchingTitle => t('queueSearchingTitle');
   String get queueSearchingSubtitle => t('queueSearchingSubtitle');
+  String get queueSearchStepDistance => t('queueSearchStepDistance');
+  String get queueSearchStepInterests => t('queueSearchStepInterests');
+  String get queueSearchStepExplore => t('queueSearchStepExplore');
+  String get queueSearchStepAnalysis => t('queueSearchStepAnalysis');
+  String get queueSearchTipPhoto => t('queueSearchTipPhoto');
+  String get queueSearchTipBio => t('queueSearchTipBio');
+  String get queueSearchTipNewUsers => t('queueSearchTipNewUsers');
   String get queueTimeout => t('queueTimeout');
   String get queueConnect => t('queueConnect');
   String get queueAccept => t('queueAccept');
@@ -109,6 +119,15 @@ class AppLocalizations {
   String get notificationsChatText => t('notificationsChatText');
   String get notificationsSystemText => t('notificationsSystemText');
   String get profileSaved => t('profileSaved');
+  String get retry => t('retry');
+  String get matchFoundTitle => t('matchFoundTitle');
+  String profileNameAge(String name, String age) =>
+      t('profileNameAge').replaceAll('{name}', name).replaceAll('{age}', age);
+  String profileNameAgeCountry(String name, String age, String country) =>
+      t('profileNameAgeCountry')
+          .replaceAll('{name}', name)
+          .replaceAll('{age}', age)
+          .replaceAll('{country}', country);
 
   String get matchingSearchingTitle => t('matchingSearchingTitle');
   String get matchingSearchingSubtitle => t('matchingSearchingSubtitle');
@@ -136,6 +155,51 @@ class AppLocalizations {
   String get chatInputHint => t('chatInputHint');
   String get chatError => t('chatError');
   String get chatExit => t('chatExit');
+
+  String get profileCompletionTitle => t('profileCompletionTitle');
+  String profileCompletionProgress(String percent) =>
+      t('profileCompletionProgress').replaceAll('{percent}', percent);
+  String get profileCompletionPhoto => t('profileCompletionPhoto');
+  String get profileCompletionBio => t('profileCompletionBio');
+  String get profileCompletionBasicInfo => t('profileCompletionBasicInfo');
+  String get profileCompletionCta => t('profileCompletionCta');
+  String get profileBioPlaceholder => t('profileBioPlaceholder');
+  String get profileBioPlaceholderAlt => t('profileBioPlaceholderAlt');
+
+  String get authVerifyIntro => t('authVerifyIntro');
+  String get authVerifyPhoneButton => t('authVerifyPhoneButton');
+  String get authVerifyEmailButton => t('authVerifyEmailButton');
+  String get authPhoneLabel => t('authPhoneLabel');
+  String get authSendCode => t('authSendCode');
+  String get authCodeLabel => t('authCodeLabel');
+  String get authVerifyCompleteButton => t('authVerifyCompleteButton');
+  String get authSendEmailVerification => t('authSendEmailVerification');
+  String get authCheckEmailVerified => t('authCheckEmailVerified');
+
+  String get authErrorInvalidEmail => t('authErrorInvalidEmail');
+  String get authErrorEmailInUse => t('authErrorEmailInUse');
+  String get authErrorWrongPassword => t('authErrorWrongPassword');
+  String get authErrorUserNotFound => t('authErrorUserNotFound');
+  String get authErrorTooManyRequests => t('authErrorTooManyRequests');
+  String get authErrorInvalidVerificationCode =>
+      t('authErrorInvalidVerificationCode');
+  String get authErrorInvalidVerificationId =>
+      t('authErrorInvalidVerificationId');
+  String get authErrorVerificationFailed => t('authErrorVerificationFailed');
+  String get authErrorVerificationRequired =>
+      t('authErrorVerificationRequired');
+  String get authErrorEmptyEmailPassword => t('authErrorEmptyEmailPassword');
+  String get authErrorPhoneEmpty => t('authErrorPhoneEmpty');
+  String get authErrorCodeEmpty => t('authErrorCodeEmpty');
+  String get authErrorGeneric => t('authErrorGeneric');
+
+  String get uploadErrorPermission => t('uploadErrorPermission');
+  String get uploadErrorCanceled => t('uploadErrorCanceled');
+  String get uploadErrorUnauthorized => t('uploadErrorUnauthorized');
+  String get uploadErrorNetwork => t('uploadErrorNetwork');
+  String get uploadErrorUnknown => t('uploadErrorUnknown');
+  String get uploadErrorFailed => t('uploadErrorFailed');
+  String get uploadErrorFileRead => t('uploadErrorFileRead');
 }
 
 class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

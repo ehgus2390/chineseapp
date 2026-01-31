@@ -89,14 +89,22 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
                   ).textTheme.titleSmall?.copyWith(color: Colors.black54),
                 ),
                 const Spacer(),
-                TextButton(
-                  onPressed: () => recommendations.refreshRecommendations(
-                    reason: RefreshReason.manual,
+                Flexible(
+                  child: TextButton(
+                    onPressed: () => recommendations.refreshRecommendations(
+                      reason: RefreshReason.manual,
+                    ),
+                    child: Text(
+                      l.refreshRecommendations,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  child: Text(l.refreshRecommendations),
                 ),
                 StreamBuilder<int>(
-                  stream: context.read<NotificationProvider>().unseenCountStream(),
+                  stream: context
+                      .read<NotificationProvider>()
+                      .unseenCountStream(),
                   builder: (context, snapshot) {
                     final count = snapshot.data ?? 0;
                     return IconButton(
@@ -205,8 +213,9 @@ class _RecommendationBody extends StatelessWidget {
         onAction: () => context.go('/home/profile'),
       );
     }
-    final filtered =
-        filteredByTab.where((p) => !dismissedIds.contains(p.id)).toList();
+    final filtered = filteredByTab
+        .where((p) => !dismissedIds.contains(p.id))
+        .toList();
     if (filtered.isEmpty) {
       return _NoMatchState(
         title: l.noMatchTitle,

@@ -10,12 +10,133 @@ import type {
   Transaction,
 } from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
+import {getAuth} from "firebase-admin/auth";
+import {getStorage} from "firebase-admin/storage";
 
 initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
+const auth = getAuth();
+const storage = getStorage();
 const SERVER_WRITER = "server";
 const LOCATION_EPS = 1e-6;
+
+// Cleanup abandoned unverified email users.
+const DRY_RUN = true; // Set to false to perform deletions.
+const MAX_DELETIONS_PER_RUN = 200;
+const EMAIL_VERIFY_AGE_HOURS = 48;
+
+export const cleanupUnverifiedEmailUsers = onSchedule(
+  {
+    schedule: "every 6 hours",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async () => {
+    const lockRef = db.collection("_ops").doc("cleanup_unverified_email_users");
+    const now = Date.now();
+    const lockAcquired = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(lockRef);
+      const data = snap.data() ?? {};
+      const lastRun = (data.lastRunAt as Timestamp | undefined)?.toMillis() ?? 0;
+      // Prevent overlapping runs (6h schedule).
+      if (now - lastRun < 5 * 60 * 60 * 1000) return false;
+      tx.set(lockRef, {lastRunAt: FieldValue.serverTimestamp()}, {merge: true});
+      return true;
+    });
+    if (!lockAcquired) {
+      console.log("cleanupUnverifiedEmailUsers: skipped (lock)");
+      return;
+    }
+
+    const thresholdMs = EMAIL_VERIFY_AGE_HOURS * 60 * 60 * 1000;
+    let pageToken: string | undefined;
+    let scanned = 0;
+    let candidates = 0;
+    let deleted = 0;
+    let skipped = 0;
+
+    while (true) {
+      const result = await auth.listUsers(1000, pageToken);
+      pageToken = result.pageToken;
+      for (const user of result.users) {
+        scanned += 1;
+        if (deleted >= MAX_DELETIONS_PER_RUN) break;
+        if (user.emailVerified) {
+          skipped += 1;
+          continue;
+        }
+        const providers = user.providerData.map((p) => p.providerId);
+        if (!providers.includes("password")) {
+          skipped += 1;
+          continue;
+        }
+        const createdAtMs = Date.parse(user.metadata.creationTime);
+        if (!Number.isFinite(createdAtMs) || now - createdAtMs < thresholdMs) {
+          skipped += 1;
+          continue;
+        }
+
+        const userDoc = await db.collection("users").doc(user.uid).get();
+        const userData = userDoc.data() ?? {};
+        if (userData.verifiedAt != null || userData.profileCompleted === true) {
+          skipped += 1;
+          continue;
+        }
+
+        candidates += 1;
+        if (DRY_RUN) {
+          console.log("DRY_RUN: delete candidate", {uid: user.uid});
+          continue;
+        }
+
+        try {
+          await auth.deleteUser(user.uid);
+          deleted += 1;
+        } catch (e) {
+          console.log("cleanupUnverifiedEmailUsers: auth delete failed", {
+            uid: user.uid,
+            error: e,
+          });
+          continue;
+        }
+
+        // Best-effort Firestore + Storage cleanup.
+        try {
+          if (userDoc.exists) {
+            await userDoc.ref.delete();
+          }
+        } catch (e) {
+          console.log("cleanupUnverifiedEmailUsers: firestore delete failed", {
+            uid: user.uid,
+            error: e,
+          });
+        }
+        try {
+          await deleteStorageFolder(`users/${user.uid}/`);
+        } catch (e) {
+          console.log("cleanupUnverifiedEmailUsers: storage delete failed", {
+            uid: user.uid,
+            error: e,
+          });
+        }
+      }
+
+      if (!pageToken || deleted >= MAX_DELETIONS_PER_RUN) {
+        break;
+      }
+    }
+
+    console.log("cleanupUnverifiedEmailUsers: summary", {
+      scanned,
+      candidates,
+      deleted,
+      skipped,
+      dryRun: DRY_RUN,
+    });
+  }
+);
 
 // B-step hardening: region/memory/timeout to control cost and latency.
 export const expireMatchSessions = onSchedule(
@@ -839,6 +960,23 @@ async function acquireOpLock(
   if (opSnap.exists) return false;
   tx.set(opRef, {createdAt: FieldValue.serverTimestamp()});
   return true;
+}
+
+async function deleteStorageFolder(prefix: string): Promise<void> {
+  const bucket = storage.bucket();
+  let pageToken: string | undefined;
+  while (true) {
+    const [files, _, apiResponse] = await bucket.getFiles({
+      prefix,
+      autoPaginate: false,
+      maxResults: 1000,
+      pageToken,
+    });
+    if (files.length === 0) break;
+    await Promise.all(files.map((file) => file.delete().catch(() => undefined)));
+    pageToken = (apiResponse as any)?.nextPageToken;
+    if (!pageToken) break;
+  }
 }
 
 export const onMatchSessionAcceptedNotification = onDocumentWritten(

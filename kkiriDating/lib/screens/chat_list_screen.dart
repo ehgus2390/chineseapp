@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -30,6 +31,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
   String? _ignoredSessionId;
   bool _requeueScheduled = false;
   String? _handledEndSessionId;
+  Timer? _searchStepTimer;
+  Timer? _searchTipTimer;
+  int _searchStepIndex = 0;
+  int _searchTipIndex = 0;
+  List<String> _searchSteps = const [];
+  List<String> _searchTips = const [];
   static const int _queueDurationSeconds = 10;
 
   @override
@@ -40,6 +47,25 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final l = AppLocalizations.of(context);
+    final nextSteps = <String>[
+      l.queueSearchStepDistance,
+      l.queueSearchStepInterests,
+      l.queueSearchStepExplore,
+      l.queueSearchStepAnalysis,
+    ];
+    final nextTips = <String>[
+      l.queueSearchTipPhoto,
+      l.queueSearchTipBio,
+      l.queueSearchTipNewUsers,
+    ];
+    if (!listEquals(_searchSteps, nextSteps) ||
+        !listEquals(_searchTips, nextTips)) {
+      _searchSteps = nextSteps;
+      _searchTips = nextTips;
+      _searchStepIndex = 0;
+      _searchTipIndex = 0;
+    }
     if (_badgeCleared) return;
     _badgeCleared = true;
     context.read<NotificationState>().clearChatBadge();
@@ -48,6 +74,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _searchStepTimer?.cancel();
+    _searchTipTimer?.cancel();
     super.dispose();
   }
 
@@ -67,6 +95,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       _ignoredSessionId = null;
       _activePendingSessionId = null;
     });
+    _startSearchRotation();
   }
 
   void _startCountdown() {
@@ -103,6 +132,31 @@ class _ChatListScreenState extends State<ChatListScreen> {
       _ignoredSessionId = _activePendingSessionId;
     }
     _activePendingSessionId = null;
+    _stopSearchRotation();
+  }
+
+  void _startSearchRotation() {
+    if (_searchStepTimer != null || _searchTipTimer != null) return;
+    if (_searchSteps.isEmpty || _searchTips.isEmpty) return;
+    _searchStepTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      setState(() {
+        _searchStepIndex = (_searchStepIndex + 1) % _searchSteps.length;
+      });
+    });
+    _searchTipTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
+      setState(() {
+        _searchTipIndex = (_searchTipIndex + 1) % _searchTips.length;
+      });
+    });
+  }
+
+  void _stopSearchRotation() {
+    _searchStepTimer?.cancel();
+    _searchStepTimer = null;
+    _searchTipTimer?.cancel();
+    _searchTipTimer = null;
   }
 
   void _scheduleRequeueOnce(AppState state) {
@@ -176,6 +230,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   if (_timeoutReached) {
                     _navigating = false;
                     _stopCountdownTimerOnly();
+                    _stopSearchRotation();
                     return _ChatTimeoutState(title: l.queueTimeout);
                   }
 
@@ -207,6 +262,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           });
                         });
                       }
+                      _stopSearchRotation();
                       return _ChatWaitingState(
                         title: l.chatWaitingTitle,
                         subtitle: l.chatWaitingSubtitle,
@@ -216,9 +272,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                   if (!showSearching && !hasPending) {
                     _stopCountdownTimerOnly();
+                    _stopSearchRotation();
                     return _ChatSearchingState(
                       emoji: l.chatSearchingEmoji,
                       title: l.queueSearchingTitle,
+                      stepText: _searchSteps.isNotEmpty
+                          ? _searchSteps[_searchStepIndex]
+                          : '',
+                      tipText: _searchTips.isNotEmpty
+                          ? _searchTips[_searchTipIndex]
+                          : '',
                       subtitle: l.queueSearchingSubtitle,
                       countdownText: null,
                       showConnect: true,
@@ -233,6 +296,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   final Widget base = _ChatSearchingState(
                     emoji: l.chatSearchingEmoji,
                     title: l.queueSearchingTitle,
+                    stepText: _searchSteps.isNotEmpty
+                        ? _searchSteps[_searchStepIndex]
+                        : '',
+                    tipText: _searchTips.isNotEmpty
+                        ? _searchTips[_searchTipIndex]
+                        : '',
                     subtitle: l.queueSearchingSubtitle,
                     countdownText: null,
                     showConnect: !showSearching,
@@ -244,15 +313,26 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       await state.stopAutoMatchQueue();
                       if (!mounted) return;
                       setState(() => _queueActive = false);
+                      _stopSearchRotation();
                     },
                   );
 
                   if (!hasPending || session == null) {
                     _stopCountdownTimerOnly();
+                    if (showSearching) {
+                      _startSearchRotation();
+                    } else {
+                      _stopSearchRotation();
+                    }
                     return base;
                   }
                   if (_ignoredSessionId == session.id) {
                     _stopCountdownTimerOnly();
+                    if (showSearching) {
+                      _startSearchRotation();
+                    } else {
+                      _stopSearchRotation();
+                    }
                     return base;
                   }
 
@@ -271,6 +351,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       _startCountdown();
                     });
                   }
+                  _stopSearchRotation();
 
                   final String myId = state.me.id;
                   final String opponentId = session.userA == myId
@@ -289,6 +370,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               profile: profile,
                               countdownSeconds: _countdown,
                               totalSeconds: _queueDurationSeconds,
+                              matchFoundLabel: l.matchFoundTitle,
                               remainingLabel: l.queueRemainingTime(
                                 _countdown.toString(),
                               ),
@@ -296,6 +378,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               declineLabel: l.queueDecline,
                               onAccept: () async {
                                 _closePendingOverlay();
+                                _stopSearchRotation();
                                 final uid = state.me.id;
                                 await FirebaseFirestore.instance
                                     .collection('match_sessions')
@@ -306,6 +389,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               },
                               onDecline: () async {
                                 _closePendingOverlay(ignoreSession: true);
+                                _stopSearchRotation();
                                 final uid = state.me.id;
                                 await FirebaseFirestore.instance
                                     .collection('match_sessions')
@@ -368,6 +452,8 @@ class _Header extends StatelessWidget {
 class _ChatSearchingState extends StatelessWidget {
   final String emoji;
   final String title;
+  final String stepText;
+  final String tipText;
   final String? subtitle;
   final String? countdownText;
   final bool showConnect;
@@ -380,6 +466,8 @@ class _ChatSearchingState extends StatelessWidget {
   const _ChatSearchingState({
     required this.emoji,
     required this.title,
+    required this.stepText,
+    required this.tipText,
     required this.subtitle,
     required this.countdownText,
     required this.showConnect,
@@ -397,14 +485,30 @@ class _ChatSearchingState extends StatelessWidget {
         Text(emoji, style: const TextStyle(fontSize: 32)),
         const SizedBox(height: 10),
         Text(title, style: const TextStyle(fontSize: 16)),
+        const SizedBox(height: 8),
+        Text(
+          stepText,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          softWrap: true,
+          style: const TextStyle(color: Colors.black54, fontSize: 14),
+        ),
         if (subtitle != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             subtitle!,
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.black54, fontSize: 16),
           ),
         ],
+        const SizedBox(height: 10),
+        Text(
+          tipText,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          softWrap: true,
+          style: const TextStyle(color: Colors.black45, fontSize: 13),
+        ),
         const SizedBox(height: 14),
         if (countdownText != null) ...[
           Text(countdownText!, style: const TextStyle(color: Colors.black54)),
@@ -580,6 +684,7 @@ class _MatchPendingOverlay extends StatelessWidget {
   final Profile profile;
   final int countdownSeconds;
   final int totalSeconds;
+  final String matchFoundLabel;
   final String remainingLabel;
   final String acceptLabel;
   final String declineLabel;
@@ -590,6 +695,7 @@ class _MatchPendingOverlay extends StatelessWidget {
     required this.profile,
     required this.countdownSeconds,
     required this.totalSeconds,
+    required this.matchFoundLabel,
     required this.remainingLabel,
     required this.acceptLabel,
     required this.declineLabel,
@@ -639,11 +745,15 @@ class _MatchPendingOverlay extends StatelessWidget {
                     color: const Color(0xFFFFD36E),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Text(
-                    'MATCH FOUND!',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.6,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      matchFoundLabel,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
                     ),
                   ),
                 ),

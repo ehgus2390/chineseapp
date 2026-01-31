@@ -14,6 +14,7 @@ import '../services/chat_service.dart';
 import '../services/preferences_storage.dart';
 
 enum MatchMode { direct, auto }
+
 enum AutoMatchState { idle, searching, matched, chatting }
 
 class AppState extends ChangeNotifier {
@@ -82,6 +83,7 @@ class AppState extends ChangeNotifier {
     if (me == null) return false;
     return _computeProfileComplete(me);
   }
+
   Set<String> get matchedUserIds => Set<String>.unmodifiable(_matchedUserIds);
   final Set<String> _matchedUserIds = <String>{};
   List<String> get myPreferredLanguages =>
@@ -466,14 +468,8 @@ class AppState extends ChangeNotifier {
         'initiatedBy': meProfile.id,
         'createdAt': FieldValue.serverTimestamp(),
         'responses': isDirect
-            ? <String, dynamic>{
-                ids.first: 'accepted',
-                ids.last: 'accepted',
-              }
-            : <String, dynamic>{
-                ids.first: null,
-                ids.last: null,
-              },
+            ? <String, dynamic>{ids.first: 'accepted', ids.last: 'accepted'}
+            : <String, dynamic>{ids.first: null, ids.last: null},
       });
       return session_model.MatchSession(
         id: matchId,
@@ -488,14 +484,8 @@ class AppState extends ChangeNotifier {
         expiresAt: null,
         mode: isDirect ? 'direct' : 'auto',
         responses: isDirect
-            ? <String, String?>{
-                ids.first: 'accepted',
-                ids.last: 'accepted',
-              }
-            : <String, String?>{
-                ids.first: null,
-                ids.last: null,
-              },
+            ? <String, String?>{ids.first: 'accepted', ids.last: 'accepted'}
+            : <String, String?>{ids.first: null, ids.last: null},
       );
     });
   }
@@ -517,19 +507,16 @@ class AppState extends ChangeNotifier {
         .where((e) => e.isNotEmpty)
         .toList();
 
-    await _db.collection('match_sessions').doc(sessionId).set(
-      <String, dynamic>{
-        'userA': userId,
-        'interests': normalizedInterests,
-        'location': meProfile.location,
-        'radiusKm': meProfile.distanceKm,
-        'mode': 'auto',
-        'status': 'searching',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await _db.collection('match_sessions').doc(sessionId).set(<String, dynamic>{
+      'userA': userId,
+      'interests': normalizedInterests,
+      'location': meProfile.location,
+      'radiusKm': meProfile.distanceKm,
+      'mode': 'auto',
+      'status': 'searching',
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> stopAutoMatchQueue() async {
@@ -537,13 +524,10 @@ class AppState extends ChangeNotifier {
     if (currentUser == null || currentUser.isAnonymous) return;
     final String sessionId = 'queue_${currentUser.uid}';
     _stopMatch = true;
-    await _db.collection('match_sessions').doc(sessionId).set(
-      <String, dynamic>{
-        'status': 'idle',
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await _db.collection('match_sessions').doc(sessionId).set(<String, dynamic>{
+      'status': 'idle',
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   session_model.MatchSession? get activeAutoMatchSession {
@@ -640,11 +624,11 @@ class AppState extends ChangeNotifier {
         .doc(profile.id)
         .collection('likes')
         .doc(meProfile.id);
-      await targetLikeRef.set(<String, dynamic>{
-        'fromUid': meProfile.id,
-        'createdAt': FieldValue.serverTimestamp(),
-        'seen': false,
-      }, SetOptions(merge: true));
+    await targetLikeRef.set(<String, dynamic>{
+      'fromUid': meProfile.id,
+      'createdAt': FieldValue.serverTimestamp(),
+      'seen': false,
+    }, SetOptions(merge: true));
 
     final reciprocal = await _db
         .collection('users')
@@ -655,8 +639,9 @@ class AppState extends ChangeNotifier {
     if (reciprocal.exists) {
       final List<String> ids = <String>[meProfile.id, profile.id]..sort();
       final String chatRoomId = ids.join('_');
-      final DocumentReference<Map<String, dynamic>> roomRef =
-          _db.collection('chat_rooms').doc(chatRoomId);
+      final DocumentReference<Map<String, dynamic>> roomRef = _db
+          .collection('chat_rooms')
+          .doc(chatRoomId);
       await _db.runTransaction((tx) async {
         final roomSnap = await tx.get(roomRef);
         if (!roomSnap.exists) {
@@ -665,17 +650,12 @@ class AppState extends ChangeNotifier {
             'createdAt': FieldValue.serverTimestamp(),
           });
         }
-        tx.set(
-          roomRef,
-          <String, dynamic>{
-            'participants': ids,
-            'createdAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        tx.set(roomRef, <String, dynamic>{
+          'participants': ids,
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       });
-
-      }
+    }
 
     notifyListeners();
   }
@@ -775,13 +755,10 @@ class AppState extends ChangeNotifier {
   Future<void> setProfileCompleted() async {
     final Profile? meProfile = _me;
     if (meProfile == null) return;
-    await _db.collection('users').doc(meProfile.id).set(
-      <String, dynamic>{
-        'profileCompleted': true,
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await _db.collection('users').doc(meProfile.id).set(<String, dynamic>{
+      'profileCompleted': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
     _profileCompletedFlag = true;
     notifyListeners();
   }
@@ -790,8 +767,7 @@ class AppState extends ChangeNotifier {
     final hasPhoto =
         profile.photoUrl != null && profile.photoUrl!.trim().isNotEmpty;
     final bio = profile.bio.trim();
-    final hasBio =
-        bio.length >= 20 && bio != '안녕하세요' && bio != '안녕하세요!';
+    final hasBio = bio.length >= 20 && bio != '안녕하세요' && bio != '안녕하세요!';
     final hasGender = profile.gender.trim().isNotEmpty;
     final hasAge = profile.age > 0;
     final hasPreference = _preferredLanguages.isNotEmpty;
@@ -810,43 +786,43 @@ class AppState extends ChangeNotifier {
     required double distanceKm,
     required GeoPoint? location,
   }) async {
-      final Profile? meProfile = _me;
-      if (meProfile == null) return;
-      final List<String> normalizedInterests = interests
-          .map((e) => e.toString())
-          .where((e) => e.isNotEmpty)
-          .toList();
-      final List<String> normalizedLanguages = languages
-          .map((e) => e.toString())
-          .where((e) => e.isNotEmpty)
-          .toList();
-      await _db.collection('users').doc(meProfile.id).set(<String, dynamic>{
-        'name': name,
-        'age': age,
-        'occupation': occupation,
-        'country': country,
-        'interests': normalizedInterests,
-        'gender': gender,
-        'languages': normalizedLanguages,
-        'bio': bio,
-        'distanceKm': distanceKm,
-        'location': location,
-      }, SetOptions(merge: true));
-      _me = meProfile.copyWith(
-        name: name,
-        age: age,
-        occupation: occupation,
-        country: country,
-        interests: normalizedInterests,
-        gender: gender,
-        languages: normalizedLanguages,
-        bio: bio,
-        distanceKm: distanceKm,
-        location: location,
-      );
-      _profiles[meProfile.id] = _me!;
-      notifyListeners();
-    }
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    final List<String> normalizedInterests = interests
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final List<String> normalizedLanguages = languages
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    await _db.collection('users').doc(meProfile.id).set(<String, dynamic>{
+      'name': name,
+      'age': age,
+      'occupation': occupation,
+      'country': country,
+      'interests': normalizedInterests,
+      'gender': gender,
+      'languages': normalizedLanguages,
+      'bio': bio,
+      'distanceKm': distanceKm,
+      'location': location,
+    }, SetOptions(merge: true));
+    _me = meProfile.copyWith(
+      name: name,
+      age: age,
+      occupation: occupation,
+      country: country,
+      interests: normalizedInterests,
+      gender: gender,
+      languages: normalizedLanguages,
+      bio: bio,
+      distanceKm: distanceKm,
+      location: location,
+    );
+    _profiles[meProfile.id] = _me!;
+    notifyListeners();
+  }
 
   Future<void> updateMatchPreferences({
     required double distanceKm,
@@ -863,12 +839,9 @@ class AppState extends ChangeNotifier {
   Future<void> setNotificationsEnabled(bool enabled) async {
     final Profile? meProfile = _me;
     if (meProfile == null) return;
-    await _db.collection('users').doc(meProfile.id).set(
-      <String, dynamic>{
-        'notificationsEnabled': enabled,
-      },
-      SetOptions(merge: true),
-    );
+    await _db.collection('users').doc(meProfile.id).set(<String, dynamic>{
+      'notificationsEnabled': enabled,
+    }, SetOptions(merge: true));
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> watchLikesInbox() {
@@ -910,7 +883,9 @@ class AppState extends ChangeNotifier {
     if (snapshot.docs.isEmpty) return;
     final batch = _db.batch();
     for (final doc in snapshot.docs) {
-      batch.set(doc.reference, <String, dynamic>{'seen': true}, SetOptions(merge: true));
+      batch.set(doc.reference, <String, dynamic>{
+        'seen': true,
+      }, SetOptions(merge: true));
     }
     await batch.commit();
   }
@@ -954,7 +929,9 @@ class AppState extends ChangeNotifier {
     if (snapshot.docs.isEmpty) return;
     final batch = _db.batch();
     for (final doc in snapshot.docs) {
-      batch.set(doc.reference, <String, dynamic>{'seen': true}, SetOptions(merge: true));
+      batch.set(doc.reference, <String, dynamic>{
+        'seen': true,
+      }, SetOptions(merge: true));
     }
     await batch.commit();
   }
@@ -967,7 +944,6 @@ class AppState extends ChangeNotifier {
       'endedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
-
 
   Future<void> ensureFirstMessageGuide(String matchId, String guideText) async {
     bool shouldSend = false;

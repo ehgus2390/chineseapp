@@ -98,13 +98,19 @@ class ProfileCard extends StatelessWidget {
                 children: [
                   Text(
                     profile.country.isEmpty
-                        ? '${profile.name}, ${profile.age}'
-                        : '${profile.name}, ${profile.age} · ${profile.country}',
+                        ? l.profileNameAge(profile.name, profile.age.toString())
+                        : l.profileNameAgeCountry(
+                            profile.name,
+                            profile.age.toString(),
+                            profile.country,
+                          ),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
                   Row(

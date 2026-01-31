@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
-import 'package:go_router/go_router.dart';
+import '../l10n/app_localizations.dart';
 
 class ProfileCompletionScreen extends StatelessWidget {
   const ProfileCompletionScreen({super.key});
@@ -13,12 +14,14 @@ class ProfileCompletionScreen extends StatelessWidget {
     return me.photoUrl != null && me.photoUrl!.trim().isNotEmpty;
   }
 
-  bool _hasValidBio(AppState state) {
+  bool _hasValidBio(AppState state, AppLocalizations l) {
     final me = state.meOrNull;
     if (me == null) return false;
     final text = me.bio.trim();
     if (text.length < 20) return false;
-    if (text == '안녕하세요' || text == '안녕하세요!') return false;
+    if (text == l.profileBioPlaceholder || text == l.profileBioPlaceholderAlt) {
+      return false;
+    }
     return true;
   }
 
@@ -34,8 +37,9 @@ class ProfileCompletionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final l = AppLocalizations.of(context);
     final photoDone = _hasValidPhoto(state);
-    final bioDone = _hasValidBio(state);
+    final bioDone = _hasValidBio(state, l);
     final basicDone = _hasBasicInfo(state);
     final doneCount = [photoDone, bioDone, basicDone].where((v) => v).length;
     final progress = doneCount / 3.0;
@@ -51,27 +55,30 @@ class ProfileCompletionScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 12),
-              const Text(
-                '프로필 완성도',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              Text(
+                l.profileCompletionTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 6),
-              Text('프로필 완성도 $percent%'),
+              Text(l.profileCompletionProgress(percent.toString())),
               const SizedBox(height: 10),
               LinearProgressIndicator(value: progress),
               const SizedBox(height: 24),
               _ChecklistCard(
-                title: '프로필 사진 추가',
+                title: l.profileCompletionPhoto,
                 done: photoDone,
                 onTap: () => context.go('/home/profile'),
               ),
               _ChecklistCard(
-                title: '자기소개 작성',
+                title: l.profileCompletionBio,
                 done: bioDone,
                 onTap: () => context.go('/home/profile'),
               ),
               _ChecklistCard(
-                title: '기본 정보 입력',
+                title: l.profileCompletionBasicInfo,
                 done: basicDone,
                 onTap: () => context.go('/home/profile'),
               ),
@@ -84,7 +91,7 @@ class ProfileCompletionScreen extends StatelessWidget {
                           await state.setProfileCompleted();
                         }
                       : null,
-                  child: const Text('매칭 시작하기'),
+                  child: Text(l.profileCompletionCta),
                 ),
               ),
             ],
