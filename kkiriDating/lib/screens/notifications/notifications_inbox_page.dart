@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,8 +12,7 @@ class NotificationsInboxPage extends StatefulWidget {
   const NotificationsInboxPage({super.key});
 
   @override
-  State<NotificationsInboxPage> createState() =>
-      _NotificationsInboxPageState();
+  State<NotificationsInboxPage> createState() => _NotificationsInboxPageState();
 }
 
 class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
@@ -31,7 +30,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
   Widget build(BuildContext context) {
     final notifications = context.watch<NotificationProvider>();
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(title: Text(l.notificationsInboxTitle)),
@@ -64,8 +63,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                   final profileName = profileSnap.data?.name ?? fromUid;
                   String title = l.notificationsSystemText;
                   if (type == 'like') {
-                    title = l.notificationsLikeText
-                        .replaceAll('{name}', profileName);
+                    title = l.notificationsLikeText(profileName);
                   } else if (type == 'match') {
                     title = l.notificationsMatchText;
                   } else if (type == 'chat') {
@@ -74,7 +72,11 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
 
                   return ListTile(
                     leading: const Icon(Icons.notifications),
-                    title: Text(title),
+                    title: Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     onTap: () async {
                       if (type == 'like') {
                         context.go('/home/likes');
@@ -87,8 +89,8 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                             .doc(refId)
                             .get();
                         final data = matchSnap.data() ?? {};
-                        final String chatRoomId =
-                            (data['chatRoomId'] ?? '').toString();
+                        final String chatRoomId = (data['chatRoomId'] ?? '')
+                            .toString();
                         if (chatRoomId.isNotEmpty) {
                           if (!context.mounted) return;
                           context.go('/home/chat/room/$chatRoomId');

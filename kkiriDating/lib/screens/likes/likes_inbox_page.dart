@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -26,7 +26,7 @@ class _LikesInboxPageState extends State<LikesInboxPage> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(title: Text(l.likesInboxTitle)),
@@ -61,12 +61,13 @@ class _LikesInboxPageState extends State<LikesInboxPage> {
                   }
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundImage: profile.photoUrl != null &&
+                      backgroundImage:
+                          profile.photoUrl != null &&
                               profile.photoUrl!.isNotEmpty
                           ? NetworkImage(profile.photoUrl!)
                           : null,
-                      child: profile.photoUrl == null ||
-                              profile.photoUrl!.isEmpty
+                      child:
+                          profile.photoUrl == null || profile.photoUrl!.isEmpty
                           ? const Icon(Icons.person)
                           : null,
                     ),

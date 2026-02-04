@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../state/app_state.dart';
-import '../l10n/app_localizations.dart';
+import 'package:kkiri/l10n/app_localizations.dart';
 import '../widgets/distance_filter_widget.dart';
 import '../models/match_session.dart';
 import '../models/profile.dart';
@@ -47,7 +47,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final nextSteps = <String>[
       l.queueSearchStepDistance,
       l.queueSearchStepInterests,
@@ -197,7 +197,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
 
     final me = state.meOrNull;
     final bool profileComplete = me != null && state.isProfileReady(me);
@@ -414,7 +414,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 }
 
-/* ───────────────────────── UI Components ───────────────────────── */
+/* UI Components */
 
 class _Header extends StatelessWidget {
   final String title;
@@ -427,11 +427,16 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: Row(
         children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.black,
-              fontWeight: FontWeight.w700,
+          Flexible(
+            fit: FlexFit.loose,
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const Spacer(),
@@ -484,7 +489,13 @@ class _ChatSearchingState extends StatelessWidget {
       children: [
         Text(emoji, style: const TextStyle(fontSize: 32)),
         const SizedBox(height: 10),
-        Text(title, style: const TextStyle(fontSize: 16)),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 16),
+        ),
         const SizedBox(height: 8),
         Text(
           stepText,
@@ -498,6 +509,8 @@ class _ChatSearchingState extends StatelessWidget {
           Text(
             subtitle!,
             textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.black54, fontSize: 16),
           ),
         ],
@@ -515,10 +528,24 @@ class _ChatSearchingState extends StatelessWidget {
           const SizedBox(height: 10),
         ],
         if (showConnect)
-          FilledButton(onPressed: onConnect, child: Text(connectLabel)),
+          FilledButton(
+            onPressed: onConnect,
+            child: Text(
+              connectLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         if (showStop) ...[
           const SizedBox(height: 8),
-          OutlinedButton(onPressed: onStop, child: Text(stopLabel)),
+          OutlinedButton(
+            onPressed: onStop,
+            child: Text(
+              stopLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ],
     );
@@ -535,7 +562,13 @@ class _ChatWaitingState extends StatelessWidget {
   Widget build(BuildContext context) {
     return _CenteredText(
       children: [
-        Text(title, style: const TextStyle(fontSize: 18)),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 18),
+        ),
         const SizedBox(height: 10),
         Text(
           subtitle,
@@ -556,7 +589,13 @@ class _ChatPendingState extends StatelessWidget {
   Widget build(BuildContext context) {
     return _CenteredText(
       children: [
-        Text(title, style: const TextStyle(fontSize: 18)),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 18),
+        ),
         const SizedBox(height: 10),
         const SizedBox(
           height: 18,
@@ -576,7 +615,15 @@ class _ChatTimeoutState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CenteredText(
-      children: [Text(title, style: const TextStyle(fontSize: 18))],
+      children: [
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 18),
+        ),
+      ],
     );
   }
 }
@@ -619,17 +666,35 @@ class _ChatConsentState extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Text(title, style: const TextStyle(fontSize: 18)),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 18),
+        ),
         const SizedBox(height: 8),
         Text(
           subtitle,
           textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(color: Colors.black54),
         ),
         const SizedBox(height: 16),
-        FilledButton(onPressed: onConnect, child: Text(connectLabel)),
+        FilledButton(
+          onPressed: onConnect,
+          child: Text(
+            connectLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
         const SizedBox(height: 8),
-        TextButton(onPressed: onSkip, child: Text(skipLabel)),
+        TextButton(
+          onPressed: onSkip,
+          child: Text(skipLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
       ],
     );
   }
@@ -784,25 +849,41 @@ class _MatchPendingOverlay extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Text(title, style: const TextStyle(fontSize: 16)),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 16),
+                ),
                 if (intro.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
                     intro,
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.black54),
                   ),
                 ],
                 const SizedBox(height: 12),
                 const SizedBox(height: 4),
-                Text(remainingLabel),
+                Text(
+                  remainingLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: onDecline,
-                        child: Text(declineLabel),
+                        child: Text(
+                          declineLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -860,7 +941,10 @@ class _CircularAcceptButton extends StatelessWidget {
               shape: const CircleBorder(),
               padding: const EdgeInsets.all(20),
             ),
-            child: Text(label),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(label),
+            ),
           ),
         ),
       ],

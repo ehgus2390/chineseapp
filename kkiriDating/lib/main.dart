@@ -15,7 +15,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/notification_navigation.dart';
 import 'services/analytics_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'l10n/app_localizations.dart';
+import 'package:kkiri/l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -151,7 +151,7 @@ class _NotificationListenerHostState extends State<_NotificationListenerHost> {
         userId: userId,
       );
       final notifications = context.read<NotificationState>();
-      final l = AppLocalizations.of(context);
+      final l = AppLocalizations.of(context)!;
       if (type == 'match_accepted') {
         // Foreground UX: toast + badge update.
         widget.scaffoldMessengerKey.currentState?.showSnackBar(
@@ -256,3 +256,5 @@ class _NotificationListenerHostState extends State<_NotificationListenerHost> {
   @override
   Widget build(BuildContext context) => widget.child;
 }
+
+

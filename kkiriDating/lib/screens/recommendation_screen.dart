@@ -6,7 +6,7 @@ import '../state/recommendation_provider.dart';
 import '../state/eligible_profiles_provider.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/profile_card.dart';
-import '../l10n/app_localizations.dart';
+import 'package:kkiri/l10n/app_localizations.dart';
 import '../models/profile.dart';
 
 class RecommendationScreen extends StatefulWidget {
@@ -57,7 +57,7 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final state = context.watch<AppState>();
     final recommendations = context.watch<RecommendationProvider>();
     final me = state.meOrNull;
@@ -75,29 +75,50 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
             child: Row(
               children: [
-                Text(
-                  l.appTitle,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: Text(
+                    l.appTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  l.discoverTitle,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(color: Colors.black54),
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: Text(
+                    l.discoverTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleSmall?.copyWith(color: Colors.black54),
+                  ),
                 ),
                 const Spacer(),
                 Flexible(
                   child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      minimumSize: const Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     onPressed: () => recommendations.refreshRecommendations(
                       reason: RefreshReason.manual,
                     ),
-                    child: Text(
-                      l.refreshRecommendations,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        l.refreshRecommendations,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ),
@@ -124,27 +145,31 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Row(
             children: [
-              _HeaderTab(
-                label: l.tabRecommend,
-                selected: _selectedTab == 0,
-                onTap: () {
-                  setState(() => _selectedTab = 0);
-                  recommendations.setMode(RecommendationTab.recommend);
-                  recommendations.refreshRecommendations(
-                    reason: RefreshReason.manual,
-                  );
-                },
+              Flexible(
+                child: _HeaderTab(
+                  label: l.tabRecommend,
+                  selected: _selectedTab == 0,
+                  onTap: () {
+                    setState(() => _selectedTab = 0);
+                    recommendations.setMode(RecommendationTab.recommend);
+                    recommendations.refreshRecommendations(
+                      reason: RefreshReason.manual,
+                    );
+                  },
+                ),
               ),
-              _HeaderTab(
-                label: l.tabNearby,
-                selected: _selectedTab == 1,
-                onTap: () {
-                  setState(() => _selectedTab = 1);
-                  recommendations.setMode(RecommendationTab.nearby);
-                  recommendations.refreshRecommendations(
-                    reason: RefreshReason.manual,
-                  );
-                },
+              Flexible(
+                child: _HeaderTab(
+                  label: l.tabNearby,
+                  selected: _selectedTab == 1,
+                  onTap: () {
+                    setState(() => _selectedTab = 1);
+                    recommendations.setMode(RecommendationTab.nearby);
+                    recommendations.refreshRecommendations(
+                      reason: RefreshReason.manual,
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -189,7 +214,7 @@ class _RecommendationBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     if (!profileComplete) {
       return _ProfileCompletionPrompt(
         title: l.profileCompleteTitle,
@@ -321,6 +346,8 @@ class _HeaderTab extends StatelessWidget {
           children: [
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(fontWeight: FontWeight.w700, color: color),
             ),
             const SizedBox(height: 6),

@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
-import '../l10n/app_localizations.dart';
+import 'package:kkiri/l10n/app_localizations.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -88,7 +88,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   String _friendlyAuthError(Object error) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     if (error is FirebaseAuthException) {
       switch (error.code) {
         case 'invalid-email':
@@ -282,7 +282,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -317,7 +317,11 @@ class _AuthScreenState extends State<AuthScreen> {
                             : () => setState(() {
                                 _verificationMethod = 'phone';
                               }),
-                        child: Text(l.authVerifyPhoneButton),
+                        child: Text(
+                          l.authVerifyPhoneButton,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -328,7 +332,11 @@ class _AuthScreenState extends State<AuthScreen> {
                             : () => setState(() {
                                 _verificationMethod = 'email';
                               }),
-                        child: Text(l.authVerifyEmailButton),
+                        child: Text(
+                          l.authVerifyEmailButton,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                   ],
@@ -490,3 +498,4 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 }
+

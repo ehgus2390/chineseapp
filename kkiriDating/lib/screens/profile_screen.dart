@@ -8,7 +8,7 @@ import '../state/app_state.dart';
 import '../providers/user_provider.dart';
 import '../state/locale_state.dart';
 import '../state/recommendation_provider.dart';
-import '../l10n/app_localizations.dart';
+import 'package:kkiri/l10n/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -102,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String _friendlyUploadError(Object error) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     if (error is FirebaseException) {
       switch (error.code) {
         case 'permission-denied':
@@ -184,7 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final state = context.watch<AppState>();
     final userProvider = context.watch<UserProvider>();
     final localeState = context.watch<LocaleState>();
@@ -480,6 +480,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+
+
+
 
 
 

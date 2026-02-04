@@ -1,10 +1,11 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../state/app_state.dart';
 import '../state/notification_state.dart';
 import '../models/message.dart';
-import '../l10n/app_localizations.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/profile.dart';
 
 class ChatRoomScreen extends StatefulWidget {
@@ -20,6 +21,84 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool _guideChecked = false;
   bool _badgeCleared = false;
   bool _firstMessageLogged = false;
+  Future<void> _showReportDialog(
+    AppState state,
+    AppLocalizations l,
+  ) async {
+    final me = state.meOrNull;
+    if (me == null) return;
+    final parts = widget.matchId.split('_');
+    final otherId = parts.firstWhere(
+      (id) => id != me.id,
+      orElse: () => '',
+    );
+    if (otherId.isEmpty) return;
+
+    String? selected;
+    final reasons = <Map<String, String>>[
+      {'id': 'spam', 'label': l.reportReasonSpam},
+      {'id': 'harassment', 'label': l.reportReasonHarassment},
+      {'id': 'inappropriate', 'label': l.reportReasonInappropriate},
+      {'id': 'other', 'label': l.reportReasonOther},
+    ];
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(l.reportTitle),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: reasons
+                      .map(
+                        (r) => RadioListTile<String>(
+                          value: r['id']!,
+                          groupValue: selected,
+                          title: Text(r['label']!),
+                          onChanged: (value) {
+                            setState(() => selected = value);
+                          },
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l.reportCancel),
+                ),
+                FilledButton(
+                  onPressed: selected == null
+                      ? null
+                      : () => Navigator.of(context).pop(selected),
+                  child: Text(l.reportConfirm),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    await FirebaseFirestore.instance.collection('reports').add({
+      'reporterUid': me.id,
+      'reportedUid': otherId,
+      'matchId': widget.matchId,
+      'reason': result,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l.reportSubmitted)),
+    );
+  }
 
   @override
   void didChangeDependencies() {
@@ -31,7 +110,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       context.read<NotificationState>().clearChatBadge();
     }
     final state = context.read<AppState>();
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     state.ensureFirstMessageGuide(widget.matchId, l.firstMessageGuide);
   }
 
@@ -44,13 +123,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l.chatTitle),
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'report') {
+                _showReportDialog(state, l);
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem<String>(
+                value: 'report',
+                child: Text(l.reportAction),
+              ),
+            ],
+          ),          IconButton(
             icon: const Icon(Icons.exit_to_app),
             tooltip: l.chatExit,
             onPressed: () async {
@@ -204,16 +295,17 @@ class _SuggestionChips extends StatelessWidget {
     final shared = other.interests.where(me.interests.contains).toList();
     if (shared.isEmpty) return <String>[];
     final interest = shared.first;
-    return l.firstMessageSuggestions
+    return l
+        .firstMessageSuggestions(interest)
         .split('|')
-        .map((s) => s.replaceAll('{interest}', interest))
+        .where((s) => s.trim().isNotEmpty)
         .toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final me = state.meOrNull;
     if (me == null) return const SizedBox.shrink();
     final parts = matchId.split('_');
@@ -245,3 +337,7 @@ class _SuggestionChips extends StatelessWidget {
     );
   }
 }
+
+
+
+

@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../models/profile.dart';
-import '../l10n/app_localizations.dart';
+import 'package:kkiri/l10n/app_localizations.dart';
 
 class ProfileCard extends StatelessWidget {
   final Profile profile;
@@ -21,7 +21,7 @@ class ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final interests = profile.interests.take(3).toList();
     final String? distanceLabel = distanceKm == null
         ? null
@@ -256,7 +256,16 @@ class _ActionButton extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+        SizedBox(
+          width: 72,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+        ),
       ],
     );
   }
@@ -280,3 +289,6 @@ class _Dot extends StatelessWidget {
     );
   }
 }
+
+
+

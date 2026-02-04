@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'l10n/app_localizations.dart';
+import 'package:kkiri/l10n/app_localizations.dart';
 import 'screens/auth_screen.dart';
 import 'screens/recommendation_screen.dart';
 import 'screens/chat_list_screen.dart';
@@ -127,12 +127,12 @@ class _KkiriAppState extends State<KkiriApp> {
         scaffoldBackgroundColor: const Color(0xFFF7F3F4),
       ),
       localizationsDelegates: const [
-        AppLocalizationsDelegate(),
+        AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [Locale('ko'), Locale('en'), Locale('ja')],
+      supportedLocales: AppLocalizations.supportedLocales,
     );
   }
 }
@@ -140,7 +140,7 @@ class _KkiriAppState extends State<KkiriApp> {
 class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final location = GoRouterState.of(context).uri.toString();
     final unreadChatCount = context.watch<NotificationState>().unreadChatCount;
 
@@ -243,3 +243,5 @@ class _HomeShell extends StatelessWidget {
     );
   }
 }
+
+

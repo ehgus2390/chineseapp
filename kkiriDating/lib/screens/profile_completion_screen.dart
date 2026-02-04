@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
-import '../l10n/app_localizations.dart';
+import 'package:kkiri/l10n/app_localizations.dart';
 
 class ProfileCompletionScreen extends StatelessWidget {
   const ProfileCompletionScreen({super.key});
@@ -37,7 +37,7 @@ class ProfileCompletionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final photoDone = _hasValidPhoto(state);
     final bioDone = _hasValidBio(state, l);
     final basicDone = _hasBasicInfo(state);
@@ -57,13 +57,19 @@ class ProfileCompletionScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 l.profileCompletionTitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 6),
-              Text(l.profileCompletionProgress(percent.toString())),
+              Text(
+                l.profileCompletionProgress(percent.toString()),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               const SizedBox(height: 10),
               LinearProgressIndicator(value: progress),
               const SizedBox(height: 24),
@@ -91,7 +97,11 @@ class ProfileCompletionScreen extends StatelessWidget {
                           await state.setProfileCompleted();
                         }
                       : null,
-                  child: Text(l.profileCompletionCta),
+                  child: Text(
+                    l.profileCompletionCta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
             ],
@@ -123,7 +133,7 @@ class _ChecklistCard extends StatelessWidget {
           done ? Icons.check_circle : Icons.radio_button_unchecked,
           color: done ? Colors.green : Colors.grey,
         ),
-        title: Text(title),
+        title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
         trailing: const Icon(Icons.chevron_right),
       ),
     );

@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
-import '../l10n/app_localizations.dart';
+import 'package:kkiri/l10n/app_localizations.dart';
 import '../state/app_state.dart';
 import '../state/recommendation_provider.dart';
 
@@ -27,7 +27,7 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
   }
 
   Future<void> _useCurrentLocation(AppState state) async {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final hasService = await Geolocator.isLocationServiceEnabled();
     if (!hasService) {
       if (!mounted) return;
@@ -68,7 +68,7 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
   }
 
   String _distanceLabel(double value) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     if (value <= 30) return l.distanceNear;
     if (value <= 80) return l.distanceMedium;
     return l.distanceFar;
@@ -77,7 +77,7 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     _seedFromProfile(state);
     final me = state.meOrNull;
     final hasLocation = me?.location != null;
@@ -98,9 +98,13 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                l.distanceRangeLabel,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              Expanded(
+                child: Text(
+                  l.distanceRangeLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
               Switch(
                 value: distanceEnabled,
@@ -109,7 +113,11 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
             ],
           ),
           const SizedBox(height: 4),
-          Text(distanceLabel),
+          Text(
+            distanceLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           Slider(
             min: 1,
             max: 200,
@@ -152,3 +160,5 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
     );
   }
 }
+
+
