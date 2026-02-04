@@ -172,5 +172,7 @@
     "reportReasonInappropriate":  "不適切なコンテンツ",
     "reportCancel":  "キャンセル",
     "reportSubmitted":  "通報を受け付けました",
-    "reportReasonOther":  "その他"
+    "reportReasonOther":  "その他",
+    "protectionLimitedMessage":  "現在保護特典を利用できません。",
+    "protectionBlockedMessage":  "現在マッチングが制限されています。"
 }

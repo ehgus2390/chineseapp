@@ -14,6 +14,34 @@ service cloud.firestore {
         (data.userA == request.auth.uid || data.userB == request.auth.uid);
     }
 
+    function moderationDoc(uid) {
+      return get(/databases/$(database)/documents/user_moderation/$(uid)).data;
+    }
+
+    function entitlementsDoc(uid) {
+      return get(/databases/$(database)/documents/user_entitlements/$(uid)).data;
+    }
+
+    function canEnterQueue(uid) {
+      let mod = moderationDoc(uid);
+      let ent = entitlementsDoc(uid);
+      let level = mod.level ?? 0;
+      let eligible = mod.protectionEligible ?? true;
+      let hard = mod.hardFlags ?? {};
+      let severe = hard.severe == true;
+      let sexual = hard.sexual == true;
+      let violence = hard.violence == true;
+      let protection = ent.protection ?? {};
+      let ban = ent.protectionBan ?? {};
+      let active = protection.active == true
+        && protection.expiresAt != null
+        && protection.expiresAt > request.time;
+      let banned = ban.active == true
+        && (ban.until == null || ban.until > request.time);
+      // Level 2 requires active protection and clean hard flags.
+      return level < 2 || (active && !banned && eligible == true && !severe && !sexual && !violence);
+    }
+
     // ─────────────────────────────
     // users (profiles)
     // ─────────────────────────────
@@ -40,6 +68,16 @@ service cloud.firestore {
       }
     }
 
+    match /user_entitlements/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    match /user_moderation/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow write: if false;
+    }
+
     // ─────────────────────────────
     // match_sessions (SSOT)
     // ─────────────────────────────
@@ -58,6 +96,7 @@ service cloud.firestore {
         && signedIn()
         && sessionId == 'queue_' + request.auth.uid
         && request.resource.data.userA == request.auth.uid
+        && (request.resource.data.status != 'searching' || canEnterQueue(request.auth.uid))
         && request.resource.data.keys().hasOnly([
           'userA',
           'interests',

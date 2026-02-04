@@ -172,5 +172,7 @@
     "reportReasonInappropriate":  "Inappropriate content",
     "reportCancel":  "Cancel",
     "reportSubmitted":  "Your report has been submitted",
-    "reportReasonOther":  "Other"
+    "reportReasonOther":  "Other",
+    "protectionLimitedMessage":  "Protection benefit is not available right now.",
+    "protectionBlockedMessage":  "Matching is currently restricted."
 }

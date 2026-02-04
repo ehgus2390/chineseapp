@@ -81,9 +81,41 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Future<void> _enterMatchingQueue() async {
     if (_queueActive) return;
+    final state = context.read<AppState>();
+    final l = AppLocalizations.of(context)!;
+    if (state.moderationLevel >= 2) {
+      final bool limitedEligible = state.hasProtection &&
+          !state.protectionBanned &&
+          state.protectionEligible &&
+          !state.hardFlagSevere &&
+          !state.hardFlagSexual &&
+          !state.hardFlagViolence;
+      if (!limitedEligible) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.protectionBlockedMessage)),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.protectionLimitedMessage)),
+      );
+    }
     try {
-      await context.read<AppState>().enterAutoMatchQueue();
+      await state.enterAutoMatchQueue();
     } catch (_) {
+      final bool eligible = state.hasProtection &&
+          !state.protectionBanned &&
+          state.protectionEligible &&
+          !state.hardFlagSevere &&
+          !state.hardFlagSexual &&
+          !state.hardFlagViolence;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            eligible ? l.protectionLimitedMessage : l.protectionBlockedMessage,
+          ),
+        ),
+      );
       // Keep UI responsive even if queue entry fails.
     }
     if (!mounted) return;
@@ -941,10 +973,7 @@ class _CircularAcceptButton extends StatelessWidget {
               shape: const CircleBorder(),
               padding: const EdgeInsets.all(20),
             ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(label),
-            ),
+            child: FittedBox(fit: BoxFit.scaleDown, child: Text(label)),
           ),
         ),
       ],

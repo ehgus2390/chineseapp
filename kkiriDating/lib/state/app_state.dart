@@ -46,11 +46,22 @@ class AppState extends ChangeNotifier {
   bool _stopMatch = false;
   bool _authFlowInProgress = false;
   bool _profileCompletedFlag = false;
+  int _moderationLevel = 0;
+  bool _hasProtection = false;
+  String _protectionTier = 'basic';
+  DateTime? _protectionExpiresAt;
+  bool _protectionBanned = false;
+  bool _protectionEligible = true;
+  bool _hardFlagSevere = false;
+  bool _hardFlagSexual = false;
+  bool _hardFlagViolence = false;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubA;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubB;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _queueSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _moderationSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _entitlementsSub;
   StreamSubscription<User?>? _authSub;
 
   Stream<session_model.MatchSession?> watchMatchSession(String otherUserId) {
@@ -92,6 +103,15 @@ class AppState extends ChangeNotifier {
   Set<String> get passedIds => Set<String>.unmodifiable(_passedIds);
   bool get distanceFilterEnabled => _distanceFilterEnabled;
   bool get stopMatchEnabled => _stopMatch;
+  int get moderationLevel => _moderationLevel;
+  bool get hasProtection => _hasProtection;
+  String get protectionTier => _protectionTier;
+  DateTime? get protectionExpiresAt => _protectionExpiresAt;
+  bool get protectionBanned => _protectionBanned;
+  bool get protectionEligible => _protectionEligible;
+  bool get hardFlagSevere => _hardFlagSevere;
+  bool get hardFlagSexual => _hardFlagSexual;
+  bool get hardFlagViolence => _hardFlagViolence;
   AutoMatchState get autoMatchState {
     final session = activeAutoMatchSession;
     if (session != null) {
@@ -163,6 +183,17 @@ class AppState extends ChangeNotifier {
         await _matchSessionsSubA?.cancel();
         await _matchSessionsSubB?.cancel();
         await _queueSub?.cancel();
+        await _moderationSub?.cancel();
+        await _entitlementsSub?.cancel();
+        _moderationLevel = 0;
+        _hasProtection = false;
+        _protectionTier = 'basic';
+        _protectionExpiresAt = null;
+        _protectionBanned = false;
+        _protectionEligible = true;
+        _hardFlagSevere = false;
+        _hardFlagSexual = false;
+        _hardFlagViolence = false;
         notifyListeners();
         return;
       }
@@ -171,9 +202,11 @@ class AppState extends ChangeNotifier {
       await _loadMeOnce();
       await _loadMyDecisions();
       _watchMyProfile();
-      _watchMatchSessions();
-      _watchQueueStatus();
-      notifyListeners();
+    _watchMatchSessions();
+    _watchQueueStatus();
+    _watchModeration();
+    _watchEntitlements();
+    notifyListeners();
     } catch (e, st) {
       debugPrint('AUTH FLOW FAILED: $e');
       debugPrintStack(stackTrace: st);
@@ -280,6 +313,72 @@ class AppState extends ChangeNotifier {
           }
           final data = snapshot.data() ?? <String, dynamic>{};
           _queueStatus = (data['status'] ?? 'idle').toString();
+          notifyListeners();
+        });
+  }
+
+  void _watchModeration() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    _moderationSub?.cancel();
+    _moderationSub = _db
+        .collection('user_moderation')
+        .doc(meProfile.id)
+        .snapshots()
+        .listen((snapshot) {
+          if (!snapshot.exists) {
+            _moderationLevel = 0;
+            _protectionEligible = true;
+            _hardFlagSevere = false;
+            _hardFlagSexual = false;
+            _hardFlagViolence = false;
+            notifyListeners();
+            return;
+          }
+          final data = snapshot.data() ?? <String, dynamic>{};
+          _moderationLevel = (data['level'] ?? 0) as int;
+          _protectionEligible = data['protectionEligible'] != false;
+          final hardFlags = data['hardFlags'] as Map<String, dynamic>? ?? {};
+          _hardFlagSevere = hardFlags['severe'] == true;
+          _hardFlagSexual = hardFlags['sexual'] == true;
+          _hardFlagViolence = hardFlags['violence'] == true;
+          notifyListeners();
+        });
+  }
+
+  void _watchEntitlements() {
+    final Profile? meProfile = _me;
+    if (meProfile == null) return;
+    _entitlementsSub?.cancel();
+    _entitlementsSub = _db
+        .collection('user_entitlements')
+        .doc(meProfile.id)
+        .snapshots()
+        .listen((snapshot) {
+          if (!snapshot.exists) {
+            _hasProtection = false;
+            _protectionTier = 'basic';
+            _protectionExpiresAt = null;
+            _protectionBanned = false;
+            notifyListeners();
+            return;
+          }
+          final data = snapshot.data() ?? <String, dynamic>{};
+          final protection =
+              data['protection'] as Map<String, dynamic>? ?? {};
+          final ban = data['protectionBan'] as Map<String, dynamic>? ?? {};
+          _hasProtection = protection['active'] == true;
+          _protectionTier = (protection['tier'] ?? 'basic').toString();
+          final expiresAt = protection['expiresAt'];
+          _protectionExpiresAt =
+              expiresAt is Timestamp ? expiresAt.toDate() : null;
+          final banUntil = ban['until'];
+          final banActive = ban['active'] == true;
+          final bool banEffective = banActive &&
+              (banUntil == null ||
+                  (banUntil is Timestamp &&
+                      banUntil.toDate().isAfter(DateTime.now())));
+          _protectionBanned = banEffective;
           notifyListeners();
         });
   }
@@ -495,6 +594,17 @@ class AppState extends ChangeNotifier {
     if (currentUser == null || currentUser.isAnonymous) {
       throw StateError('No signed-in user.');
     }
+    if (_moderationLevel >= 2) {
+      final bool limitedEligible = _hasProtection &&
+          !_protectionBanned &&
+          _protectionEligible &&
+          !_hardFlagSevere &&
+          !_hardFlagSexual &&
+          !_hardFlagViolence;
+      if (!limitedEligible) {
+        return;
+      }
+    }
     if (_queueStatus == 'searching') return;
     _stopMatch = false;
 
@@ -502,6 +612,10 @@ class AppState extends ChangeNotifier {
     final String sessionId = 'queue_$userId';
     final Profile? meProfile = _me;
     if (meProfile == null) return;
+    if (_moderationLevel == 1 && !_hasProtection) {
+      // Slight client-side delay to reduce priority without changing server logic.
+      await Future<void>.delayed(const Duration(seconds: 3));
+    }
     final List<String> normalizedInterests = meProfile.interests
         .map((e) => e.toString())
         .where((e) => e.isNotEmpty)
@@ -992,7 +1106,9 @@ class AppState extends ChangeNotifier {
     _meSub?.cancel();
     _matchSessionsSubA?.cancel();
     _matchSessionsSubB?.cancel();
+    _moderationSub?.cancel();
     _authSub?.cancel();
     super.dispose();
   }
 }
+

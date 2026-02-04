@@ -1,4 +1,5 @@
 import {onSchedule} from "firebase-functions/v2/scheduler";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {onDocumentCreated, onDocumentWritten} from "firebase-functions/v2/firestore";
 import {initializeApp} from "firebase-admin/app";
 import {FieldValue, FieldPath, getFirestore, Timestamp} from "firebase-admin/firestore";
@@ -20,6 +21,9 @@ const auth = getAuth();
 const storage = getStorage();
 const SERVER_WRITER = "server";
 const LOCATION_EPS = 1e-6;
+const MODERATION_LEVEL_ONE_THRESHOLD = 3;
+const MODERATION_LEVEL_TWO_THRESHOLD = 6;
+const MATCH_LIMIT_MINUTES = 10;
 
 // Cleanup abandoned unverified email users.
 const DRY_RUN = true; // Set to false to perform deletions.
@@ -136,6 +140,154 @@ export const cleanupUnverifiedEmailUsers = onSchedule(
       dryRun: DRY_RUN,
     });
   }
+);
+
+export const verifyProtectionPurchase = onCall(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    const authUid = request.auth?.uid;
+    const isAdmin = request.auth?.token?.admin === true;
+    const data = request.data ?? {};
+    const uid = (data.uid ?? "").toString();
+    const tier = (data.tier ?? "").toString();
+    const orderId = (data.orderId ?? "").toString();
+    const source = (data.source ?? "").toString();
+    const expiresAtRaw = data.expiresAt;
+
+    if (!uid || !orderId || !tier || !source) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+    if (!authUid || (!isAdmin && uid !== authUid)) {
+      throw new HttpsError("permission-denied", "Not authorized.");
+    }
+    if (tier !== "basic" && tier !== "plus") {
+      throw new HttpsError("invalid-argument", "Invalid tier.");
+    }
+    if (source !== "promo") {
+      throw new HttpsError(
+        "failed-precondition",
+        "Verification not configured for this source.",
+      );
+    }
+
+    const expiresAtMs = parseExpiryMillis(expiresAtRaw);
+    if (!Number.isFinite(expiresAtMs)) {
+      throw new HttpsError("invalid-argument", "Invalid expiresAt.");
+    }
+    const nowMs = Date.now();
+    const isExpired = expiresAtMs <= nowMs;
+
+    const entitlementRef = db.collection("user_entitlements").doc(uid);
+    const opKey = `verifyProtectionPurchase:${orderId}`;
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(entitlementRef);
+      const current = snap.data() ?? {};
+      if (current.protection?.orderId === orderId) return;
+      if (current.serverMeta?.lastOp === opKey) return;
+
+      const protection = {
+        active: !isExpired,
+        tier,
+        startedAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(expiresAtMs),
+        source,
+        orderId,
+        lastVerifiedAt: FieldValue.serverTimestamp(),
+      };
+
+      tx.set(
+        entitlementRef,
+        {
+          protection,
+          updatedAt: FieldValue.serverTimestamp(),
+          serverMeta: {
+            lastOp: opKey,
+            lastWriter: SERVER_WRITER,
+            updatedAt: FieldValue.serverTimestamp(),
+            source: SERVER_WRITER,
+          },
+        },
+        {merge: true},
+      );
+    });
+
+    return {ok: true};
+  },
+);
+
+export const onReportCreated = onDocumentCreated(
+  {
+    document: "reports/{reportId}",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async (event) => {
+    const reportSnap = event.data;
+    if (!reportSnap?.exists) return;
+    const reportId = event.params.reportId as string;
+    const reportData = reportSnap.data() ?? {};
+    const reportedUid = (reportData.reportedUid ?? "").toString();
+    const reason = (reportData.reason ?? "unknown").toString();
+    if (!reportedUid) return;
+
+    const ref = db.collection("user_moderation").doc(reportedUid);
+    const opKey = `onReportCreated:${reportId}`;
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const current = snap.data() ?? {};
+      if (current.serverMeta?.lastOp === opKey) return;
+
+      const totalReports = Number(current.totalReports ?? 0) + 1;
+      const reasonCounts = {
+        ...(current.reasonCounts ?? {}),
+      } as Record<string, number>;
+      reasonCounts[reason] = Number(reasonCounts[reason] ?? 0) + 1;
+      const protectionEligible =
+        (current.protectionEligible ?? true) as boolean;
+      const hardFlags =
+        (current.hardFlags ?? {
+          severe: false,
+          spam: false,
+          sexual: false,
+          violence: false,
+        }) as Record<string, boolean>;
+
+      const level =
+        totalReports >= MODERATION_LEVEL_TWO_THRESHOLD
+          ? 2
+          : totalReports >= MODERATION_LEVEL_ONE_THRESHOLD
+          ? 1
+          : 0;
+
+      tx.set(
+        ref,
+        {
+          reportedUid,
+          totalReports,
+          reasonCounts,
+          protectionEligible,
+          hardFlags,
+          level,
+          lastReportAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+          serverMeta: {
+            lastOp: opKey,
+            lastWriter: SERVER_WRITER,
+            updatedAt: FieldValue.serverTimestamp(),
+            source: SERVER_WRITER,
+          },
+        },
+        {merge: true},
+      );
+    });
+  },
 );
 
 // B-step hardening: region/memory/timeout to control cost and latency.
@@ -491,6 +643,27 @@ export const onAutoMatchSessionSearching = onDocumentWritten(
 
     console.log("auto-match attempt start", {userA});
 
+    const gateAllowed = await db.runTransaction(async (tx) => {
+      const queueSnap = await tx.get(afterSnap.ref);
+      if (!queueSnap.exists) return false;
+      const gate = await evaluateMatchGate(tx, userA);
+      if (gate.decision === "BLOCK") {
+        console.log("auto-match gate block at entry", {userA, reason: gate.reason});
+        setQueueIdle(tx, afterSnap.ref, `gate-entry:${userA}`);
+        return false;
+      }
+      if (gate.decision === "ALLOW_LIMITED") {
+        const ok = await applyLimitedThrottle(tx, userA);
+        if (!ok) {
+          console.log("auto-match gate cooldown at entry", {userA});
+          setQueueIdle(tx, afterSnap.ref, `gate-cooldown:${userA}`);
+          return false;
+        }
+      }
+      return true;
+    });
+    if (!gateAllowed) return;
+
     const candidates = await db
       .collection("match_sessions")
       .where("mode", "==", "auto")
@@ -655,6 +828,35 @@ async function tryPairQueues(
     if (!hydratedA || !hydratedB) {
       console.log("auto-match skip: hydrate failed");
       return;
+    }
+
+    const gateA = await evaluateMatchGate(tx, userAId);
+    const gateB = await evaluateMatchGate(tx, userBId);
+    if (gateA.decision === "BLOCK") {
+      console.log("auto-match skip: gate block", {userAId, reason: gateA.reason});
+      setQueueIdle(tx, queueARef, `gate:${userAId}`);
+      return;
+    }
+    if (gateB.decision === "BLOCK") {
+      console.log("auto-match skip: gate block", {userBId, reason: gateB.reason});
+      setQueueIdle(tx, queueBRef, `gate:${userBId}`);
+      return;
+    }
+    if (gateA.decision === "ALLOW_LIMITED") {
+      const allowed = await applyLimitedThrottle(tx, userAId);
+      if (!allowed) {
+        console.log("auto-match skip: limited cooldown", {userAId});
+        setQueueIdle(tx, queueARef, `cooldown:${userAId}`);
+        return;
+      }
+    }
+    if (gateB.decision === "ALLOW_LIMITED") {
+      const allowed = await applyLimitedThrottle(tx, userBId);
+      if (!allowed) {
+        console.log("auto-match skip: limited cooldown", {userBId});
+        setQueueIdle(tx, queueBRef, `cooldown:${userBId}`);
+        return;
+      }
     }
 
     console.log("auto-match eligible users", {userAId, userBId});
@@ -884,6 +1086,110 @@ async function hydrateQueueUser(
   };
 }
 
+type MatchGateDecision = "ALLOW" | "DELAY" | "BLOCK" | "ALLOW_LIMITED";
+
+async function evaluateMatchGate(
+  tx: Transaction,
+  uid: string,
+): Promise<{decision: MatchGateDecision; reason?: string}> {
+  const moderationRef = db.collection("user_moderation").doc(uid);
+  const entRef = db.collection("user_entitlements").doc(uid);
+  const [modSnap, entSnap] = await Promise.all([
+    tx.get(moderationRef),
+    tx.get(entRef),
+  ]);
+  const moderation = modSnap.data() ?? {};
+  const entitlements = entSnap.data() ?? {};
+
+  const level = Number(moderation.level ?? 0);
+  const protectionEligible = moderation.protectionEligible ?? true;
+  const hardFlags = (moderation.hardFlags ?? {}) as Record<string, boolean>;
+  const severe = hardFlags.severe === true;
+  const sexual = hardFlags.sexual === true;
+  const violence = hardFlags.violence === true;
+
+  const protection = (entitlements.protection ?? {}) as Record<string, unknown>;
+  const ban = (entitlements.protectionBan ?? {}) as Record<string, unknown>;
+  const banActive = ban.active === true;
+  const banUntil = ban.until as Timestamp | null | undefined;
+  const now = Timestamp.now();
+  const banEffective = banActive && (!banUntil || banUntil.toMillis() > now.toMillis());
+
+  const active = protection.active === true;
+  const expiresAt = protection.expiresAt as Timestamp | undefined;
+  const validProtection =
+    active && !!expiresAt && expiresAt.toMillis() > now.toMillis() && !banEffective;
+
+  if (level <= 0) return {decision: "ALLOW"};
+  if (level === 1) {
+    return validProtection ? {decision: "ALLOW"} : {decision: "DELAY"};
+  }
+  if (
+    validProtection &&
+    protectionEligible === true &&
+    !severe &&
+    !sexual &&
+    !violence
+  ) {
+    return {decision: "ALLOW_LIMITED"};
+  }
+  return {decision: "BLOCK", reason: "level2"};
+}
+
+async function applyLimitedThrottle(tx: Transaction, uid: string): Promise<boolean> {
+  const entRef = db.collection("user_entitlements").doc(uid);
+  const snap = await tx.get(entRef);
+  const data = snap.data() ?? {};
+  const protection = (data.protection ?? {}) as Record<string, unknown>;
+  const lastQueueAt = protection.lastQueueAt as Timestamp | undefined;
+  const now = Timestamp.now();
+  if (lastQueueAt) {
+    const diffMs = now.toMillis() - lastQueueAt.toMillis();
+    if (diffMs < MATCH_LIMIT_MINUTES * 60 * 1000) {
+      return false;
+    }
+  }
+  tx.set(
+    entRef,
+    {
+      protection: {
+        ...protection,
+        lastQueueAt: FieldValue.serverTimestamp(),
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+      serverMeta: {
+        lastOp: `limitedQueue:${uid}:${now.toMillis()}`,
+        lastWriter: SERVER_WRITER,
+        updatedAt: FieldValue.serverTimestamp(),
+        source: SERVER_WRITER,
+      },
+    },
+    {merge: true},
+  );
+  return true;
+}
+
+function setQueueIdle(
+  tx: Transaction,
+  queueRef: DocumentReference<DocumentData>,
+  opKey: string,
+): void {
+  tx.set(
+    queueRef,
+    {
+      status: "idle",
+      updatedAt: FieldValue.serverTimestamp(),
+      serverMeta: {
+        lastOp: opKey,
+        lastWriter: SERVER_WRITER,
+        updatedAt: FieldValue.serverTimestamp(),
+        source: SERVER_WRITER,
+      },
+    },
+    {merge: true},
+  );
+}
+
 function hasCommonInterest(a: string[], b: string[]): boolean {
   if (a.length === 0 || b.length === 0) return false;
   const set = new Set(a);
@@ -948,6 +1254,17 @@ function formatMinuteKey(date: Date): string {
     pad(date.getUTCHours()),
     pad(date.getUTCMinutes()),
   ].join("");
+}
+
+function parseExpiryMillis(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+    const num = Number(value);
+    if (Number.isFinite(num)) return num;
+  }
+  return NaN;
 }
 
 async function acquireOpLock(

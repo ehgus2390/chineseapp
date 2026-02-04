@@ -172,5 +172,7 @@
     "reportReasonInappropriate":  "부적절한 콘텐츠",
     "reportCancel":  "취소",
     "reportSubmitted":  "신고가 접수되었습니다",
-    "reportReasonOther":  "기타"
+    "reportReasonOther":  "기타",
+    "protectionLimitedMessage":  "현재 보호 혜택을 사용할 수 없어요.",
+    "protectionBlockedMessage":  "현재 매칭이 제한되어 있어요."
 }

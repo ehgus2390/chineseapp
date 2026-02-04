@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -47,12 +47,12 @@ import 'app_localizations_ko.dart';
 ///
 /// iOS applications define key application metadata, including supported
 /// locales, in an Info.plist file that is built into the application bundle.
-/// To configure the locales supported by your app, you’ll need to edit this
+/// To configure the locales supported by your app, you?셪l need to edit this
 /// file.
 ///
-/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// First, open your project?셲 ios/Runner.xcworkspace Xcode workspace file.
 /// Then, in the Project Navigator, open the Info.plist file under the Runner
-/// project’s Runner folder.
+/// project?셲 Runner folder.
 ///
 /// Next, select the Information Property List item, select Add Item from the
 /// Editor menu, then select Localizations from the pop-up menu.
@@ -589,19 +589,19 @@ abstract class AppLocalizations {
   /// No description provided for @queueResumeSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Looking for another match ?뙮'**
+  /// **'Looking for another match ???**
   String get queueResumeSubtitle;
 
   /// No description provided for @notificationMatchAcceptedToast.
   ///
   /// In en, this message translates to:
-  /// **'?뮒 Match complete. Start chatting now.'**
+  /// **'?裕?Match complete. Start chatting now.'**
   String get notificationMatchAcceptedToast;
 
   /// No description provided for @notificationNewMessageToast.
   ///
   /// In en, this message translates to:
-  /// **'?뮠 New message received'**
+  /// **'?裕?New message received'**
   String get notificationNewMessageToast;
 
   /// No description provided for @notificationViewAction.
@@ -619,7 +619,7 @@ abstract class AppLocalizations {
   /// No description provided for @likesInboxEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No new notifications ?뭽'**
+  /// **'No new notifications ?萸?**
   String get likesInboxEmpty;
 
   /// No description provided for @notificationsInboxTitle.
@@ -631,7 +631,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationsInboxEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No new notifications ?뭽'**
+  /// **'No new notifications ?萸?**
   String get notificationsInboxEmpty;
 
   /// No description provided for @notificationsLikeText.
@@ -685,13 +685,13 @@ abstract class AppLocalizations {
   /// No description provided for @profileNameAgeCountry.
   ///
   /// In en, this message translates to:
-  /// **'{name}, {age} 쨌 {country}'**
+  /// **'{name}, {age} 夷?{country}'**
   String profileNameAgeCountry(Object age, Object country, Object name);
 
   /// No description provided for @matchingSearchingTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뮉 Finding someone new'**
+  /// **'?裕?Finding someone new'**
   String get matchingSearchingTitle;
 
   /// No description provided for @matchingSearchingSubtitle.
@@ -709,7 +709,7 @@ abstract class AppLocalizations {
   /// No description provided for @noMatchTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뮡 We haven\'t found a perfect match yet'**
+  /// **'?裕?We haven\'t found a perfect match yet'**
   String get noMatchTitle;
 
   /// No description provided for @noMatchSubtitle.
@@ -739,7 +739,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatSearchingEmoji.
   ///
   /// In en, this message translates to:
-  /// **'?뮉'**
+  /// **'?裕?**
   String get chatSearchingEmoji;
 
   /// No description provided for @chatSearchingTitle.
@@ -757,7 +757,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatMatchTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뮠 Want to start a chat?'**
+  /// **'?裕?Want to start a chat?'**
   String get chatMatchTitle;
 
   /// No description provided for @chatMatchSubtitle.
@@ -769,13 +769,13 @@ abstract class AppLocalizations {
   /// No description provided for @chatStartButton.
   ///
   /// In en, this message translates to:
-  /// **'?뮉 Start chatting now'**
+  /// **'?裕?Start chatting now'**
   String get chatStartButton;
 
   /// No description provided for @chatWaitingTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뙮 Still connecting'**
+  /// **'???Still connecting'**
   String get chatWaitingTitle;
 
   /// No description provided for @chatWaitingSubtitle.
@@ -787,7 +787,7 @@ abstract class AppLocalizations {
   /// No description provided for @matchingConsentTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뮠 Want to start a chat now?'**
+  /// **'?裕?Want to start a chat now?'**
   String get matchingConsentTitle;
 
   /// No description provided for @matchingConsentSubtitle.
@@ -799,7 +799,7 @@ abstract class AppLocalizations {
   /// No description provided for @matchingConnectButton.
   ///
   /// In en, this message translates to:
-  /// **'?뮉 Connect'**
+  /// **'?裕?Connect'**
   String get matchingConnectButton;
 
   /// No description provided for @matchingSkipButton.
@@ -1132,7 +1132,12 @@ abstract class AppLocalizations {
   /// **'Your report has been submitted'**
   String get reportSubmitted;
 
-  /// No description provided for @reportReasonOther.
+  /// No description provided for @protectionBlockedMessage.
+  String get protectionBlockedMessage;
+
+  /// No description provided for @protectionLimitedMessage.
+  String get protectionLimitedMessage;
+/// No description provided for @reportReasonOther.
   ///
   /// In en, this message translates to:
   /// **'Other'**
@@ -1174,3 +1179,4 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
     'that was used.',
   );
 }
+
