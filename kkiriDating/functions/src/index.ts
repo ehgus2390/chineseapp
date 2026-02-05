@@ -190,10 +190,12 @@ export const verifyProtectionPurchase = onCall(
       if (current.protection?.orderId === orderId) return;
       if (current.serverMeta?.lastOp === opKey) return;
 
+      const startedAt =
+        current.protection?.startedAt ?? FieldValue.serverTimestamp();
       const protection = {
         active: !isExpired,
         tier,
-        startedAt: FieldValue.serverTimestamp(),
+        startedAt,
         expiresAt: Timestamp.fromMillis(expiresAtMs),
         source,
         orderId,
@@ -214,6 +216,118 @@ export const verifyProtectionPurchase = onCall(
         },
         {merge: true},
       );
+    });
+
+    return {ok: true};
+  },
+);
+
+export const adminUpdateModeration = onCall(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    const isAdmin = request.auth?.token?.admin === true;
+    if (!isAdmin) {
+      throw new HttpsError("permission-denied", "Admin only.");
+    }
+    const data = request.data ?? {};
+    const uid = (data.uid ?? "").toString();
+    if (!uid) {
+      throw new HttpsError("invalid-argument", "Missing uid.");
+    }
+
+    const moderationUpdates = (data.moderation ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const entUpdates = (data.entitlements ?? {}) as Record<string, unknown>;
+    const protectionBan = (entUpdates.protectionBan ?? {}) as Record<
+      string,
+      unknown
+    >;
+
+    const moderationRef = db.collection("user_moderation").doc(uid);
+    const entRef = db.collection("user_entitlements").doc(uid);
+    const opKey = `adminUpdateModeration:${uid}:${Date.now()}`;
+
+    await db.runTransaction(async (tx) => {
+      const [modSnap, entSnap] = await Promise.all([
+        tx.get(moderationRef),
+        tx.get(entRef),
+      ]);
+      const currentMod = modSnap.data() ?? {};
+      const currentEnt = entSnap.data() ?? {};
+
+      const nextProtectionEligible =
+        moderationUpdates.protectionEligible ?? currentMod.protectionEligible;
+      const nextHardFlags = {
+        ...(currentMod.hardFlags ?? {}),
+        ...(moderationUpdates.hardFlags ?? {}),
+      } as Record<string, boolean>;
+
+      const currentBan =
+        (currentEnt.protectionBan ?? {}) as Record<string, unknown>;
+      const nextBanActive =
+        protectionBan.active ?? currentBan.active ?? false;
+      const nextBanReason =
+        (protectionBan.reason ?? currentBan.reason ?? "").toString();
+      const untilRaw = protectionBan.until ?? currentBan.until ?? null;
+      const untilMs = parseExpiryMillis(untilRaw);
+      const nextBanUntil = Number.isFinite(untilMs)
+        ? Timestamp.fromMillis(untilMs)
+        : null;
+
+      const modChanged =
+        nextProtectionEligible !== currentMod.protectionEligible ||
+        JSON.stringify(nextHardFlags) !== JSON.stringify(currentMod.hardFlags);
+      const banChanged =
+        nextBanActive !== currentBan.active ||
+        nextBanReason !== (currentBan.reason ?? "") ||
+        JSON.stringify(nextBanUntil) !== JSON.stringify(currentBan.until ?? null);
+
+      if (!modChanged && !banChanged) return;
+
+      if (modChanged) {
+        tx.set(
+          moderationRef,
+          {
+            protectionEligible: nextProtectionEligible ?? true,
+            hardFlags: nextHardFlags,
+            updatedAt: FieldValue.serverTimestamp(),
+            serverMeta: {
+              lastOp: opKey,
+              lastWriter: SERVER_WRITER,
+              updatedAt: FieldValue.serverTimestamp(),
+              source: SERVER_WRITER,
+            },
+          },
+          {merge: true},
+        );
+      }
+
+      if (banChanged) {
+        tx.set(
+          entRef,
+          {
+            protectionBan: {
+              active: nextBanActive === true,
+              reason: nextBanReason,
+              until: nextBanUntil,
+            },
+            updatedAt: FieldValue.serverTimestamp(),
+            serverMeta: {
+              lastOp: opKey,
+              lastWriter: SERVER_WRITER,
+              updatedAt: FieldValue.serverTimestamp(),
+              source: SERVER_WRITER,
+            },
+          },
+          {merge: true},
+        );
+      }
     });
 
     return {ok: true};
@@ -1141,6 +1255,9 @@ async function applyLimitedThrottle(tx: Transaction, uid: string): Promise<boole
   const snap = await tx.get(entRef);
   const data = snap.data() ?? {};
   const protection = (data.protection ?? {}) as Record<string, unknown>;
+  // NOTE:
+  // lastQueueAt is used ONLY for limited protection throttling.
+  // It does NOT affect entitlement validity or billing logic.
   const lastQueueAt = protection.lastQueueAt as Timestamp | undefined;
   const now = Timestamp.now();
   if (lastQueueAt) {

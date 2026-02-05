@@ -12,6 +12,7 @@ import 'screens/profile_screen.dart';
 import 'screens/profile_completion_screen.dart';
 import 'screens/notifications/notifications_inbox_page.dart';
 import 'screens/likes/likes_inbox_page.dart';
+import 'screens/admin_moderation_screen.dart';
 import 'state/app_state.dart';
 import 'state/locale_state.dart';
 import 'state/notification_state.dart';
@@ -62,6 +63,9 @@ class _KkiriAppState extends State<KkiriApp> {
         if (!profileComplete && !completingProfile && !profileRoute) {
           return '/profile-completion';
         }
+        if (location == '/admin' && !state.isAdmin) {
+          return '/home/profile';
+        }
         if (loggingIn) {
           return '/home/discover';
         }
@@ -69,6 +73,7 @@ class _KkiriAppState extends State<KkiriApp> {
       },
       routes: [
         GoRoute(path: '/login', builder: (_, __) => const AuthScreen()),
+        GoRoute(path: '/admin', builder: (_, __) => const AdminModerationScreen()),
         GoRoute(
           path: '/profile-completion',
           builder: (_, __) => const ProfileCompletionScreen(),

@@ -1,4 +1,4 @@
-﻿// ignore: unused_import
+// ignore: unused_import
 import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
@@ -255,14 +255,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get queueResumeSubtitle => 'Looking for another match ???;
+  String get queueResumeSubtitle => 'Looking for another match ?뙮';
 
   @override
   String get notificationMatchAcceptedToast =>
-      '?裕?Match complete. Start chatting now.';
+      '?뮒 Match complete. Start chatting now.';
 
   @override
-  String get notificationNewMessageToast => '?裕?New message received';
+  String get notificationNewMessageToast => '?뮠 New message received';
 
   @override
   String get notificationViewAction => 'View';
@@ -271,13 +271,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get likesInboxTitle => 'Notifications';
 
   @override
-  String get likesInboxEmpty => 'No new notifications ?萸?;
+  String get likesInboxEmpty => 'No new notifications ?뭽';
 
   @override
   String get notificationsInboxTitle => 'Notifications';
 
   @override
-  String get notificationsInboxEmpty => 'No new notifications ?萸?;
+  String get notificationsInboxEmpty => 'No new notifications ?뭽';
 
   @override
   String notificationsLikeText(Object name) {
@@ -309,11 +309,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String profileNameAgeCountry(Object age, Object country, Object name) {
-    return '$name, $age 夷?$country';
+    return '$name, $age 쨌 $country';
   }
 
   @override
-  String get matchingSearchingTitle => '?裕?Finding someone new';
+  String get matchingSearchingTitle => '?뮉 Finding someone new';
 
   @override
   String get matchingSearchingSubtitle => 'Please wait a moment';
@@ -322,7 +322,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recommendCardSubtitle => '??You might really click on interests';
 
   @override
-  String get noMatchTitle => '?裕?We haven\'t found a perfect match yet';
+  String get noMatchTitle => '?뮡 We haven\'t found a perfect match yet';
 
   @override
   String get noMatchSubtitle => 'Try adjusting your interests or distance';
@@ -338,7 +338,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileCompleteAction => 'Complete profile';
 
   @override
-  String get chatSearchingEmoji => '?裕?;
+  String get chatSearchingEmoji => '?뮉';
 
   @override
   String get chatSearchingTitle => 'Finding a friend that fits you';
@@ -348,28 +348,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'Prioritizing people with similar interests';
 
   @override
-  String get chatMatchTitle => '?裕?Want to start a chat?';
+  String get chatMatchTitle => '?뮠 Want to start a chat?';
 
   @override
   String get chatMatchSubtitle => 'Someone is here to talk right now';
 
   @override
-  String get chatStartButton => '?裕?Start chatting now';
+  String get chatStartButton => '?뮉 Start chatting now';
 
   @override
-  String get chatWaitingTitle => '???Still connecting';
+  String get chatWaitingTitle => '?뙮 Still connecting';
 
   @override
   String get chatWaitingSubtitle => 'Please wait a little longer';
 
   @override
-  String get matchingConsentTitle => '?裕?Want to start a chat now?';
+  String get matchingConsentTitle => '?뮠 Want to start a chat now?';
 
   @override
   String get matchingConsentSubtitle => 'Someone is here to talk right now';
 
   @override
-  String get matchingConnectButton => '?裕?Connect';
+  String get matchingConnectButton => '?뮉 Connect';
 
   @override
   String get matchingSkipButton => 'Wait for the next match';
@@ -555,16 +555,92 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportCancel => 'Cancel';
 
   @override
-  
+  String get reportSubmitted => 'Your report has been submitted';
+
+  @override
+  String get reportReasonOther => 'Other';
+
+  @override
+  String get protectionLimitedMessage =>
+      'Protection benefit is not available right now.';
 
   @override
   String get protectionBlockedMessage => 'Matching is currently restricted.';
 
   @override
-  String get protectionLimitedMessage => 'Protection benefit is not available right now.';
-@override
-  String get reportReasonOther => 'Other';
+  String get resetEmailSentMessage =>
+      'If there’s an account for that email,\\nwe’ve sent a reset email.';
+
+  @override
+  String get findAccountTitle => 'Find your account';
+
+  @override
+  String get findAccountDescription =>
+      'Enter the email you used to sign up.\\nIf there’s an account, we’ll send a reset email.';
+
+  @override
+  String get sendResetEmail => 'Send reset email';
+
+  @override
+  String get loginForgotCredential => 'Forgot your ID or password?';
+
+  @override
+  String get adminTitle => 'Admin moderation';
+
+  @override
+  String get adminUidLabel => 'User UID';
+
+  @override
+  String get adminLoadUser => 'Load user';
+
+  @override
+  String get adminNotAuthorized => 'Admin access required';
+
+  @override
+  String get adminModerationLevel => 'Moderation level';
+
+  @override
+  String get adminTotalReports => 'Total reports';
+
+  @override
+  String get adminProtectionEligible => 'Protection eligible';
+
+  @override
+  String get adminHardFlags => 'Hard flags';
+
+  @override
+  String get adminHardFlagSevere => 'Severe';
+
+  @override
+  String get adminHardFlagSexual => 'Sexual';
+
+  @override
+  String get adminHardFlagViolence => 'Violence';
+
+  @override
+  String get adminHardFlagSpam => 'Spam';
+
+  @override
+  String get adminProtectionActive => 'Protection active';
+
+  @override
+  String get adminProtectionExpiresAt => 'Protection expires';
+
+  @override
+  String get adminProtectionBanActive => 'Protection ban';
+
+  @override
+  String get adminProtectionBanUntil => 'Ban until';
+
+  @override
+  String get adminProtectionBanReason => 'Ban reason';
+
+  @override
+  String get adminSave => 'Save changes';
+
+  @override
+  String get adminSaved => 'Saved';
+
+  @override
+  String get adminLoadFailed => 'Failed to load user';
 }
-
-
-

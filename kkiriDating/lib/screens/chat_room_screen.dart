@@ -295,11 +295,11 @@ class _SuggestionChips extends StatelessWidget {
     final shared = other.interests.where(me.interests.contains).toList();
     if (shared.isEmpty) return <String>[];
     final interest = shared.first;
-    return l
-        .firstMessageSuggestions(interest)
-        .split('|')
-        .where((s) => s.trim().isNotEmpty)
-        .toList();
+    return <String>[
+      l.firstMessageSuggestion1(interest),
+      l.firstMessageSuggestion2(interest),
+      l.firstMessageSuggestion3(interest),
+    ].where((s) => s.trim().isNotEmpty).toList();
   }
 
   @override

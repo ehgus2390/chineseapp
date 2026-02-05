@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -47,12 +47,12 @@ import 'app_localizations_ko.dart';
 ///
 /// iOS applications define key application metadata, including supported
 /// locales, in an Info.plist file that is built into the application bundle.
-/// To configure the locales supported by your app, you?셪l need to edit this
+/// To configure the locales supported by your app, you’ll need to edit this
 /// file.
 ///
-/// First, open your project?셲 ios/Runner.xcworkspace Xcode workspace file.
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
 /// Then, in the Project Navigator, open the Info.plist file under the Runner
-/// project?셲 Runner folder.
+/// project’s Runner folder.
 ///
 /// Next, select the Information Property List item, select Add Item from the
 /// Editor menu, then select Localizations from the pop-up menu.
@@ -589,19 +589,19 @@ abstract class AppLocalizations {
   /// No description provided for @queueResumeSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Looking for another match ???**
+  /// **'Looking for another match ?뙮'**
   String get queueResumeSubtitle;
 
   /// No description provided for @notificationMatchAcceptedToast.
   ///
   /// In en, this message translates to:
-  /// **'?裕?Match complete. Start chatting now.'**
+  /// **'?뮒 Match complete. Start chatting now.'**
   String get notificationMatchAcceptedToast;
 
   /// No description provided for @notificationNewMessageToast.
   ///
   /// In en, this message translates to:
-  /// **'?裕?New message received'**
+  /// **'?뮠 New message received'**
   String get notificationNewMessageToast;
 
   /// No description provided for @notificationViewAction.
@@ -619,7 +619,7 @@ abstract class AppLocalizations {
   /// No description provided for @likesInboxEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No new notifications ?萸?**
+  /// **'No new notifications ?뭽'**
   String get likesInboxEmpty;
 
   /// No description provided for @notificationsInboxTitle.
@@ -631,7 +631,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationsInboxEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No new notifications ?萸?**
+  /// **'No new notifications ?뭽'**
   String get notificationsInboxEmpty;
 
   /// No description provided for @notificationsLikeText.
@@ -685,13 +685,13 @@ abstract class AppLocalizations {
   /// No description provided for @profileNameAgeCountry.
   ///
   /// In en, this message translates to:
-  /// **'{name}, {age} 夷?{country}'**
+  /// **'{name}, {age} 쨌 {country}'**
   String profileNameAgeCountry(Object age, Object country, Object name);
 
   /// No description provided for @matchingSearchingTitle.
   ///
   /// In en, this message translates to:
-  /// **'?裕?Finding someone new'**
+  /// **'?뮉 Finding someone new'**
   String get matchingSearchingTitle;
 
   /// No description provided for @matchingSearchingSubtitle.
@@ -709,7 +709,7 @@ abstract class AppLocalizations {
   /// No description provided for @noMatchTitle.
   ///
   /// In en, this message translates to:
-  /// **'?裕?We haven\'t found a perfect match yet'**
+  /// **'?뮡 We haven\'t found a perfect match yet'**
   String get noMatchTitle;
 
   /// No description provided for @noMatchSubtitle.
@@ -739,7 +739,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatSearchingEmoji.
   ///
   /// In en, this message translates to:
-  /// **'?裕?**
+  /// **'?뮉'**
   String get chatSearchingEmoji;
 
   /// No description provided for @chatSearchingTitle.
@@ -757,7 +757,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatMatchTitle.
   ///
   /// In en, this message translates to:
-  /// **'?裕?Want to start a chat?'**
+  /// **'?뮠 Want to start a chat?'**
   String get chatMatchTitle;
 
   /// No description provided for @chatMatchSubtitle.
@@ -769,13 +769,13 @@ abstract class AppLocalizations {
   /// No description provided for @chatStartButton.
   ///
   /// In en, this message translates to:
-  /// **'?裕?Start chatting now'**
+  /// **'?뮉 Start chatting now'**
   String get chatStartButton;
 
   /// No description provided for @chatWaitingTitle.
   ///
   /// In en, this message translates to:
-  /// **'???Still connecting'**
+  /// **'?뙮 Still connecting'**
   String get chatWaitingTitle;
 
   /// No description provided for @chatWaitingSubtitle.
@@ -787,7 +787,7 @@ abstract class AppLocalizations {
   /// No description provided for @matchingConsentTitle.
   ///
   /// In en, this message translates to:
-  /// **'?裕?Want to start a chat now?'**
+  /// **'?뮠 Want to start a chat now?'**
   String get matchingConsentTitle;
 
   /// No description provided for @matchingConsentSubtitle.
@@ -799,7 +799,7 @@ abstract class AppLocalizations {
   /// No description provided for @matchingConnectButton.
   ///
   /// In en, this message translates to:
-  /// **'?裕?Connect'**
+  /// **'?뮉 Connect'**
   String get matchingConnectButton;
 
   /// No description provided for @matchingSkipButton.
@@ -1132,16 +1132,173 @@ abstract class AppLocalizations {
   /// **'Your report has been submitted'**
   String get reportSubmitted;
 
-  /// No description provided for @protectionBlockedMessage.
-  String get protectionBlockedMessage;
-
-  /// No description provided for @protectionLimitedMessage.
-  String get protectionLimitedMessage;
-/// No description provided for @reportReasonOther.
+  /// No description provided for @reportReasonOther.
   ///
   /// In en, this message translates to:
   /// **'Other'**
   String get reportReasonOther;
+
+  /// No description provided for @protectionLimitedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection benefit is not available right now.'**
+  String get protectionLimitedMessage;
+
+  /// No description provided for @protectionBlockedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Matching is currently restricted.'**
+  String get protectionBlockedMessage;
+
+  /// No description provided for @resetEmailSentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'If there’s an account for that email,\\nwe’ve sent a reset email.'**
+  String get resetEmailSentMessage;
+
+  /// No description provided for @findAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Find your account'**
+  String get findAccountTitle;
+
+  /// No description provided for @findAccountDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the email you used to sign up.\\nIf there’s an account, we’ll send a reset email.'**
+  String get findAccountDescription;
+
+  /// No description provided for @sendResetEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reset email'**
+  String get sendResetEmail;
+
+  /// No description provided for @loginForgotCredential.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot your ID or password?'**
+  String get loginForgotCredential;
+
+  /// No description provided for @adminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin moderation'**
+  String get adminTitle;
+
+  /// No description provided for @adminUidLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'User UID'**
+  String get adminUidLabel;
+
+  /// No description provided for @adminLoadUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Load user'**
+  String get adminLoadUser;
+
+  /// No description provided for @adminNotAuthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin access required'**
+  String get adminNotAuthorized;
+
+  /// No description provided for @adminModerationLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderation level'**
+  String get adminModerationLevel;
+
+  /// No description provided for @adminTotalReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Total reports'**
+  String get adminTotalReports;
+
+  /// No description provided for @adminProtectionEligible.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection eligible'**
+  String get adminProtectionEligible;
+
+  /// No description provided for @adminHardFlags.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard flags'**
+  String get adminHardFlags;
+
+  /// No description provided for @adminHardFlagSevere.
+  ///
+  /// In en, this message translates to:
+  /// **'Severe'**
+  String get adminHardFlagSevere;
+
+  /// No description provided for @adminHardFlagSexual.
+  ///
+  /// In en, this message translates to:
+  /// **'Sexual'**
+  String get adminHardFlagSexual;
+
+  /// No description provided for @adminHardFlagViolence.
+  ///
+  /// In en, this message translates to:
+  /// **'Violence'**
+  String get adminHardFlagViolence;
+
+  /// No description provided for @adminHardFlagSpam.
+  ///
+  /// In en, this message translates to:
+  /// **'Spam'**
+  String get adminHardFlagSpam;
+
+  /// No description provided for @adminProtectionActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection active'**
+  String get adminProtectionActive;
+
+  /// No description provided for @adminProtectionExpiresAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection expires'**
+  String get adminProtectionExpiresAt;
+
+  /// No description provided for @adminProtectionBanActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection ban'**
+  String get adminProtectionBanActive;
+
+  /// No description provided for @adminProtectionBanUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Ban until'**
+  String get adminProtectionBanUntil;
+
+  /// No description provided for @adminProtectionBanReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Ban reason'**
+  String get adminProtectionBanReason;
+
+  /// No description provided for @adminSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get adminSave;
+
+  /// No description provided for @adminSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get adminSaved;
+
+  /// No description provided for @adminLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load user'**
+  String get adminLoadFailed;
 }
 
 class _AppLocalizationsDelegate
@@ -1179,4 +1336,3 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
     'that was used.',
   );
 }
-

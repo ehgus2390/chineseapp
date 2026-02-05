@@ -25,6 +25,71 @@ class _AuthScreenState extends State<AuthScreen> {
   String? _verificationMethod; // 'phone' | 'email'
   bool _verificationComplete = false;
   bool _verificationBusy = false;
+
+  Future<void> _showPasswordResetDialog(AppLocalizations l) async {
+    final controller = TextEditingController(text: emailCtrl.text.trim());
+    bool busy = false;
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(l.findAccountTitle),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l.findAccountDescription,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      keyboardType: TextInputType.emailAddress,
+                      autofocus: true,
+                      decoration: InputDecoration(labelText: l.email),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: busy ? null : () => Navigator.of(context).pop(),
+                  child: Text(l.reportCancel),
+                ),
+                FilledButton(
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          setState(() => busy = true);
+                          try {
+                            await FirebaseAuth.instance
+                                .sendPasswordResetEmail(
+                                  email: controller.text.trim(),
+                                );
+                          } catch (_) {
+                            // Same message for success/failure.
+                          }
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(l.resetEmailSentMessage),
+                              ),
+                            );
+                          }
+                        },
+                  child: Text(l.sendResetEmail),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
   bool _verificationEmailSent = false;
   String? _verificationId;
   bool _verificationMetadataSaved = false;
@@ -468,6 +533,17 @@ class _AuthScreenState extends State<AuthScreen> {
                       : Text(_isLogin ? l.signIn : l.signUp),
                 ),
               ),
+              if (_isLogin) ...[
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: _busy ? null : () => _showPasswordResetDialog(l),
+                  child: Text(
+                    l.loginForgotCredential,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               TextButton(
                 onPressed: _busy

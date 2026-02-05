@@ -1,4 +1,4 @@
-﻿// ignore: unused_import
+// ignore: unused_import
 import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
@@ -12,293 +12,293 @@ class AppLocalizationsJa extends AppLocalizations {
   String get appTitle => 'Kkiri Dating';
 
   @override
-  String get tabRecommend => '?듽걲?쇻굙';
+  String get tabRecommend => 'おすすめ';
 
   @override
-  String get tabNearby => '瓦묆걦';
+  String get tabNearby => '近く';
 
   @override
-  String get tabFeed => '?뺛궍?쇈깋';
+  String get tabFeed => 'フィード';
 
   @override
-  String get tabChat => '?곥깵?껁깉';
+  String get tabChat => 'チャット';
 
   @override
-  String get tabProfile => '?쀣꺆?뺛궍?쇈꺂';
+  String get tabProfile => 'プロフィール';
 
   @override
-  String get discoverTitle => '?듽걲?쇻굙';
+  String get discoverTitle => 'おすすめ';
 
   @override
-  String get profileTitle => '?쀣꺆?뺛궍?쇈꺂';
+  String get profileTitle => 'プロフィール';
 
   @override
-  String get discoverEmpty => '?▽뻑?ュ릦?녴깤??깢?ｃ꺖?ャ걣?귙굤?얇걵??;
+  String get discoverEmpty => '条件に合うプロフィールがありません';
 
   @override
-  String get chatEmpty => '?▽뻑?ュ릦?녵볶?뚣걚?얇걵??;
+  String get chatEmpty => '条件に合う人がいません';
 
   @override
-  String get chatTitle => '?곥깵?껁깉';
+  String get chatTitle => 'チャット';
 
   @override
-  String get chatFilterAll => '?쇻겧??;
+  String get chatFilterAll => 'すべて';
 
   @override
-  String get chatFilterLikes => '?꾠걚??;
+  String get chatFilterLikes => 'いいね';
 
   @override
   String get chatFilterNew => 'NEW';
 
   @override
-  String get like => '?꾠걚??;
+  String get like => 'いいね';
 
   @override
-  String get pass => '?묆궧';
+  String get pass => 'パス';
 
   @override
-  String get languages => '鼇沃?;
+  String get languages => '言語';
 
   @override
-  String get country => '??;
+  String get country => '国';
 
   @override
-  String get bio => '?ゅ런榮밥퍔';
+  String get bio => '自己紹介';
 
   @override
-  String get startChat => '?곥깵?껁깉?뗥쭓';
+  String get startChat => 'チャット開始';
 
   @override
-  String get yourLanguages => '?ゅ늽???沃?;
+  String get yourLanguages => '自分の言語';
 
   @override
-  String get preferences => '鼇?츣';
+  String get preferences => '設定';
 
   @override
-  String get preferredLanguages => '?듽걲?쇻굙鼇沃?;
+  String get preferredLanguages => 'おすすめ言語';
 
   @override
-  String get prefTarget => '?듽걲?쇻굙?ヤ슴?녻?沃?;
+  String get prefTarget => 'おすすめに使う言語';
 
   @override
-  String get save => '岳앭춼';
+  String get save => '保存';
 
   @override
-  String get name => '?띶뎺';
+  String get name => '名前';
 
   @override
-  String get age => '亮닻숱';
+  String get age => '年齢';
 
   @override
-  String get occupation => '?룡?';
+  String get occupation => '職業';
 
   @override
-  String get interests => '?덂뫑';
+  String get interests => '興味';
 
   @override
-  String get gender => '?㎩닪';
+  String get gender => '性別';
 
   @override
-  String get male => '?룡?;
+  String get male => '男性';
 
   @override
-  String get female => '也녔?;
+  String get female => '女性';
 
   @override
-  String get distance => '瓮앶썴';
+  String get distance => '距離';
 
   @override
-  String get distanceHint => '瓮앶썴影꾢쎊';
+  String get distanceHint => '距離範囲';
 
   @override
-  String get location => '鵝띸쉰';
+  String get location => '位置';
 
   @override
-  String get latitude => '渶?벧';
+  String get latitude => '緯度';
 
   @override
-  String get longitude => '永뚦벧';
+  String get longitude => '経度';
 
   @override
-  String get useCurrentLocation => '?얍쑉?겹굮鵝욜뵪';
+  String get useCurrentLocation => '現在地を使用';
 
   @override
-  String get locationUpdated => '鵝띸쉰?뚧쎍?겹걬?뚣겲?쀣걼';
+  String get locationUpdated => '位置が更新されました';
 
   @override
-  String get locationServiceOff => '鵝띸쉰?끻젿?듐꺖?볝궧?믡궕?녈겓?쀣겍?뤵걽?뺛걚';
+  String get locationServiceOff => '位置情報サービスをオンにしてください';
 
   @override
-  String get locationPermissionDenied => '鵝띸쉰?끻젿??Ł?먦걣恙낁쫨?㎯걲';
+  String get locationPermissionDenied => '位置情報の権限が必要です';
 
   @override
-  String get appLanguage => '?㏂깤?よ?沃?;
+  String get appLanguage => 'アプリ言語';
 
   @override
-  String get languageNameKorean => '?볟쎖沃?;
+  String get languageNameKorean => '韓国語';
 
   @override
-  String get languageNameJapanese => '?ζ쑍沃?;
+  String get languageNameJapanese => '日本語';
 
   @override
-  String get languageNameEnglish => '?김첑';
+  String get languageNameEnglish => '英語';
 
   @override
-  String get onboardingTitle => '?덀걝?볝걹';
+  String get onboardingTitle => 'ようこそ';
 
   @override
-  String get continueAction => 'Continue';
+  String get continueAction => '続ける';
 
   @override
-  String get loginTitle => '?덀걝?볝걹';
+  String get loginTitle => 'ようこそ';
 
   @override
-  String get loginSubtitle => '?▲꺖?ャ겎??궛?ㅳ꺍';
+  String get loginSubtitle => 'メールでログイン';
 
   @override
-  String get email => '?▲꺖??;
+  String get email => 'メール';
 
   @override
-  String get password => '?묆궧??꺖??;
+  String get password => 'パスワード';
 
   @override
-  String get signIn => '??궛?ㅳ꺍';
+  String get signIn => 'ログイン';
 
   @override
-  String get signUp => '鴉싧뱻?삯뙯';
+  String get signUp => '会員登録';
 
   @override
-  String get needAccount => '?㏂궖?╉꺍?덀굮鵝쒏닇';
+  String get needAccount => 'アカウントを作成';
 
   @override
-  String get haveAccount => '?쇻겎?ャ궋?ャ궑?녈깉?뚣걗?듽겲?쇻걢竊?;
+  String get haveAccount => 'すでにアカウントがありますか？';
 
   @override
-  String get signOut => '??궛?㏂궑??;
+  String get signOut => 'ログアウト';
 
   @override
-  String get refreshRecommendations => '?겹걮?꾠걡?쇻걲?곥굮?뽩풓';
+  String get refreshRecommendations => '新しいおすすめを取得';
 
   @override
-  String get distanceNear => '瓦묆걚';
+  String get distanceNear => '近い';
 
   @override
-  String get distanceMedium => '訝?뼋';
+  String get distanceMedium => '中間';
 
   @override
-  String get distanceFar => '佯껁굙';
+  String get distanceFar => '広め';
 
   @override
-  String get distanceNoLimit => '瓮앶썴?띌솏?ゃ걮';
+  String get distanceNoLimit => '距離制限なし';
 
   @override
-  String get distanceRangeLabel => '瓮앶썴影꾢쎊';
+  String get distanceRangeLabel => '距離範囲';
 
   @override
-  String get locationSet => '鼇?츣歷덀겳';
+  String get locationSet => '設定済み';
 
   @override
-  String get locationUnset => '?よÞ若?;
+  String get locationUnset => '未設定';
 
   @override
-  String get notificationsTitle => '?싩윥?믣룛?묈룚??;
+  String get notificationsTitle => '通知を受け取る';
 
   @override
-  String get notificationsSubtitle => '?욁긿?곥굜?▲긿?삠꺖?면싩윥?믣룛?묈룚?뚣겲??;
+  String get notificationsSubtitle => 'マッチやメッセージ通知を受け取れます';
 
   @override
-  String get queueSearchingTitle => '?멩뎸?믡깯?껁긽訝?겎??;
+  String get queueSearchingTitle => '相手をマッチ中です';
 
   @override
-  String get queueSearchingSubtitle => '?멩뎸?믤렋?쀣겍?꾠겲?쇻귛컩?쀣걡孃끹걾?뤵걽?뺛걚??;
+  String get queueSearchingSubtitle => '相手を探しています。少しお待ちください。';
 
   @override
-  String get queueSearchStepDistance => '瓮앶썴?믥▶沃띴릎??;
+  String get queueSearchStepDistance => '距離を確認中…';
 
   @override
-  String get queueSearchStepInterests => '?깁싥겗?덂뫑?믤캈雍껂릎??;
+  String get queueSearchStepInterests => '共通の興味を比較中…';
 
   @override
-  String get queueSearchStepExplore => '?멩뎸?믤렋?쀣겍?꾠겲?쇺?;
+  String get queueSearchStepExplore => '相手を探しています…';
 
   @override
-  String get queueSearchStepAnalysis => '?욁긿?곥겗??꺗?㎯굮?녷옄訝??;
+  String get queueSearchStepAnalysis => 'マッチの可能性を分析中…';
 
   @override
-  String get queueSearchTipPhoto => '?숂쐿?뚣걗?뗣겏?띶퓶?뉎걣訝듽걣?듽겲??;
+  String get queueSearchTipPhoto => '写真があると反応率が上がります';
 
   @override
-  String get queueSearchTipBio => '?ゅ런榮밥퍔?뚣걗?뗣겏?욁긿?곥걣?⒲걦?ゃ굤?얇걲';
+  String get queueSearchTipBio => '自己紹介があるとマッチが早くなります';
 
   @override
-  String get queueSearchTipNewUsers => '餓듽걪??옱?볝굚?겹걮?꾠깺?쇈궣?쇈걣?귛뒥?쀣겍?꾠겲??;
+  String get queueSearchTipNewUsers => '今この瞬間も新しいユーザーが参加しています';
 
   @override
-  String get queueTimeout => '恙쒐춸?귡뼋?뚨탞雅녴걮?얇걮??;
+  String get queueTimeout => '応答時間が終了しました';
 
   @override
-  String get queueConnect => '?ㅳ겒??;
+  String get queueConnect => 'つなぐ';
 
   @override
-  String get queueAccept => '?욤첀';
+  String get queueAccept => '承認';
 
   @override
-  String get queueDecline => '?믣맔';
+  String get queueDecline => '拒否';
 
   @override
-  String get queueStop => '?욁긿?곥꺍?곁탞雅?;
+  String get queueStop => 'マッチング終了';
 
   @override
   String queueRemainingTime(Object seconds) {
-    return '餘뗣굤?귡뼋 $seconds燁?;
+    return '残り時間 $seconds秒';
   }
 
   @override
-  String get queueResumeSubtitle => '?γ겗?뗣걽?▲굮?㏂걮?╉걚?얇걲 ?뙮';
+  String get queueResumeSubtitle => '別の友だちを探しています 🌱';
 
   @override
-  String get notificationMatchAcceptedToast => '?뮒 ?욁긿?곥걣?먪쳦?쀣겲?쀣걼?귚퍓?쇻걧屋긱걮?╉겳?얇걮?뉎걝';
+  String get notificationMatchAcceptedToast => '💞 マッチが成立しました。今すぐ話してみましょう';
 
   @override
-  String get notificationNewMessageToast => '?뮠 ?겹걮?꾠깳?껁궩?쇈궦?뚦콎?띲겲?쀣걼';
+  String get notificationNewMessageToast => '💬 新しいメッセージが届きました';
 
   @override
-  String get notificationViewAction => '誤뗣굥';
+  String get notificationViewAction => '見る';
 
   @override
-  String get likesInboxTitle => '?싩윥';
+  String get likesInboxTitle => '通知';
 
   @override
-  String get likesInboxEmpty => '?곁??싩윥??걗?듽겲?쎼굯 ?뭽';
+  String get likesInboxEmpty => '新着通知はありません 💌';
 
   @override
-  String get notificationsInboxTitle => '?싩윥';
+  String get notificationsInboxTitle => '通知';
 
   @override
-  String get notificationsInboxEmpty => '?곁??싩윥??걗?듽겲?쎼굯 ?뭽';
+  String get notificationsInboxEmpty => '新着通知はありません 💌';
 
   @override
   String notificationsLikeText(Object name) {
-    return '$name?뺛굯?뚣걚?꾠겖?쀣겲?쀣걼';
+    return '$nameさんがいいねしました';
   }
 
   @override
-  String get notificationsMatchText => '?겹걮?꾠깯?껁긽?뚣걗?듽겲??;
+  String get notificationsMatchText => '新しいマッチがあります';
 
   @override
-  String get notificationsChatText => '?겹걮?꾠깳?껁궩?쇈궦';
+  String get notificationsChatText => '新しいメッセージ';
 
   @override
-  String get notificationsSystemText => '?싩윥';
+  String get notificationsSystemText => '通知';
 
   @override
-  String get profileSaved => '岳앭춼?쀣겲?쀣걼';
+  String get profileSaved => '保存しました';
 
   @override
-  String get retry => '?띹ĳ烏?;
+  String get retry => '再試行';
 
   @override
-  String get matchFoundTitle => '?욁긿?곥걮?얇걮?잞펯';
+  String get matchFoundTitle => 'マッチしました！';
 
   @override
   String profileNameAge(Object age, Object name) {
@@ -307,249 +307,323 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String profileNameAgeCountry(Object age, Object country, Object name) {
-    return '$name, $age 쨌 $country';
+    return '$name, $age · $country';
   }
 
   @override
-  String get matchingSearchingTitle => '?뮉 ?겹걮?꾢눣鴉싥걚?믤렋?쀣겍?꾠겲??;
+  String get matchingSearchingTitle => '💗 新しい出会いを探しています';
 
   @override
-  String get matchingSearchingSubtitle => '弱묆걮?졼걨?듿푷?▲걦?졼걬??;
+  String get matchingSearchingSubtitle => '少しだけお待ちください';
 
   @override
-  String get recommendCardSubtitle => '???덂뫑?뚦릦?녴걢?귙걮?뚣겲?쎼굯';
+  String get recommendCardSubtitle => '✨ 興味が合うかもしれません';
 
   @override
-  String get noMatchTitle => '?뮡 ?얇걽?담겂?잆굤??볶?뚩쫳?ㅳ걢?듽겲?쎼굯';
+  String get noMatchTitle => '💭 まだぴったりの人が見つかりません';
 
   @override
-  String get noMatchSubtitle => '?덂뫑?꾥퇌?®칱?꿔굮弱묆걮沃욘빐?쀣겍?욍겲?쀣굟??;
+  String get noMatchSubtitle => '興味や距離範囲を少し調整してみましょう';
 
   @override
-  String get noMatchAction => '?덂뫑?믥랬??;
+  String get noMatchAction => '興味を編集';
 
   @override
-  String get profileCompleteTitle => '?쀣꺆?뺛궍?쇈꺂?믣츑?먦걲?뗣겏?듽걲?쇻굙?뚩〃鹽뷩걬?뚣겲??;
+  String get profileCompleteTitle => 'プロフィールを完成するとおすすめが表示されます';
 
   @override
-  String get profileCompleteAction => '?쀣꺆?뺛궍?쇈꺂?믣츑??;
+  String get profileCompleteAction => 'プロフィールを完成';
 
   @override
-  String get chatSearchingEmoji => '?뮉';
+  String get chatSearchingEmoji => '💗';
 
   @override
-  String get chatSearchingTitle => '?▽뻑?ュ릦?녶룍?졼걾?믤렋?쀣겍?꾠겲??;
+  String get chatSearchingTitle => '条件に合う友だちを探しています';
 
   @override
-  String get chatSearchingSubtitle => '鴉쇈걼?덂뫑??볶?믣꽛?덀걮??렋?쀣겍?꾠겲??;
+  String get chatSearchingSubtitle => '似た興味の人を優先して探しています';
 
   @override
-  String get chatMatchTitle => '?뮠 ?딂㈀?쀣걮?╉겳?얇걵?볝걢竊?;
+  String get chatMatchTitle => '💬 お話ししてみませんか？';
 
   @override
-  String get chatMatchSubtitle => '餓듽걪??옱?볝곮㈀?쎼굥?멩뎸?뚣걚?얇걲';
+  String get chatMatchSubtitle => '今この瞬間、話せる相手がいます';
 
   @override
-  String get chatStartButton => '?뮉 餓듽걲?먦긽?ｃ긿?덀굮冶뗣굙??;
+  String get chatStartButton => '💗 今すぐチャットを始める';
 
   @override
-  String get chatWaitingTitle => '?뙮 ?얇걽?η텥訝?겎??;
+  String get chatWaitingTitle => '🌱 まだ接続中です';
 
   @override
-  String get chatWaitingSubtitle => '?귙걝弱묆걮?듿푷?▲걦?졼걬??;
+  String get chatWaitingSubtitle => 'もう少しお待ちください';
 
   @override
-  String get matchingConsentTitle => '?뮠 餓듽걡屋긱걮?쀣겍?욍겲?쎼굯?뗰폕';
+  String get matchingConsentTitle => '💬 今お話ししてみませんか？';
 
   @override
-  String get matchingConsentSubtitle => '餓듽걪??옱?볝곮㈀?쎼굥?멩뎸?뚣걚?얇걲';
+  String get matchingConsentSubtitle => '今この瞬間、話せる相手がいます';
 
   @override
-  String get matchingConnectButton => '?뮉 ?ㅳ겒??;
+  String get matchingConnectButton => '💗 つなぐ';
 
   @override
-  String get matchingSkipButton => '轝▲겗?욁긿?곥굮孃끹겇';
+  String get matchingSkipButton => '次のマッチを待つ';
 
   @override
-  String get waitingForOtherUser => '?멩뎸??퓭嶺붵굮孃끹겂?╉걚?얇걲';
+  String get waitingForOtherUser => '相手の返答を待っています';
 
   @override
-  String get firstMessageGuide => '??鴉싪㈀?믣쭓?곥겍?욍겲?쀣굟?놅펯\n?깁싥겗?덂뫑?뗣굢屋긱걲?②돬?꾠겎?쇻?;
+  String get firstMessageGuide => '✨ 会話を始めてみましょう！\n共通の興味から話すと良いです。';
 
   @override
   String firstMessageSuggestions(Object interest) {
-    return '?瓦?interest??굠?뤵걮?얇걲?뗰폕|$interest?믣??띲겓?ゃ겂?잆걤?ｃ걢?묆겘鵝뺛겎?쇻걢竊?$interest餓ε쨼?ャ굚?덂뫑??걗?듽겲?쇻걢竊?;
+    return '最近$interestはよくしますか|$interestを好きになったきっかけは何ですか|$interest以外にも興味はありますか';
   }
 
   @override
   String firstMessageSuggestion1(Object interest) {
-    return '?瓦?interest??굠?뤵걮?얇걲?뗰폕';
+    return '最近$interestはよくしますか';
   }
 
   @override
   String firstMessageSuggestion2(Object interest) {
-    return '$interest?믣??띲겓?ゃ겂?잆걤?ｃ걢?묆겘鵝뺛겎?쇻걢竊?;
+    return '$interestを好きになったきっかけは何ですか';
   }
 
   @override
   String firstMessageSuggestion3(Object interest) {
-    return '$interest餓ε쨼?ャ굚?덂뫑??걗?듽겲?쇻걢竊?;
+    return '$interest以外にも興味はありますか';
   }
 
   @override
-  String get chatInputHint => '?▲긿?삠꺖?멥굮?ε뒟';
+  String get chatInputHint => 'メッセージを入力';
 
   @override
-  String get chatError => '?ⓦ꺀?쇈걣?븀뵟?쀣겲?쀣걼';
+  String get chatError => 'エラーが発生しました';
 
   @override
-  String get chatExit => '?곥깵?껁깉?믥탞雅?;
+  String get chatExit => 'チャットを終了';
 
   @override
-  String get profileCompletionTitle => '?쀣꺆?뺛궍?쇈꺂若뚧닇佯?;
+  String get profileCompletionTitle => 'プロフィール完成度';
 
   @override
   String profileCompletionProgress(Object percent) {
-    return '?쀣꺆?뺛궍?쇈꺂若뚧닇佯?$percent%';
+    return 'プロフィール完成度 $percent%';
   }
 
   @override
-  String get profileCompletionPhoto => '?쀣꺆?뺛궍?쇈꺂?숂쐿?믦옙??;
+  String get profileCompletionPhoto => 'プロフィール写真を追加';
 
   @override
-  String get profileCompletionBio => '?ゅ런榮밥퍔?믤쎑??;
+  String get profileCompletionBio => '自己紹介を書く';
 
   @override
-  String get profileCompletionBasicInfo => '?뷸쑍?끻젿?믣뀯??;
+  String get profileCompletionBasicInfo => '基本情報を入力';
 
   @override
-  String get profileCompletionCta => '?욁긿?곥굮冶뗣굙??;
+  String get profileCompletionCta => 'マッチを始める';
 
   @override
-  String get profileBioPlaceholder => '?볝굯?ャ걾??;
+  String get profileBioPlaceholder => 'こんにちは';
 
   @override
-  String get profileBioPlaceholderAlt => '?볝굯?ャ걾??펯';
+  String get profileBioPlaceholderAlt => 'こんにちは！';
 
   @override
-  String get authVerifyIntro => '若됧뀲??걼?곥곮첀鼇쇈걣恙낁쫨?㎯걲';
+  String get authVerifyIntro => '安全のため、認証が必要です';
 
   @override
-  String get authVerifyPhoneButton => '?삭㈀?ゅ뤇沃띹㉫';
+  String get authVerifyPhoneButton => '電話番号認証';
 
   @override
-  String get authVerifyEmailButton => '?▲꺖?ヨ첀鼇?;
+  String get authVerifyEmailButton => 'メール認証';
 
   @override
-  String get authPhoneLabel => '?삭㈀?ゅ뤇';
+  String get authPhoneLabel => '電話番号';
 
   @override
-  String get authSendCode => '沃띹㉫?녈꺖?됥굮?곦에';
+  String get authSendCode => '認証コードを送信';
 
   @override
-  String get authCodeLabel => '沃띹㉫?녈꺖?됥굮?ε뒟';
+  String get authCodeLabel => '認証コードを入力';
 
   @override
-  String get authVerifyCompleteButton => '沃띹㉫若뚥틙';
+  String get authVerifyCompleteButton => '認証完了';
 
   @override
-  String get authSendEmailVerification => '沃띹㉫?▲꺖?ャ굮?곦에';
+  String get authSendEmailVerification => '認証メールを送信';
 
   @override
-  String get authCheckEmailVerified => '沃띹㉫若뚥틙?믥▶沃?;
+  String get authCheckEmailVerified => '認証完了を確認';
 
   @override
-  String get authErrorInvalidEmail => '?됧듅?ゃ깳?쇈꺂?㏂깋?с궧?믣뀯?쎼걮?╉걦?졼걬?꾠?;
+  String get authErrorInvalidEmail => '有効なメールアドレスを入力してください。';
 
   @override
-  String get authErrorEmailInUse => '?볝겗?▲꺖?ャ궋?됥꺃?밤겘?㏂겓鵝욜뵪?뺛굦?╉걚?얇걲??;
+  String get authErrorEmailInUse => 'このメールアドレスは既に使用されています。';
 
   @override
-  String get authErrorWrongPassword => '?묆궧??꺖?됥걣閭ｃ걮?뤵걗?듽겲?쎼굯??;
+  String get authErrorWrongPassword => 'パスワードが正しくありません。';
 
   @override
-  String get authErrorUserNotFound => '?㏂궖?╉꺍?덀걣誤뗣겇?뗣굤?얇걵?볝?;
+  String get authErrorUserNotFound => 'アカウントが見つかりません。';
 
   @override
-  String get authErrorTooManyRequests => '?ゃ궚?ⓦ궧?덀걣鸚싥걲?롢겲?쇻귙걮?겹굢?뤵걮?╉걢?됧냽屋?죱?쀣겍?뤵걽?뺛걚??;
+  String get authErrorTooManyRequests => 'リクエストが多すぎます。しばらくしてから再試行してください。';
 
   @override
-  String get authErrorInvalidVerificationCode => '沃띹㉫?녈꺖?됥걣閭ｃ걮?뤵걗?듽겲?쎼굯??;
+  String get authErrorInvalidVerificationCode => '認証コードが正しくありません。';
 
   @override
-  String get authErrorInvalidVerificationId => '沃띹㉫?삠긿?룔깾?녈걣?잓솏?뉎굦?㎯걲?귛냽佯╉걡屋╉걮?뤵걽?뺛걚??;
+  String get authErrorInvalidVerificationId => '認証セッションが期限切れです。再度お試しください。';
 
   @override
-  String get authErrorVerificationFailed => '沃띹㉫?ュㅁ?쀣걮?얇걮?잆귙걮?겹굢?뤵걮?╉걢?됧냽屋?죱?쀣겍?뤵걽?뺛걚??;
+  String get authErrorVerificationFailed => '認証に失敗しました。しばらくしてから再試行してください。';
 
   @override
-  String get authErrorVerificationRequired => '鴉싧뱻?삯뙯?ャ겘沃띹㉫?뚦퓚誤곥겎?쇻?;
+  String get authErrorVerificationRequired => '会員登録には認証が必要です。';
 
   @override
-  String get authErrorEmptyEmailPassword => '?▲꺖?ャ궋?됥꺃?밤겏?묆궧??꺖?됥굮?ε뒟?쀣겍?뤵걽?뺛걚??;
+  String get authErrorEmptyEmailPassword => 'メールアドレスとパスワードを入力してください。';
 
   @override
-  String get authErrorPhoneEmpty => '?삭㈀?ゅ뤇?믣뀯?쎼걮?╉걦?졼걬?꾠?;
+  String get authErrorPhoneEmpty => '電話番号を入力してください。';
 
   @override
-  String get authErrorCodeEmpty => '沃띹㉫?녈꺖?됥굮?ε뒟?쀣겍?뤵걽?뺛걚??;
+  String get authErrorCodeEmpty => '認証コードを入力してください。';
 
   @override
-  String get authErrorGeneric => '??릤?㎯걤?얇걵?볝겎?쀣걼?귙굚?녵?佯╉걡屋╉걮?뤵걽?뺛걚??;
+  String get authErrorGeneric => '処理できませんでした。もう一度お試しください。';
 
   @override
-  String get uploadErrorPermission => '?숂쐿?멥겗?㏂궚?삠궧鼇긷룾?뚦퓚誤곥겎?쇻귟Þ若싥겎鼇긷룾?쀣겍?뤵걽?뺛걚??;
+  String get uploadErrorPermission => '写真へのアクセス許可が必要です。設定で許可してください。';
 
   @override
-  String get uploadErrorCanceled => '?㏂긿?쀣꺆?쇈깋?뚣궘?ｃ꺍?삠꺂?뺛굦?얇걮?잆귙굚?녵?佯╉걡屋╉걮?뤵걽?뺛걚??;
+  String get uploadErrorCanceled => 'アップロードがキャンセルされました。もう一度お試しください。';
 
   @override
-  String get uploadErrorUnauthorized => '沃띹㉫?뚦늾?뚣겲?쀣걼?귛냽佯╉꺆?겹궎?녈걮?╉걦?졼걬?꾠?;
+  String get uploadErrorUnauthorized => '認証が切れました。再度ログインしてください。';
 
   @override
-  String get uploadErrorNetwork => '?띲긿?덀꺈?쇈궚?뚥툖若됧츣?㎯걲?귛컩?쀦셽?볝굮?듽걚??냽屋?죱?쀣겍?뤵걽?뺛걚??;
+  String get uploadErrorNetwork => 'ネットワークが不安定です。少し時間をおいて再試行してください。';
 
   @override
-  String get uploadErrorUnknown => '訝띷삇?ゃ궓?⒲꺖?뚨쇇?잆걮?얇걮?잆귛냽屋?죱?쀣겍?뤵걽?뺛걚??;
+  String get uploadErrorUnknown => '不明なエラーが発生しました。再試行してください。';
 
   @override
-  String get uploadErrorFailed => '?㏂긿?쀣꺆?쇈깋?ュㅁ?쀣걮?얇걮?잆귛냽屋?죱?쀣겍?뤵걽?뺛걚??;
+  String get uploadErrorFailed => 'アップロードに失敗しました。再試行してください。';
 
   @override
-  String get uploadErrorFileRead => '?숂쐿?믦き?욤씔?곥겲?쎼굯?㎯걮?잆귛닪??넍?잆굮?멥굯?㎯걦?졼걬?꾠?;
+  String get uploadErrorFileRead => '写真を読み込めませんでした。別の写真を選んでください。';
 
   @override
-  String get reportConfirm => '?싧젿';
+  String get reportConfirm => '通報';
 
   @override
-  String get reportReasonSpam => '?밤깙?졼꺕佯껃몜';
+  String get reportReasonSpam => 'スパム・広告';
 
   @override
-  String get reportAction => '?싧젿?쇻굥';
+  String get reportAction => '通報する';
 
   @override
-  String get reportTitle => '?싧젿?녺뵳?믧겦?볝겎?뤵걽?뺛걚';
+  String get reportTitle => '通報理由を選んでください';
 
   @override
-  String get reportReasonHarassment => '椰뚣걣?됥걵?삡툖恙ャ겒烏뚨궨';
+  String get reportReasonHarassment => '嫌がらせ・不快な行為';
 
   @override
-  String get reportReasonInappropriate => '訝띺겑?뉎겒?녈꺍?녴꺍??;
+  String get reportReasonInappropriate => '不適切なコンテンツ';
 
   @override
-  String get reportCancel => '??깵?녈궩??;
+  String get reportCancel => 'キャンセル';
 
   @override
-  
+  String get reportSubmitted => '通報を受け付けました';
+
+  @override
+  String get reportReasonOther => 'その他';
+
+  @override
+  String get protectionLimitedMessage => '現在保護特典を利用できません。';
 
   @override
   String get protectionBlockedMessage => '現在マッチングが制限されています。';
 
   @override
-  String get protectionLimitedMessage => '現在保護特典を利用できません。';
-@override
-  String get reportReasonOther => '?앫겗餓?;
+  String get resetEmailSentMessage => '入力されたメールで登録がある場合、\\nご案内メールをお送りしました。';
+
+  @override
+  String get findAccountTitle => 'アカウントを探す';
+
+  @override
+  String get findAccountDescription =>
+      '登録に使ったメールアドレスを入力してください。\\nアカウントがあれば、再設定のご案内をお送りします。';
+
+  @override
+  String get sendResetEmail => '案内メールを送信';
+
+  @override
+  String get loginForgotCredential => 'IDやパスワードをお忘れですか？';
+
+  @override
+  String get adminTitle => '管理者モデレーション';
+
+  @override
+  String get adminUidLabel => 'ユーザーUID';
+
+  @override
+  String get adminLoadUser => 'ユーザーを読み込む';
+
+  @override
+  String get adminNotAuthorized => '管理者権限が必要です';
+
+  @override
+  String get adminModerationLevel => 'モデレーションレベル';
+
+  @override
+  String get adminTotalReports => '通報件数';
+
+  @override
+  String get adminProtectionEligible => '保護対象';
+
+  @override
+  String get adminHardFlags => '強いフラグ';
+
+  @override
+  String get adminHardFlagSevere => '重大';
+
+  @override
+  String get adminHardFlagSexual => '性的';
+
+  @override
+  String get adminHardFlagViolence => '暴力';
+
+  @override
+  String get adminHardFlagSpam => 'スパム';
+
+  @override
+  String get adminProtectionActive => '保護の有効';
+
+  @override
+  String get adminProtectionExpiresAt => '保護の期限';
+
+  @override
+  String get adminProtectionBanActive => '保護停止';
+
+  @override
+  String get adminProtectionBanUntil => '停止期限';
+
+  @override
+  String get adminProtectionBanReason => '停止理由';
+
+  @override
+  String get adminSave => '保存する';
+
+  @override
+  String get adminSaved => '保存しました';
+
+  @override
+  String get adminLoadFailed => 'ユーザー情報を読み込めませんでした';
 }
-
-
-

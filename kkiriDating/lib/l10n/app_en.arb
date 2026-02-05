@@ -1,4 +1,4 @@
-﻿{
+{
     "@@locale":  "en",
     "appTitle":  "Kkiri Dating",
     "tabRecommend":  "Recommend",
@@ -174,5 +174,30 @@
     "reportSubmitted":  "Your report has been submitted",
     "reportReasonOther":  "Other",
     "protectionLimitedMessage":  "Protection benefit is not available right now.",
-    "protectionBlockedMessage":  "Matching is currently restricted."
+    "protectionBlockedMessage":  "Matching is currently restricted.",
+    "resetEmailSentMessage":  "If there’s an account for that email,\\nwe’ve sent a reset email.",
+    "findAccountTitle":  "Find your account",
+    "findAccountDescription":  "Enter the email you used to sign up.\\nIf there’s an account, we’ll send a reset email.",
+    "sendResetEmail":  "Send reset email",
+    "loginForgotCredential":  "Forgot your ID or password?",
+    "adminTitle":  "Admin moderation",
+    "adminUidLabel":  "User UID",
+    "adminLoadUser":  "Load user",
+    "adminNotAuthorized":  "Admin access required",
+    "adminModerationLevel":  "Moderation level",
+    "adminTotalReports":  "Total reports",
+    "adminProtectionEligible":  "Protection eligible",
+    "adminHardFlags":  "Hard flags",
+    "adminHardFlagSevere":  "Severe",
+    "adminHardFlagSexual":  "Sexual",
+    "adminHardFlagViolence":  "Violence",
+    "adminHardFlagSpam":  "Spam",
+    "adminProtectionActive":  "Protection active",
+    "adminProtectionExpiresAt":  "Protection expires",
+    "adminProtectionBanActive":  "Protection ban",
+    "adminProtectionBanUntil":  "Ban until",
+    "adminProtectionBanReason":  "Ban reason",
+    "adminSave":  "Save changes",
+    "adminSaved":  "Saved",
+    "adminLoadFailed":  "Failed to load user"
 }

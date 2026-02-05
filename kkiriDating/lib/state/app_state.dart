@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -55,6 +56,7 @@ class AppState extends ChangeNotifier {
   bool _hardFlagSevere = false;
   bool _hardFlagSexual = false;
   bool _hardFlagViolence = false;
+  bool _isAdmin = false;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _meSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchSessionsSubA;
@@ -112,6 +114,7 @@ class AppState extends ChangeNotifier {
   bool get hardFlagSevere => _hardFlagSevere;
   bool get hardFlagSexual => _hardFlagSexual;
   bool get hardFlagViolence => _hardFlagViolence;
+  bool get isAdmin => _isAdmin;
   AutoMatchState get autoMatchState {
     final session = activeAutoMatchSession;
     if (session != null) {
@@ -194,19 +197,21 @@ class AppState extends ChangeNotifier {
         _hardFlagSevere = false;
         _hardFlagSexual = false;
         _hardFlagViolence = false;
+        _isAdmin = false;
         notifyListeners();
         return;
       }
       await _ensureProfile();
       await _syncAuthFields(user);
+      await _loadAdminClaim(user);
       await _loadMeOnce();
       await _loadMyDecisions();
       _watchMyProfile();
-    _watchMatchSessions();
-    _watchQueueStatus();
-    _watchModeration();
-    _watchEntitlements();
-    notifyListeners();
+      _watchMatchSessions();
+      _watchQueueStatus();
+      _watchModeration();
+      _watchEntitlements();
+      notifyListeners();
     } catch (e, st) {
       debugPrint('AUTH FLOW FAILED: $e');
       debugPrintStack(stackTrace: st);
@@ -246,6 +251,15 @@ class AppState extends ChangeNotifier {
       'userId': user.uid,
       'email': user.email ?? '',
     }, SetOptions(merge: true));
+  }
+
+  Future<void> _loadAdminClaim(User user) async {
+    try {
+      final result = await user.getIdTokenResult();
+      _isAdmin = result.claims?['admin'] == true;
+    } catch (_) {
+      _isAdmin = false;
+    }
   }
 
   Future<void> _loadMeOnce() async {
@@ -364,17 +378,18 @@ class AppState extends ChangeNotifier {
             return;
           }
           final data = snapshot.data() ?? <String, dynamic>{};
-          final protection =
-              data['protection'] as Map<String, dynamic>? ?? {};
+          final protection = data['protection'] as Map<String, dynamic>? ?? {};
           final ban = data['protectionBan'] as Map<String, dynamic>? ?? {};
           _hasProtection = protection['active'] == true;
           _protectionTier = (protection['tier'] ?? 'basic').toString();
           final expiresAt = protection['expiresAt'];
-          _protectionExpiresAt =
-              expiresAt is Timestamp ? expiresAt.toDate() : null;
+          _protectionExpiresAt = expiresAt is Timestamp
+              ? expiresAt.toDate()
+              : null;
           final banUntil = ban['until'];
           final banActive = ban['active'] == true;
-          final bool banEffective = banActive &&
+          final bool banEffective =
+              banActive &&
               (banUntil == null ||
                   (banUntil is Timestamp &&
                       banUntil.toDate().isAfter(DateTime.now())));
@@ -595,7 +610,8 @@ class AppState extends ChangeNotifier {
       throw StateError('No signed-in user.');
     }
     if (_moderationLevel >= 2) {
-      final bool limitedEligible = _hasProtection &&
+      final bool limitedEligible =
+          _hasProtection &&
           !_protectionBanned &&
           _protectionEligible &&
           !_hardFlagSevere &&
@@ -950,6 +966,33 @@ class AppState extends ChangeNotifier {
     }, SetOptions(merge: true));
   }
 
+  Future<void> adminUpdateModeration({
+    required String uid,
+    required bool protectionEligible,
+    required Map<String, bool> hardFlags,
+    required bool banActive,
+    required String banReason,
+    required DateTime? banUntil,
+  }) async {
+    final callable = FirebaseFunctions.instance.httpsCallable(
+      'adminUpdateModeration',
+    );
+    await callable.call(<String, dynamic>{
+      'uid': uid,
+      'moderation': {
+        'protectionEligible': protectionEligible,
+        'hardFlags': hardFlags,
+      },
+      'entitlements': {
+        'protectionBan': {
+          'active': banActive,
+          'reason': banReason,
+          'until': banUntil?.toIso8601String(),
+        },
+      },
+    });
+  }
+
   Future<void> setNotificationsEnabled(bool enabled) async {
     final Profile? meProfile = _me;
     if (meProfile == null) return;
@@ -1111,4 +1154,3 @@ class AppState extends ChangeNotifier {
     super.dispose();
   }
 }
-
