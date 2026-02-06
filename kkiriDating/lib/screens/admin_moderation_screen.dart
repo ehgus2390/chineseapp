@@ -78,12 +78,14 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
         _hardSpam = hardFlags['spam'] == true;
 
         _protectionActive = protection['active'] == true;
-        _protectionExpiresAt =
-            protectionExpires is Timestamp ? protectionExpires.toDate() : null;
+        _protectionExpiresAt = protectionExpires is Timestamp
+            ? protectionExpires.toDate()
+            : null;
         _banActive = ban['active'] == true;
         _banReasonCtrl.text = (ban['reason'] ?? '').toString();
-        _banUntil =
-            banUntil is Timestamp ? banUntil.toDate() : DateTime.tryParse(banUntil?.toString() ?? '');
+        _banUntil = banUntil is Timestamp
+            ? banUntil.toDate()
+            : DateTime.tryParse(banUntil?.toString() ?? '');
         _banUntilCtrl.text = _formatDate(_banUntil);
       });
     } catch (_) {
@@ -105,22 +107,22 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
     try {
       final until = _parseDate(_banUntilCtrl.text.trim());
       await context.read<AppState>().adminUpdateModeration(
-            uid: uid,
-            protectionEligible: _protectionEligible,
-            hardFlags: <String, bool>{
-              'severe': _hardSevere,
-              'sexual': _hardSexual,
-              'violence': _hardViolence,
-              'spam': _hardSpam,
-            },
-            banActive: _banActive,
-            banReason: _banReasonCtrl.text.trim(),
-            banUntil: until,
-          );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.adminSaved)),
+        uid: uid,
+        protectionEligible: _protectionEligible,
+        hardFlags: <String, bool>{
+          'severe': _hardSevere,
+          'sexual': _hardSexual,
+          'violence': _hardViolence,
+          'spam': _hardSpam,
+        },
+        banActive: _banActive,
+        banReason: _banReasonCtrl.text.trim(),
+        banUntil: until,
       );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.adminSaved)));
     } catch (_) {
       setState(() => _error = l.adminLoadFailed);
     } finally {
@@ -146,7 +148,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(title: Text(l.adminTitle)),
@@ -232,7 +234,9 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: _banReasonCtrl,
-                  decoration: InputDecoration(labelText: l.adminProtectionBanReason),
+                  decoration: InputDecoration(
+                    labelText: l.adminProtectionBanReason,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -267,9 +271,18 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+          Expanded(
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
           const SizedBox(width: 8),
-          Text(value),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+            ),
+          ),
         ],
       ),
     );

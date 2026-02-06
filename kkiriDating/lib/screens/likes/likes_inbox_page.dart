@@ -26,7 +26,7 @@ class _LikesInboxPageState extends State<LikesInboxPage> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(title: Text(l.likesInboxTitle)),

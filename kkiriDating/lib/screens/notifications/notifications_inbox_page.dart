@@ -30,7 +30,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
   Widget build(BuildContext context) {
     final notifications = context.watch<NotificationProvider>();
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(title: Text(l.notificationsInboxTitle)),

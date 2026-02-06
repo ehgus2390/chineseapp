@@ -214,7 +214,7 @@ class _RecommendationBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
     if (!profileComplete) {
       return _ProfileCompletionPrompt(
         title: l.profileCompleteTitle,

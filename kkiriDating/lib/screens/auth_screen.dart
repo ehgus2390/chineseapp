@@ -40,10 +40,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      l.findAccountDescription,
-                      textAlign: TextAlign.center,
-                    ),
+                    Text(l.findAccountDescription, textAlign: TextAlign.center),
                     const SizedBox(height: 12),
                     TextField(
                       controller: controller,
@@ -65,19 +62,16 @@ class _AuthScreenState extends State<AuthScreen> {
                       : () async {
                           setState(() => busy = true);
                           try {
-                            await FirebaseAuth.instance
-                                .sendPasswordResetEmail(
-                                  email: controller.text.trim(),
-                                );
+                            await FirebaseAuth.instance.sendPasswordResetEmail(
+                              email: controller.text.trim(),
+                            );
                           } catch (_) {
                             // Same message for success/failure.
                           }
                           if (context.mounted) {
                             Navigator.of(context).pop();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(l.resetEmailSentMessage),
-                              ),
+                              SnackBar(content: Text(l.resetEmailSentMessage)),
                             );
                           }
                         },
@@ -90,6 +84,7 @@ class _AuthScreenState extends State<AuthScreen> {
       },
     );
   }
+
   bool _verificationEmailSent = false;
   String? _verificationId;
   bool _verificationMetadataSaved = false;
@@ -153,7 +148,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   String _friendlyAuthError(Object error) {
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
     if (error is FirebaseAuthException) {
       switch (error.code) {
         case 'invalid-email':
@@ -347,7 +342,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -574,4 +569,3 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 }
-

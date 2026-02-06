@@ -47,7 +47,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
     final nextSteps = <String>[
       l.queueSearchStepDistance,
       l.queueSearchStepInterests,
@@ -82,28 +82,30 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Future<void> _enterMatchingQueue() async {
     if (_queueActive) return;
     final state = context.read<AppState>();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
     if (state.moderationLevel >= 2) {
-      final bool limitedEligible = state.hasProtection &&
+      final bool limitedEligible =
+          state.hasProtection &&
           !state.protectionBanned &&
           state.protectionEligible &&
           !state.hardFlagSevere &&
           !state.hardFlagSexual &&
           !state.hardFlagViolence;
       if (!limitedEligible) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.protectionBlockedMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.protectionBlockedMessage)));
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.protectionLimitedMessage)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.protectionLimitedMessage)));
     }
     try {
       await state.enterAutoMatchQueue();
     } catch (_) {
-      final bool eligible = state.hasProtection &&
+      final bool eligible =
+          state.hasProtection &&
           !state.protectionBanned &&
           state.protectionEligible &&
           !state.hardFlagSevere &&
@@ -229,7 +231,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
 
     final me = state.meOrNull;
     final bool profileComplete = me != null && state.isProfileReady(me);

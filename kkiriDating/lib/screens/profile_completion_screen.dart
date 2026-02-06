@@ -37,7 +37,7 @@ class ProfileCompletionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
     final photoDone = _hasValidPhoto(state);
     final bioDone = _hasValidBio(state, l);
     final basicDone = _hasBasicInfo(state);

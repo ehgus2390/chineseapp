@@ -21,17 +21,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool _guideChecked = false;
   bool _badgeCleared = false;
   bool _firstMessageLogged = false;
-  Future<void> _showReportDialog(
-    AppState state,
-    AppLocalizations l,
-  ) async {
+  Future<void> _showReportDialog(AppState state, AppLocalizations l) async {
     final me = state.meOrNull;
     if (me == null) return;
     final parts = widget.matchId.split('_');
-    final otherId = parts.firstWhere(
-      (id) => id != me.id,
-      orElse: () => '',
-    );
+    final otherId = parts.firstWhere((id) => id != me.id, orElse: () => '');
     if (otherId.isEmpty) return;
 
     String? selected;
@@ -95,9 +89,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l.reportSubmitted)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l.reportSubmitted)));
   }
 
   @override
@@ -110,7 +104,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       context.read<NotificationState>().clearChatBadge();
     }
     final state = context.read<AppState>();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
     state.ensureFirstMessageGuide(widget.matchId, l.firstMessageGuide);
   }
 
@@ -123,7 +117,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -141,7 +135,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 child: Text(l.reportAction),
               ),
             ],
-          ),          IconButton(
+          ),
+          IconButton(
             icon: const Icon(Icons.exit_to_app),
             tooltip: l.chatExit,
             onPressed: () async {
@@ -305,7 +300,7 @@ class _SuggestionChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
     final me = state.meOrNull;
     if (me == null) return const SizedBox.shrink();
     final parts = matchId.split('_');
@@ -337,7 +332,3 @@ class _SuggestionChips extends StatelessWidget {
     );
   }
 }
-
-
-
-

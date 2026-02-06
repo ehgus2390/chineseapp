@@ -378,22 +378,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String firstMessageSuggestions(Object interest) {
-    return '最近$interestはよくしますか|$interestを好きになったきっかけは何ですか|$interest以外にも興味はありますか';
+    return '最近$interestはよくしますか？|$interestを好きになったきっかけは何ですか？|$interest以外にも興味はありますか？';
   }
 
   @override
   String firstMessageSuggestion1(Object interest) {
-    return '最近$interestはよくしますか';
+    return '最近$interestはよくしますか？';
   }
 
   @override
   String firstMessageSuggestion2(Object interest) {
-    return '$interestを好きになったきっかけは何ですか';
+    return '$interestを好きになったきっかけは何ですか？';
   }
 
   @override
   String firstMessageSuggestion3(Object interest) {
-    return '$interest以外にも興味はありますか';
+    return '$interest以外にも興味はありますか？';
   }
 
   @override
