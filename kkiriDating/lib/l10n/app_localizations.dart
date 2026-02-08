@@ -589,19 +589,19 @@ abstract class AppLocalizations {
   /// No description provided for @queueResumeSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Looking for another match ?뙮'**
+  /// **'Looking for another match 🌱'**
   String get queueResumeSubtitle;
 
   /// No description provided for @notificationMatchAcceptedToast.
   ///
   /// In en, this message translates to:
-  /// **'?뮒 Match complete. Start chatting now.'**
+  /// **'💞 Match complete. Start chatting now.'**
   String get notificationMatchAcceptedToast;
 
   /// No description provided for @notificationNewMessageToast.
   ///
   /// In en, this message translates to:
-  /// **'?뮠 New message received'**
+  /// **'💬 New message received'**
   String get notificationNewMessageToast;
 
   /// No description provided for @notificationViewAction.
@@ -619,7 +619,7 @@ abstract class AppLocalizations {
   /// No description provided for @likesInboxEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No new notifications ?뭽'**
+  /// **'No new notifications 💌'**
   String get likesInboxEmpty;
 
   /// No description provided for @notificationsInboxTitle.
@@ -631,7 +631,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationsInboxEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No new notifications ?뭽'**
+  /// **'No new notifications 💌'**
   String get notificationsInboxEmpty;
 
   /// No description provided for @notificationsLikeText.
@@ -685,13 +685,13 @@ abstract class AppLocalizations {
   /// No description provided for @profileNameAgeCountry.
   ///
   /// In en, this message translates to:
-  /// **'{name}, {age} 쨌 {country}'**
+  /// **'{name}, {age} · {country}'**
   String profileNameAgeCountry(Object age, Object country, Object name);
 
   /// No description provided for @matchingSearchingTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뮉 Finding someone new'**
+  /// **'💗 Finding someone new'**
   String get matchingSearchingTitle;
 
   /// No description provided for @matchingSearchingSubtitle.
@@ -703,13 +703,13 @@ abstract class AppLocalizations {
   /// No description provided for @recommendCardSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'??You might really click on interests'**
+  /// **'✨ You might really click on interests'**
   String get recommendCardSubtitle;
 
   /// No description provided for @noMatchTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뮡 We haven\'t found a perfect match yet'**
+  /// **'💭 We haven\'t found a perfect match yet'**
   String get noMatchTitle;
 
   /// No description provided for @noMatchSubtitle.
@@ -739,7 +739,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatSearchingEmoji.
   ///
   /// In en, this message translates to:
-  /// **'?뮉'**
+  /// **'💗'**
   String get chatSearchingEmoji;
 
   /// No description provided for @chatSearchingTitle.
@@ -757,7 +757,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatMatchTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뮠 Want to start a chat?'**
+  /// **'💬 Want to start a chat?'**
   String get chatMatchTitle;
 
   /// No description provided for @chatMatchSubtitle.
@@ -769,13 +769,13 @@ abstract class AppLocalizations {
   /// No description provided for @chatStartButton.
   ///
   /// In en, this message translates to:
-  /// **'?뮉 Start chatting now'**
+  /// **'💗 Start chatting now'**
   String get chatStartButton;
 
   /// No description provided for @chatWaitingTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뙮 Still connecting'**
+  /// **'🌱 Still connecting'**
   String get chatWaitingTitle;
 
   /// No description provided for @chatWaitingSubtitle.
@@ -787,7 +787,7 @@ abstract class AppLocalizations {
   /// No description provided for @matchingConsentTitle.
   ///
   /// In en, this message translates to:
-  /// **'?뮠 Want to start a chat now?'**
+  /// **'💬 Want to start a chat now?'**
   String get matchingConsentTitle;
 
   /// No description provided for @matchingConsentSubtitle.
@@ -799,7 +799,7 @@ abstract class AppLocalizations {
   /// No description provided for @matchingConnectButton.
   ///
   /// In en, this message translates to:
-  /// **'?뮉 Connect'**
+  /// **'💗 Connect'**
   String get matchingConnectButton;
 
   /// No description provided for @matchingSkipButton.
@@ -817,7 +817,7 @@ abstract class AppLocalizations {
   /// No description provided for @firstMessageGuide.
   ///
   /// In en, this message translates to:
-  /// **'??Start the conversation!\nIt helps to begin with a shared interest.'**
+  /// **'✨ Start the conversation!\nIt helps to begin with a shared interest.'**
   String get firstMessageGuide;
 
   /// No description provided for @firstMessageSuggestions.
@@ -1153,7 +1153,7 @@ abstract class AppLocalizations {
   /// No description provided for @resetEmailSentMessage.
   ///
   /// In en, this message translates to:
-  /// **'If there’s an account for that email,\\nwe’ve sent a reset email.'**
+  /// **'If there\'s an account for that email,\nwe\'ve sent a reset email.'**
   String get resetEmailSentMessage;
 
   /// No description provided for @findAccountTitle.
@@ -1165,7 +1165,7 @@ abstract class AppLocalizations {
   /// No description provided for @findAccountDescription.
   ///
   /// In en, this message translates to:
-  /// **'Enter the email you used to sign up.\\nIf there’s an account, we’ll send a reset email.'**
+  /// **'Enter the email you used to sign up.\nIf there\'s an account, we\'ll send a reset email.'**
   String get findAccountDescription;
 
   /// No description provided for @sendResetEmail.

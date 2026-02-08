@@ -255,14 +255,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get queueResumeSubtitle => 'Looking for another match ?뙮';
+  String get queueResumeSubtitle => 'Looking for another match 🌱';
 
   @override
   String get notificationMatchAcceptedToast =>
-      '?뮒 Match complete. Start chatting now.';
+      '💞 Match complete. Start chatting now.';
 
   @override
-  String get notificationNewMessageToast => '?뮠 New message received';
+  String get notificationNewMessageToast => '💬 New message received';
 
   @override
   String get notificationViewAction => 'View';
@@ -271,13 +271,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get likesInboxTitle => 'Notifications';
 
   @override
-  String get likesInboxEmpty => 'No new notifications ?뭽';
+  String get likesInboxEmpty => 'No new notifications 💌';
 
   @override
   String get notificationsInboxTitle => 'Notifications';
 
   @override
-  String get notificationsInboxEmpty => 'No new notifications ?뭽';
+  String get notificationsInboxEmpty => 'No new notifications 💌';
 
   @override
   String notificationsLikeText(Object name) {
@@ -309,20 +309,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String profileNameAgeCountry(Object age, Object country, Object name) {
-    return '$name, $age 쨌 $country';
+    return '$name, $age · $country';
   }
 
   @override
-  String get matchingSearchingTitle => '?뮉 Finding someone new';
+  String get matchingSearchingTitle => '💗 Finding someone new';
 
   @override
   String get matchingSearchingSubtitle => 'Please wait a moment';
 
   @override
-  String get recommendCardSubtitle => '??You might really click on interests';
+  String get recommendCardSubtitle => '✨ You might really click on interests';
 
   @override
-  String get noMatchTitle => '?뮡 We haven\'t found a perfect match yet';
+  String get noMatchTitle => '💭 We haven\'t found a perfect match yet';
 
   @override
   String get noMatchSubtitle => 'Try adjusting your interests or distance';
@@ -338,7 +338,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileCompleteAction => 'Complete profile';
 
   @override
-  String get chatSearchingEmoji => '?뮉';
+  String get chatSearchingEmoji => '💗';
 
   @override
   String get chatSearchingTitle => 'Finding a friend that fits you';
@@ -348,28 +348,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'Prioritizing people with similar interests';
 
   @override
-  String get chatMatchTitle => '?뮠 Want to start a chat?';
+  String get chatMatchTitle => '💬 Want to start a chat?';
 
   @override
   String get chatMatchSubtitle => 'Someone is here to talk right now';
 
   @override
-  String get chatStartButton => '?뮉 Start chatting now';
+  String get chatStartButton => '💗 Start chatting now';
 
   @override
-  String get chatWaitingTitle => '?뙮 Still connecting';
+  String get chatWaitingTitle => '🌱 Still connecting';
 
   @override
   String get chatWaitingSubtitle => 'Please wait a little longer';
 
   @override
-  String get matchingConsentTitle => '?뮠 Want to start a chat now?';
+  String get matchingConsentTitle => '💬 Want to start a chat now?';
 
   @override
   String get matchingConsentSubtitle => 'Someone is here to talk right now';
 
   @override
-  String get matchingConnectButton => '?뮉 Connect';
+  String get matchingConnectButton => '💗 Connect';
 
   @override
   String get matchingSkipButton => 'Wait for the next match';
@@ -379,7 +379,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get firstMessageGuide =>
-      '??Start the conversation!\nIt helps to begin with a shared interest.';
+      '✨ Start the conversation!\nIt helps to begin with a shared interest.';
 
   @override
   String firstMessageSuggestions(Object interest) {
@@ -569,14 +569,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resetEmailSentMessage =>
-      'If there’s an account for that email,\\nwe’ve sent a reset email.';
+      'If there\'s an account for that email,\nwe\'ve sent a reset email.';
 
   @override
   String get findAccountTitle => 'Find your account';
 
   @override
   String get findAccountDescription =>
-      'Enter the email you used to sign up.\\nIf there’s an account, we’ll send a reset email.';
+      'Enter the email you used to sign up.\nIf there\'s an account, we\'ll send a reset email.';
 
   @override
   String get sendResetEmail => 'Send reset email';

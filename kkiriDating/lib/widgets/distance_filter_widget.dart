@@ -31,8 +31,9 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
     final hasService = await Geolocator.isLocationServiceEnabled();
     if (!hasService) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l.locationServiceOff)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.locationServiceOff)));
       return;
     }
 
@@ -43,8 +44,9 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l.locationPermissionDenied)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.locationPermissionDenied)));
       return;
     }
 
@@ -57,14 +59,15 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
       distanceKm: _distanceKm,
       location: location,
     );
-    await context
-        .read<RecommendationProvider>()
-        .refreshRecommendations(reason: RefreshReason.locationChanged);
+    await context.read<RecommendationProvider>().refreshRecommendations(
+      reason: RefreshReason.locationChanged,
+    );
 
     if (!mounted) return;
     setState(() => _updatingLocation = false);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(l.locationUpdated)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l.locationUpdated)));
   }
 
   String _distanceLabel(double value) {
@@ -82,8 +85,9 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
     final me = state.meOrNull;
     final hasLocation = me?.location != null;
     final distanceEnabled = state.distanceFilterEnabled;
-    final distanceLabel =
-        distanceEnabled ? _distanceLabel(_distanceKm) : l.distanceNoLimit;
+    final distanceLabel = distanceEnabled
+        ? _distanceLabel(_distanceKm)
+        : l.distanceNoLimit;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -113,11 +117,7 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            distanceLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          Text(distanceLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
           Slider(
             min: 1,
             max: 200,
@@ -144,8 +144,9 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed:
-                  _updatingLocation ? null : () => _useCurrentLocation(state),
+              onPressed: _updatingLocation
+                  ? null
+                  : () => _useCurrentLocation(state),
               child: _updatingLocation
                   ? const SizedBox(
                       height: 18,
@@ -160,5 +161,3 @@ class _DistanceFilterWidgetState extends State<DistanceFilterWidget> {
     );
   }
 }
-
-

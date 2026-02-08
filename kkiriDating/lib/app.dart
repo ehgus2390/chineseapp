@@ -73,7 +73,10 @@ class _KkiriAppState extends State<KkiriApp> {
       },
       routes: [
         GoRoute(path: '/login', builder: (_, __) => const AuthScreen()),
-        GoRoute(path: '/admin', builder: (_, __) => const AdminModerationScreen()),
+        GoRoute(
+          path: '/admin',
+          builder: (_, __) => const AdminModerationScreen(),
+        ),
         GoRoute(
           path: '/profile-completion',
           builder: (_, __) => const ProfileCompletionScreen(),
@@ -248,5 +251,3 @@ class _HomeShell extends StatelessWidget {
     );
   }
 }
-
-

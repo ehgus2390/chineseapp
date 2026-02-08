@@ -552,14 +552,14 @@ class AppLocalizationsKo extends AppLocalizations {
   String get protectionBlockedMessage => '현재 매칭이 제한되어 있어요.';
 
   @override
-  String get resetEmailSentMessage => '입력하신 이메일로 가입된 계정이 있다면\\n안내 메일을 보내드렸어요.';
+  String get resetEmailSentMessage => '입력하신 이메일로 가입된 계정이 있다면\n안내 메일을 보내드렸어요.';
 
   @override
   String get findAccountTitle => '계정 찾기';
 
   @override
   String get findAccountDescription =>
-      '가입할 때 사용한 이메일을 입력해주세요.\\n계정이 있다면 재설정 안내를 보내드릴게요.';
+      '가입할 때 사용한 이메일을 입력해주세요.\n계정이 있다면 재설정 안내를 보내드릴게요.';
 
   @override
   String get sendResetEmail => '안내 메일 보내기';

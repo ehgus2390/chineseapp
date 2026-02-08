@@ -552,14 +552,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get protectionBlockedMessage => '現在マッチングが制限されています。';
 
   @override
-  String get resetEmailSentMessage => '入力されたメールで登録がある場合、\\nご案内メールをお送りしました。';
+  String get resetEmailSentMessage => '入力されたメールで登録がある場合、\nご案内メールをお送りしました。';
 
   @override
   String get findAccountTitle => 'アカウントを探す';
 
   @override
   String get findAccountDescription =>
-      '登録に使ったメールアドレスを入力してください。\\nアカウントがあれば、再設定のご案内をお送りします。';
+      '登録に使ったメールアドレスを入力してください。\nアカウントがあれば、再設定のご案内をお送りします。';
 
   @override
   String get sendResetEmail => '案内メールを送信';
