@@ -1,14 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../state/app_state.dart';
-import '../providers/user_provider.dart';
 import '../state/locale_state.dart';
-import '../state/recommendation_provider.dart';
-import 'package:kkiri/l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -43,10 +38,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final Set<String> _languages = <String>{};
   final Set<String> _interests = <String>{};
   final ImagePicker _picker = ImagePicker();
-  XFile? _pendingAvatar;
-  double _uploadProgress = 0.0;
-  String? _uploadError;
-  UploadTask? _uploadTask;
 
   @override
   void dispose() {
@@ -84,113 +75,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickAvatar(AppState state) async {
-    if (_uploading) return;
     final XFile? file = await _picker.pickImage(
       source: ImageSource.gallery,
       maxWidth: 1080,
-      maxHeight: 1080,
       imageQuality: 85,
     );
     if (file == null) return;
-    if (!mounted) return;
-    setState(() {
-      _pendingAvatar = file;
-      _uploadError = null;
-      _uploadProgress = 0.0;
-    });
-    await _uploadAvatarWithProgress(state, file);
-  }
-
-  String _friendlyUploadError(Object error) {
-    final l = AppLocalizations.of(context)!;
-    if (error is FirebaseException) {
-      switch (error.code) {
-        case 'permission-denied':
-          return l.uploadErrorPermission;
-        case 'canceled':
-          return l.uploadErrorCanceled;
-        case 'unauthorized':
-          return l.uploadErrorUnauthorized;
-        case 'retry-limit-exceeded':
-          return l.uploadErrorNetwork;
-        case 'unknown':
-          return l.uploadErrorUnknown;
-        default:
-          return l.uploadErrorFailed;
+    setState(() => _uploading = true);
+    final bytes = await file.readAsBytes();
+    try {
+      await state.uploadAvatar(bytes);
+      _avatarVersion += 1;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
-    if (error is FileSystemException) {
-      return l.uploadErrorFileRead;
-    }
-    return l.uploadErrorFailed;
+    if (!mounted) return;
+    setState(() => _uploading = false);
   }
-
-  Future<void> _uploadAvatarWithProgress(AppState state, XFile file) async {
-    if (_uploading) return;
-    final me = state.meOrNull;
-    if (me == null) return;
-    setState(() {
-      _uploading = true;
-      _uploadError = null;
-      _uploadProgress = 0.0;
-    });
-    final bytes = await file.readAsBytes();
-    final photoId = DateTime.now().millisecondsSinceEpoch.toString();
-    final path = 'users/${me.id}/photos/$photoId.jpg';
-    final ref = FirebaseStorage.instance.ref().child(path);
-    try {
-      _uploadTask = ref.putData(
-        bytes,
-        SettableMetadata(contentType: 'image/jpeg'),
-      );
-      _uploadTask!.snapshotEvents.listen((snapshot) {
-        if (!mounted) return;
-        final total = snapshot.totalBytes;
-        final transferred = snapshot.bytesTransferred;
-        if (total > 0) {
-          setState(() => _uploadProgress = transferred / total);
-        }
-      });
-      await _uploadTask;
-      final url = await ref.getDownloadURL();
-      await FirebaseFirestore.instance.collection('users').doc(me.id).set({
-        'photoUrl': url,
-        'photoPath': path,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      if (!mounted) return;
-      setState(() {
-        _avatarVersion += 1;
-        _uploading = false;
-        _uploadProgress = 1.0;
-        _uploadError = null;
-        _pendingAvatar = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _uploading = false;
-        _uploadError = _friendlyUploadError(e);
-      });
-    }
-  }
-
-  Future<void> _retryUpload(AppState state) async {
-    final file = _pendingAvatar;
-    if (file == null) return;
-    await _uploadAvatarWithProgress(state, file);
-  }
-
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context);
     final state = context.watch<AppState>();
-    final userProvider = context.watch<UserProvider>();
     final localeState = context.watch<LocaleState>();
     _seedFromProfile(state);
 
-    final me = userProvider.me ?? state.meOrNull;
+    final me = state.meOrNull;
     if (me == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -205,30 +119,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 CircleAvatar(
                   radius: 36,
                   backgroundColor: Colors.grey.shade300,
-                  child: _pendingAvatar != null
-                      ? ClipOval(
-                          child: Image.file(
-                            File(_pendingAvatar!.path),
+                  child: (me.photoUrl == null || me.photoUrl!.isEmpty)
+                      ? const Icon(Icons.person)
+                      : ClipOval(
+                          child: Image.network(
+                            _cacheBustedUrl(me.photoUrl!),
+                            key: ValueKey('${me.photoUrl}-$_avatarVersion'),
                             width: 72,
                             height: 72,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
                                 const Icon(Icons.person),
                           ),
-                        )
-                      : (me.photoUrl == null || me.photoUrl!.isEmpty)
-                          ? const Icon(Icons.person)
-                          : ClipOval(
-                              child: Image.network(
-                                _cacheBustedUrl(me.photoUrl!),
-                                key: ValueKey('${me.photoUrl}-$_avatarVersion'),
-                                width: 72,
-                                height: 72,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    const Icon(Icons.person),
-                              ),
-                            ),
+                        ),
                 ),
                 if (_uploading)
                   Positioned.fill(
@@ -237,30 +140,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Colors.black45,
                         borderRadius: BorderRadius.circular(36),
                       ),
-                      child: Center(
-                        child: SizedBox(
-                          height: 48,
-                          width: 48,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              CircularProgressIndicator(
-                                value: _uploadProgress == 0
-                                    ? null
-                                    : _uploadProgress,
-                                color: Colors.white,
-                              ),
-                              Text(
-                                '${(_uploadProgress * 100).round()}%',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      child: const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
                       ),
                     ),
                   ),
@@ -285,39 +166,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
-        if (_uploadError != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            _uploadError!,
-            style: const TextStyle(color: Colors.red),
-          ),
-          const SizedBox(height: 6),
-          OutlinedButton(
-            onPressed: _uploading ? null : () => _retryUpload(state),
-            child: Text(l.retry),
-          ),
-        ],
         const SizedBox(height: 24),
         Text(l.appLanguage, style: Theme.of(context).textTheme.titleMedium),
         DropdownButton<Locale>(
-          value: localeState.locale ??
+          value:
+              localeState.locale ??
               Locale(Localizations.localeOf(context).languageCode),
           onChanged: (value) async {
             await context.read<LocaleState>().setLocale(value);
           },
-          items: [
-            DropdownMenuItem(
-              value: const Locale('ko'),
-              child: Text(l.languageNameKorean),
-            ),
-            DropdownMenuItem(
-              value: const Locale('ja'),
-              child: Text(l.languageNameJapanese),
-            ),
-            DropdownMenuItem(
-              value: const Locale('en'),
-              child: Text(l.languageNameEnglish),
-            ),
+          items: const [
+            DropdownMenuItem(value: Locale('ko'), child: Text('Korean')),
+            DropdownMenuItem(value: Locale('ja'), child: Text('Japanese')),
+            DropdownMenuItem(value: Locale('en'), child: Text('English')),
           ],
         ),
         const SizedBox(height: 24),
@@ -416,56 +277,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }).toList(),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l.notificationsTitle,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l.notificationsSubtitle,
-                    style: const TextStyle(color: Colors.black54, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            Switch(
-              value: me.notificationsEnabled,
-              onChanged: (value) async {
-                // Update server flag so Functions can honor it immediately.
-                await state.setNotificationsEnabled(value);
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
         FilledButton(
           onPressed: () async {
             final int age = int.tryParse(ageCtrl.text.trim()) ?? 0;
-              await userProvider.saveProfile(
-                name: nameCtrl.text.trim(),
-                age: age,
-                occupation: occupationCtrl.text.trim(),
-                country: countryCtrl.text.trim(),
-                interests: _interests.toList(),
-                gender: _gender,
-                languages: _languages.toList(),
-                bio: bioCtrl.text.trim(),
-                distanceKm: me.distanceKm,
-                location: me.location,
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l.profileSaved)),
-              );
-            await context
-                .read<RecommendationProvider>()
-                .refreshRecommendations(reason: RefreshReason.profileUpdated);
+            await state.saveProfile(
+              name: nameCtrl.text.trim(),
+              age: age,
+              occupation: occupationCtrl.text.trim(),
+              country: countryCtrl.text.trim(),
+              interests: _interests.toList(),
+              gender: _gender,
+              languages: _languages.toList(),
+              bio: bioCtrl.text.trim(),
+              distanceKm: me.distanceKm,
+              location: me.location,
+            );
           },
           child: Text(l.save),
         ),
@@ -480,9 +306,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
-
-
-
-
-

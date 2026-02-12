@@ -82,6 +82,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /_ops/admin_actions/items/{actionId} {
+      allow read: if isAdmin();
+      allow write: if false; // Cloud Functions only
+    }
+
     // ─────────────────────────────
     // match_sessions (SSOT)
     // ─────────────────────────────

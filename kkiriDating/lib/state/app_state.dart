@@ -968,28 +968,39 @@ class AppState extends ChangeNotifier {
 
   Future<void> adminUpdateModeration({
     required String uid,
-    required bool protectionEligible,
-    required Map<String, bool> hardFlags,
-    required bool banActive,
-    required String banReason,
-    required DateTime? banUntil,
+    required int newLevel,
+    required String reason,
+    bool? protectionEligible,
+    Map<String, bool>? hardFlags,
   }) async {
     final callable = FirebaseFunctions.instance.httpsCallable(
       'adminUpdateModeration',
     );
+    final moderationPayload = <String, dynamic>{};
+    if (protectionEligible != null) {
+      moderationPayload['protectionEligible'] = protectionEligible;
+    }
+    if (hardFlags != null) {
+      moderationPayload['hardFlags'] = hardFlags;
+    }
     await callable.call(<String, dynamic>{
       'uid': uid,
-      'moderation': {
-        'protectionEligible': protectionEligible,
-        'hardFlags': hardFlags,
-      },
-      'entitlements': {
-        'protectionBan': {
-          'active': banActive,
-          'reason': banReason,
-          'until': banUntil?.toIso8601String(),
-        },
-      },
+      'newLevel': newLevel,
+      'reason': reason,
+      if (moderationPayload.isNotEmpty) 'moderation': moderationPayload,
+    });
+  }
+
+  Future<void> adminSetBan({
+    required String uid,
+    required String reason,
+    DateTime? banUntil,
+  }) async {
+    final callable = FirebaseFunctions.instance.httpsCallable('adminSetBan');
+    await callable.call(<String, dynamic>{
+      'uid': uid,
+      'reason': reason,
+      'banUntil': banUntil?.toIso8601String(),
     });
   }
 

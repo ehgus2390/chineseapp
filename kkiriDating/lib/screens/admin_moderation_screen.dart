@@ -19,6 +19,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
 
   bool _loading = false;
   bool _saving = false;
+  bool _savingBan = false;
   String? _error;
 
   int _level = 0;
@@ -105,9 +106,10 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
       _error = null;
     });
     try {
-      final until = _parseDate(_banUntilCtrl.text.trim());
       await context.read<AppState>().adminUpdateModeration(
         uid: uid,
+        newLevel: _level,
+        reason: _banReasonCtrl.text.trim(),
         protectionEligible: _protectionEligible,
         hardFlags: <String, bool>{
           'severe': _hardSevere,
@@ -115,9 +117,6 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
           'violence': _hardViolence,
           'spam': _hardSpam,
         },
-        banActive: _banActive,
-        banReason: _banReasonCtrl.text.trim(),
-        banUntil: until,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -128,6 +127,33 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
     } finally {
       if (mounted) {
         setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _saveBan(AppLocalizations l) async {
+    final uid = _uidCtrl.text.trim();
+    if (uid.isEmpty) return;
+    setState(() {
+      _savingBan = true;
+      _error = null;
+    });
+    try {
+      final until = _banActive ? _parseDate(_banUntilCtrl.text.trim()) : null;
+      await context.read<AppState>().adminSetBan(
+        uid: uid,
+        reason: _banReasonCtrl.text.trim(),
+        banUntil: until,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.adminSaved)));
+    } catch (_) {
+      setState(() => _error = l.adminLoadFailed);
+    } finally {
+      if (mounted) {
+        setState(() => _savingBan = false);
       }
     }
   }
@@ -179,7 +205,21 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
                   Text(_error!, style: const TextStyle(color: Colors.red)),
                 ],
                 const SizedBox(height: 16),
-                _InfoRow(label: l.adminModerationLevel, value: '$_level'),
+                DropdownButtonFormField<int>(
+                  value: _level,
+                  decoration: InputDecoration(
+                    labelText: l.adminModerationLevel,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('0')),
+                    DropdownMenuItem(value: 1, child: Text('1')),
+                    DropdownMenuItem(value: 2, child: Text('2')),
+                  ],
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() => _level = v);
+                  },
+                ),
                 _InfoRow(label: l.adminTotalReports, value: '$_totalReports'),
                 const SizedBox(height: 8),
                 SwitchListTile(
@@ -250,6 +290,24 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Text(l.adminSave),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _savingBan ? null : () => _saveBan(l),
+                    child: _savingBan
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            _banActive
+                                ? l.adminProtectionBanActive
+                                : l.adminProtectionBanReason,
+                          ),
                   ),
                 ),
               ],

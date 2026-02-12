@@ -230,11 +230,16 @@ export const adminUpdateModeration = onCall(
   },
   async (request) => {
     const isAdmin = request.auth?.token?.admin === true;
+    const adminUid = request.auth?.uid ?? "";
     if (!isAdmin) {
       throw new HttpsError("permission-denied", "Admin only.");
     }
     const data = request.data ?? {};
     const uid = (data.uid ?? "").toString();
+    const reason = (data.reason ?? "").toString();
+    const newLevelRaw = data.newLevel;
+    const newLevel =
+      typeof newLevelRaw === "number" ? Math.max(0, Math.min(2, newLevelRaw)) : null;
     if (!uid) {
       throw new HttpsError("invalid-argument", "Missing uid.");
     }
@@ -281,6 +286,7 @@ export const adminUpdateModeration = onCall(
         : null;
 
       const modChanged =
+        (newLevel != null && Number(currentMod.level ?? 0) !== newLevel) ||
         nextProtectionEligible !== currentMod.protectionEligible ||
         JSON.stringify(nextHardFlags) !== JSON.stringify(currentMod.hardFlags);
       const banChanged =
@@ -291,9 +297,11 @@ export const adminUpdateModeration = onCall(
       if (!modChanged && !banChanged) return;
 
       if (modChanged) {
+        const nextLevel = newLevel ?? Number(currentMod.level ?? 0);
         tx.set(
           moderationRef,
           {
+            level: nextLevel,
             protectionEligible: nextProtectionEligible ?? true,
             hardFlags: nextHardFlags,
             updatedAt: FieldValue.serverTimestamp(),
@@ -306,6 +314,25 @@ export const adminUpdateModeration = onCall(
           },
           {merge: true},
         );
+
+        const actionRef = db.collection("_ops").doc("admin_actions").collection("items").doc();
+        tx.set(actionRef, {
+          adminUid,
+          targetUid: uid,
+          actionType: "update_moderation",
+          before: {
+            level: Number(currentMod.level ?? 0),
+            protectionEligible: currentMod.protectionEligible ?? true,
+            hardFlags: currentMod.hardFlags ?? {},
+          },
+          after: {
+            level: nextLevel,
+            protectionEligible: nextProtectionEligible ?? true,
+            hardFlags: nextHardFlags,
+          },
+          reason,
+          createdAt: FieldValue.serverTimestamp(),
+        });
       }
 
       if (banChanged) {
@@ -328,6 +355,135 @@ export const adminUpdateModeration = onCall(
           {merge: true},
         );
       }
+    });
+
+    return {ok: true};
+  },
+);
+
+export const adminSetBan = onCall(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    const isAdmin = request.auth?.token?.admin === true;
+    const adminUid = request.auth?.uid ?? "";
+    if (!isAdmin) {
+      throw new HttpsError("permission-denied", "Admin only.");
+    }
+    const data = request.data ?? {};
+    const uid = (data.uid ?? "").toString();
+    const reason = (data.reason ?? "").toString();
+    const banRaw = data.banUntil;
+    if (!uid) {
+      throw new HttpsError("invalid-argument", "Missing uid.");
+    }
+
+    const moderationRef = db.collection("user_moderation").doc(uid);
+    const entRef = db.collection("user_entitlements").doc(uid);
+    const queueRef = db.collection("match_sessions").doc(`queue_${uid}`);
+    const opKey = `adminSetBan:${uid}:${Date.now()}`;
+    const untilMs = parseExpiryMillis(banRaw);
+    const nextBanActive = banRaw != null && Number.isFinite(untilMs);
+    const nextBanUntil = Number.isFinite(untilMs)
+      ? Timestamp.fromMillis(untilMs)
+      : null;
+
+    await db.runTransaction(async (tx) => {
+      const [modSnap, entSnap, queueSnap] = await Promise.all([
+        tx.get(moderationRef),
+        tx.get(entRef),
+        tx.get(queueRef),
+      ]);
+      const currentMod = modSnap.data() ?? {};
+      const currentEnt = entSnap.data() ?? {};
+      const currentBan = (currentEnt.protectionBan ?? {}) as Record<string, unknown>;
+
+      const changed =
+        (currentBan.active === true) !== nextBanActive ||
+        (currentBan.reason ?? "").toString() !== reason ||
+        JSON.stringify(currentBan.until ?? null) !== JSON.stringify(nextBanUntil);
+
+      if (!changed) return;
+
+      tx.set(
+        entRef,
+        {
+          protectionBan: {
+            active: nextBanActive,
+            reason,
+            until: nextBanUntil,
+          },
+          updatedAt: FieldValue.serverTimestamp(),
+          serverMeta: {
+            lastOp: opKey,
+            lastWriter: SERVER_WRITER,
+            updatedAt: FieldValue.serverTimestamp(),
+            source: SERVER_WRITER,
+          },
+        },
+        {merge: true},
+      );
+
+      if (nextBanActive) {
+        tx.set(
+          moderationRef,
+          {
+            level: 2,
+            updatedAt: FieldValue.serverTimestamp(),
+            serverMeta: {
+              lastOp: opKey,
+              lastWriter: SERVER_WRITER,
+              updatedAt: FieldValue.serverTimestamp(),
+              source: SERVER_WRITER,
+            },
+          },
+          {merge: true},
+        );
+      }
+
+      if (queueSnap.exists) {
+        const queueData = queueSnap.data() ?? {};
+        if ((queueData.status ?? "").toString() == "searching") {
+          tx.set(
+            queueRef,
+            {
+              status: "idle",
+              updatedAt: FieldValue.serverTimestamp(),
+              serverMeta: {
+                lastOp: opKey,
+                lastWriter: SERVER_WRITER,
+                updatedAt: FieldValue.serverTimestamp(),
+                source: SERVER_WRITER,
+              },
+            },
+            {merge: true},
+          );
+        }
+      }
+
+      const actionRef = db.collection("_ops").doc("admin_actions").collection("items").doc();
+      tx.set(actionRef, {
+        adminUid,
+        targetUid: uid,
+        actionType: nextBanActive ? "set_ban" : "clear_ban",
+        before: {
+          protectionBan: currentBan,
+          moderationLevel: Number(currentMod.level ?? 0),
+        },
+        after: {
+          protectionBan: {
+            active: nextBanActive,
+            reason,
+            until: nextBanUntil,
+          },
+          moderationLevel: nextBanActive ? 2 : Number(currentMod.level ?? 0),
+        },
+        reason,
+        createdAt: FieldValue.serverTimestamp(),
+      });
     });
 
     return {ok: true};
@@ -1455,15 +1611,16 @@ export const onMatchSessionAcceptedNotification = onDocumentWritten(
 
     await sendMulticast(records, {
       notification: {
-        title: "💞 매칭이 완료됐어요",
-        body: "지금 대화를 시작해보세요",
+        title: "Match accepted",
+        body: "You can start chatting now.",
       },
-      data: {        type: "match_accepted",
+      data: {
+        type: "match_accepted",
         sessionId,
         chatRoomId,
       },
     });
-  }
+  },
 );
 
 export const onChatMessageCreatedNotification = onDocumentCreated(
@@ -1503,16 +1660,17 @@ export const onChatMessageCreatedNotification = onDocumentCreated(
 
     await sendMulticast(records, {
       notification: {
-        title: "💬 새 메시지",
-        body: "메시지가 도착했어요",
+        title: "New message",
+        body: "You received a new message.",
       },
-      data: {        type: "new_message",
+      data: {
+        type: "new_message",
         roomId,
         messageId,
         senderId,
       },
     });
-  }
+  },
 );
 
 export const onChatRoomEnded = onDocumentWritten(
@@ -1546,7 +1704,7 @@ export const onChatRoomEnded = onDocumentWritten(
         .collection("messages")
         .add({
           senderId: "system",
-          text: "상대가 채팅을 종료했습니다",
+          text: "The other user ended the chat.",
           createdAt: FieldValue.serverTimestamp(),
         });
       return;

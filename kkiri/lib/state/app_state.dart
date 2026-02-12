@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/community_profile_repository.dart';
 
 class AppUser {
   const AppUser({required this.uid, required this.isAnonymous});
@@ -11,10 +12,15 @@ class AppUser {
 }
 
 class AppState extends ChangeNotifier {
-  AppState({AuthService? authService})
-      : _authService = authService ?? AuthService();
+  AppState({
+    AuthService? authService,
+    CommunityProfileRepository? communityProfileRepository,
+  })  : _authService = authService ?? AuthService(),
+        _communityProfileRepository =
+            communityProfileRepository ?? CommunityProfileRepository();
 
   final AuthService _authService;
+  final CommunityProfileRepository _communityProfileRepository;
 
   AppUser? _user;
   AppUser? get user => _user;
@@ -30,6 +36,11 @@ class AppState extends ChangeNotifier {
     final sameAnon = current?.isAnonymous == user?.isAnonymous;
     if (sameUid && sameAnon) return;
     _user = user;
+    if (user != null) {
+      Future(() async {
+        await _communityProfileRepository.ensureCommunityProfileExists(user.uid);
+      });
+    }
     notifyListeners();
   }
 
