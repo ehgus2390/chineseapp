@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../state/app_state.dart';
+import 'profile_setup_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final Widget child;
@@ -20,6 +24,18 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final hasUser = appState.user != null;
+    if (hasUser && appState.isCheckingCommunityProfile) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (hasUser && !appState.isCommunityProfileComplete) {
+      return const ProfileSetupScreen();
+    }
+
     final index = _indexFromLocation(context);
 
     return Scaffold(

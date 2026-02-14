@@ -26,6 +26,8 @@ class AppState extends ChangeNotifier {
   AppUser? get user => _user;
 
   bool isLoading = false;
+  bool isCheckingCommunityProfile = false;
+  bool isCommunityProfileComplete = true;
 
   // 피드 언어 필터링
   bool showOnlyMyLanguages = true;
@@ -36,12 +38,48 @@ class AppState extends ChangeNotifier {
     final sameAnon = current?.isAnonymous == user?.isAnonymous;
     if (sameUid && sameAnon) return;
     _user = user;
-    if (user != null) {
-      Future(() async {
-        await _communityProfileRepository.ensureCommunityProfileExists(user.uid);
-      });
+    if (user == null) {
+      isCheckingCommunityProfile = false;
+      isCommunityProfileComplete = true;
+      notifyListeners();
+      return;
     }
+
+    isCheckingCommunityProfile = true;
     notifyListeners();
+
+    Future(() async {
+      await refreshCommunityProfileStatus();
+    });
+  }
+
+  Future<void> refreshCommunityProfileStatus() async {
+    final uid = _user?.uid;
+    if (uid == null || uid.isEmpty) {
+      isCheckingCommunityProfile = false;
+      isCommunityProfileComplete = true;
+      notifyListeners();
+      return;
+    }
+
+    isCheckingCommunityProfile = true;
+    notifyListeners();
+
+    try {
+      await _communityProfileRepository.ensureCommunityProfileExists(uid);
+      final complete = await _communityProfileRepository.isProfileComplete(uid);
+
+      if (_user?.uid != uid) return;
+      isCommunityProfileComplete = complete;
+    } catch (_) {
+      if (_user?.uid != uid) return;
+      isCommunityProfileComplete = false;
+    } finally {
+      if (_user?.uid == uid) {
+        isCheckingCommunityProfile = false;
+        notifyListeners();
+      }
+    }
   }
 
   void toggleFeedLanguageFilter() {
