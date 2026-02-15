@@ -47,6 +47,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         .collection('community')
         .doc('apps')
         .collection('main')
+        .doc('root')
         .collection('posts');
 
     switch (index) {
