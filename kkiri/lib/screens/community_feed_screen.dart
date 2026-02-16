@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'create_post_screen.dart';
+import 'post_detail_screen.dart';
 import '../services/community_profile_repository.dart';
 import '../state/app_state.dart';
 
@@ -86,10 +88,11 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     return '${d.year}-$mm-$dd $hh:$min';
   }
 
-  void _openCreatePostPlaceholder(BuildContext context) {
-    // TODO: Navigate to CreatePostScreen when it is implemented.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('CreatePostScreen is not implemented yet.')),
+  Future<void> _openCreatePost(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => const CreatePostScreen(),
+      ),
     );
   }
 
@@ -132,40 +135,53 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, i) {
                     final data = docs[i].data();
-                    final content = data['content'];
+                    final text = data['text'] ?? data['content'];
                     final likeCount = data['likeCount'];
                     final commentCount = data['commentCount'];
                     final createdAt = data['createdAt'];
 
                     return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              content is String ? content : '',
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyLarge,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => PostDetailScreen(
+                                postId: docs[i].id,
+                                text: text is String ? text : '',
+                              ),
                             ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Text(
-                                    'Likes ${likeCount is num ? likeCount : 0}'),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Comments ${commentCount is num ? commentCount : 0}',
-                                ),
-                                const Spacer(),
-                                Text(
-                                  _formatCreatedAt(createdAt),
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ],
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                text is String ? text : '',
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Text(
+                                      'Likes ${likeCount is num ? likeCount : 0}'),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Comments ${commentCount is num ? commentCount : 0}',
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    _formatCreatedAt(createdAt),
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -176,7 +192,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           }),
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => _openCreatePostPlaceholder(context),
+          onPressed: () => _openCreatePost(context),
           child: const Icon(Icons.edit),
         ),
       ),

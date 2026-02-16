@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/community_profile_repository.dart';
 import '../services/community_post_repository.dart';
 import '../state/app_state.dart';
 
@@ -12,27 +13,24 @@ class CreatePostScreen extends StatefulWidget {
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
-  final _contentController = TextEditingController();
-  final _schoolController = TextEditingController();
-  final _regionController = TextEditingController();
+  final _textController = TextEditingController();
+  final CommunityProfileRepository _profileRepository =
+      CommunityProfileRepository();
   final CommunityPostRepository _postRepository = CommunityPostRepository();
 
+  String _type = 'all';
   bool _isAnonymous = true;
   bool _submitting = false;
 
   @override
   void dispose() {
-    _contentController.dispose();
-    _schoolController.dispose();
-    _regionController.dispose();
+    _textController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     final uid = context.read<AppState>().user?.uid;
-    final content = _contentController.text.trim();
-    final school = _schoolController.text.trim();
-    final region = _regionController.text.trim();
+    final text = _textController.text.trim();
 
     if (uid == null || uid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -41,20 +39,44 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       return;
     }
 
-    if (content.isEmpty) {
+    if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Content is required.')),
+        const SnackBar(content: Text('Text is required.')),
       );
       return;
     }
 
     setState(() => _submitting = true);
     try {
+      final profile = await _profileRepository.getProfileData(uid);
+      final profileSchool = (profile?['school'] is String)
+          ? (profile?['school'] as String).trim()
+          : '';
+      final profileRegion = (profile?['region'] is String)
+          ? (profile?['region'] as String).trim()
+          : '';
+
+      var school = '';
+      var region = '';
+      switch (_type) {
+        case 'school':
+          school = profileSchool;
+          break;
+        case 'region':
+          region = profileRegion;
+          break;
+        case 'all':
+        case 'free':
+        default:
+          break;
+      }
+
       await _postRepository.createPost(
         uid: uid,
-        content: content,
-        school: school.isEmpty ? null : school,
-        region: region.isEmpty ? null : region,
+        text: text,
+        type: _type,
+        school: school,
+        region: region,
         isAnonymous: _isAnonymous,
       );
       if (!mounted) return;
@@ -78,27 +100,29 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         child: Column(
           children: [
             TextField(
-              controller: _contentController,
+              controller: _textController,
               minLines: 4,
               maxLines: 8,
               decoration: const InputDecoration(
-                labelText: 'Content',
+                labelText: 'Text',
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _schoolController,
+            DropdownButtonFormField<String>(
+              initialValue: _type,
+              items: const [
+                DropdownMenuItem(value: 'all', child: Text('All')),
+                DropdownMenuItem(value: 'school', child: Text('My School')),
+                DropdownMenuItem(value: 'region', child: Text('Region')),
+                DropdownMenuItem(value: 'free', child: Text('Free')),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _type = value);
+              },
               decoration: const InputDecoration(
-                labelText: 'School (optional)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _regionController,
-              decoration: const InputDecoration(
-                labelText: 'Region (optional)',
+                labelText: 'Type',
                 border: OutlineInputBorder(),
               ),
             ),
