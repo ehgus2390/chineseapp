@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
+import '../services/community_post_repository.dart';
 import '../services/community_profile_repository.dart';
 import '../state/app_state.dart';
 
@@ -17,6 +18,7 @@ class CommunityFeedScreen extends StatefulWidget {
 class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   final CommunityProfileRepository _profileRepository =
       CommunityProfileRepository();
+  final CommunityPostRepository _postRepository = CommunityPostRepository();
 
   String? _school;
   String? _region;
@@ -53,6 +55,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         .collection('posts');
 
     switch (index) {
+      case 4:
+        return posts.orderBy('likeCount', descending: true).limit(20);
       case 1:
         if (_school == null) {
           return posts.where(FieldPath.documentId, isEqualTo: '__empty__');
@@ -98,8 +102,10 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final uid = context.watch<AppState>().user?.uid;
+
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Community'),
@@ -109,11 +115,12 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               Tab(text: 'My School'),
               Tab(text: 'Region'),
               Tab(text: 'Free'),
+              Tab(text: 'Hot'),
             ],
           ),
         ),
         body: TabBarView(
-          children: List.generate(4, (index) {
+          children: List.generate(5, (index) {
             return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _queryForTab(index).snapshots(),
               builder: (context, snapshot) {
@@ -166,8 +173,36 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                               const SizedBox(height: 10),
                               Row(
                                 children: [
+                                  StreamBuilder<bool>(
+                                    stream: (uid == null || uid.isEmpty)
+                                        ? Stream<bool>.value(false)
+                                        : _postRepository.streamLikeStatus(
+                                            uid: uid,
+                                            postId: docs[i].id,
+                                          ),
+                                    builder: (context, likeSnapshot) {
+                                      final liked = likeSnapshot.data ?? false;
+                                      return IconButton(
+                                        icon: Icon(
+                                          liked
+                                              ? Icons.favorite
+                                              : Icons.favorite_border,
+                                        ),
+                                        onPressed: (uid == null || uid.isEmpty)
+                                            ? null
+                                            : () async {
+                                                await _postRepository
+                                                    .toggleLike(
+                                                  uid: uid,
+                                                  postId: docs[i].id,
+                                                );
+                                              },
+                                      );
+                                    },
+                                  ),
                                   Text(
-                                      'Likes ${likeCount is num ? likeCount : 0}'),
+                                    '${likeCount is num ? likeCount : 0}',
+                                  ),
                                   const SizedBox(width: 12),
                                   Text(
                                     'Comments ${commentCount is num ? commentCount : 0}',
