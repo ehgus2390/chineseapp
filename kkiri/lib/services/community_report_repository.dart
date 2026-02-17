@@ -33,6 +33,8 @@ class CommunityReportRepository {
       if (reportSnapshot.exists) return;
 
       final data = postSnapshot.data();
+      final rawAuthorUid = data?['authorUid'];
+      final authorUid = rawAuthorUid is String ? rawAuthorUid.trim() : '';
       final rawReportCount = data?['reportCount'];
       final currentReportCount = rawReportCount is int
           ? rawReportCount
@@ -55,6 +57,43 @@ class CommunityReportRepository {
       }
 
       transaction.update(postRef, update);
+
+      if (authorUid.isEmpty) return;
+
+      final moderationRef =
+          _firestore.collection('user_moderation').doc(authorUid);
+      final moderationSnapshot = await transaction.get(moderationRef);
+
+      if (!moderationSnapshot.exists) {
+        transaction.set(moderationRef, {
+          'totalReports': 1,
+          'level': 0,
+          'reasonCounts': {value: 1},
+        });
+        return;
+      }
+
+      final moderationData = moderationSnapshot.data();
+      final rawTotalReports = moderationData?['totalReports'];
+      final currentTotalReports = rawTotalReports is int
+          ? rawTotalReports
+          : rawTotalReports is num
+              ? rawTotalReports.toInt()
+              : 0;
+      final nextTotalReports = currentTotalReports + 1;
+
+      int level = 0;
+      if (nextTotalReports >= 6) {
+        level = 2;
+      } else if (nextTotalReports >= 3) {
+        level = 1;
+      }
+
+      transaction.update(moderationRef, {
+        'totalReports': FieldValue.increment(1),
+        'level': level,
+        'reasonCounts.$value': FieldValue.increment(1),
+      });
     });
   }
 
