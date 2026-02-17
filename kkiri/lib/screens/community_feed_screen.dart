@@ -6,6 +6,7 @@ import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
 import '../services/community_post_repository.dart';
 import '../services/community_profile_repository.dart';
+import '../services/community_report_repository.dart';
 import '../state/app_state.dart';
 
 class CommunityFeedScreen extends StatefulWidget {
@@ -19,6 +20,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   final CommunityProfileRepository _profileRepository =
       CommunityProfileRepository();
   final CommunityPostRepository _postRepository = CommunityPostRepository();
+  final CommunityReportRepository _reportRepository =
+      CommunityReportRepository();
 
   String? _school;
   String? _region;
@@ -53,32 +56,41 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         .collection('main')
         .doc('root')
         .collection('posts');
+    final visiblePosts = posts.where('isHidden', isEqualTo: false);
+    final now = Timestamp.now();
+    final cutoff = Timestamp.fromMillisecondsSinceEpoch(
+      now.millisecondsSinceEpoch - (48 * 60 * 60 * 1000),
+    );
 
     switch (index) {
       case 4:
-        return posts.orderBy('likeCount', descending: true).limit(20);
+        return visiblePosts
+            .where('createdAt', isGreaterThan: cutoff)
+            .orderBy('hotScore', descending: true)
+            .orderBy('createdAt', descending: true)
+            .limit(20);
       case 1:
         if (_school == null) {
-          return posts.where(FieldPath.documentId, isEqualTo: '__empty__');
+          return visiblePosts.where(FieldPath.documentId, isEqualTo: '__empty__');
         }
-        return posts
+        return visiblePosts
             .where('school', isEqualTo: _school)
             .orderBy('createdAt', descending: true);
       case 2:
         if (_region == null) {
-          return posts.where(FieldPath.documentId, isEqualTo: '__empty__');
+          return visiblePosts.where(FieldPath.documentId, isEqualTo: '__empty__');
         }
-        return posts
+        return visiblePosts
             .where('region', isEqualTo: _region)
             .orderBy('createdAt', descending: true);
       case 3:
-        return posts
+        return visiblePosts
             .where('school', isEqualTo: '')
             .where('region', isEqualTo: '')
             .orderBy('createdAt', descending: true);
       case 0:
       default:
-        return posts.orderBy('createdAt', descending: true);
+        return visiblePosts.orderBy('createdAt', descending: true);
     }
   }
 
@@ -97,6 +109,50 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       MaterialPageRoute<bool>(
         builder: (_) => const CreatePostScreen(),
       ),
+    );
+  }
+
+  Future<String?> _pickReportReason(BuildContext context) async {
+    return showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Report'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'Spam'),
+            child: const Text('Spam'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'Abuse'),
+            child: const Text('Abuse'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'Inappropriate'),
+            child: const Text('Inappropriate'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reportPost({
+    required BuildContext context,
+    required String postId,
+    required String uid,
+  }) async {
+    if (uid.trim().isEmpty) return;
+    final reason = await _pickReportReason(context);
+    if (reason == null || reason.trim().isEmpty) return;
+
+    await _reportRepository.reportPost(
+      reporterUid: uid,
+      postId: postId,
+      reason: reason,
+    );
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reported')),
     );
   }
 
@@ -206,6 +262,18 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                                   const SizedBox(width: 12),
                                   Text(
                                     'Comments ${commentCount is num ? commentCount : 0}',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.flag_outlined),
+                                    onPressed: (uid == null || uid.isEmpty)
+                                        ? null
+                                        : () async {
+                                            await _reportPost(
+                                              context: context,
+                                              postId: docs[i].id,
+                                              uid: uid,
+                                            );
+                                          },
                                   ),
                                   const Spacer(),
                                   Text(

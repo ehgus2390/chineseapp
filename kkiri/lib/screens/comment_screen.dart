@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/community_comment_repository.dart';
+import '../services/community_report_repository.dart';
 import '../state/app_state.dart';
 
 class CommentScreen extends StatefulWidget {
@@ -17,6 +18,8 @@ class CommentScreen extends StatefulWidget {
 class _CommentScreenState extends State<CommentScreen> {
   final _textController = TextEditingController();
   final CommunityCommentRepository _repository = CommunityCommentRepository();
+  final CommunityReportRepository _reportRepository =
+      CommunityReportRepository();
   bool _sending = false;
   bool _isAnonymous = true;
 
@@ -66,8 +69,54 @@ class _CommentScreenState extends State<CommentScreen> {
     }
   }
 
+  Future<String?> _pickReportReason(BuildContext context) async {
+    return showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Report'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'Spam'),
+            child: const Text('Spam'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'Abuse'),
+            child: const Text('Abuse'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'Inappropriate'),
+            child: const Text('Inappropriate'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reportComment({
+    required String uid,
+    required String commentId,
+  }) async {
+    if (uid.trim().isEmpty) return;
+    final reason = await _pickReportReason(context);
+    if (reason == null || reason.trim().isEmpty) return;
+
+    await _reportRepository.reportComment(
+      reporterUid: uid,
+      postId: widget.postId,
+      commentId: commentId,
+      reason: reason,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reported')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final uid = context.watch<AppState>().user?.uid;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Comments')),
       body: Column(
@@ -111,6 +160,20 @@ class _CommentScreenState extends State<CommentScreen> {
                             Text(
                               _formatTimestamp(createdAt),
                               style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: IconButton(
+                                icon: const Icon(Icons.flag_outlined),
+                                onPressed: (uid == null || uid.isEmpty)
+                                    ? null
+                                    : () async {
+                                        await _reportComment(
+                                          uid: uid,
+                                          commentId: docs[i].id,
+                                        );
+                                      },
+                              ),
                             ),
                           ],
                         ),

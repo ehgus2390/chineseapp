@@ -50,6 +50,7 @@ class CommunityCommentRepository {
       });
       transaction.update(postRef, {
         'commentCount': FieldValue.increment(1),
+        'hotScore': FieldValue.increment(2),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     });

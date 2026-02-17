@@ -37,6 +37,9 @@ class CommunityPostRepository {
       'region': region.trim(),
       'likeCount': 0,
       'commentCount': 0,
+      'hotScore': 0,
+      'reportCount': 0,
+      'isHidden': false,
       'isAnonymous': isAnonymous,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -63,6 +66,7 @@ class CommunityPostRepository {
         transaction.delete(likeRef);
         transaction.update(postRef, {
           'likeCount': FieldValue.increment(-1),
+          'hotScore': FieldValue.increment(-3),
           'updatedAt': FieldValue.serverTimestamp(),
         });
       } else {
@@ -71,6 +75,7 @@ class CommunityPostRepository {
         });
         transaction.update(postRef, {
           'likeCount': FieldValue.increment(1),
+          'hotScore': FieldValue.increment(3),
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
