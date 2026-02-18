@@ -1,76 +1,248 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    function signedIn() {
+      return request.auth != null;
     }
 
-    match /posts/{postId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+    function isQueueDoc(sessionId) {
+      return sessionId.matches('^queue_.*$');
+    }
 
-      match /comments/{commentId} {
-        allow read: if true;
-        allow create: if request.auth != null;
+    function isParticipant(data) {
+      return signedIn() &&
+        (data.userA == request.auth.uid || data.userB == request.auth.uid);
+    }
+
+    function moderationDoc(uid) {
+      return /databases/$(database)/documents/user_moderation/$(uid);
+    }
+
+    function moderationLevel(uid) {
+      let level = exists(moderationDoc(uid))
+        ? get(moderationDoc(uid)).data.level
+        : 0;
+      return (level is int || level is float) ? level : 0;
+    }
+
+    function canWriteCommunity() {
+      return signedIn() && moderationLevel(request.auth.uid) < 2;
+    }
+
+    match /user_moderation/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false; // server-only
+    }
+
+    
+    // users (profiles)
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+
+      // likes: only the owner can read their inbox;
+      // writing a "like" should be done by the sender to THEIR OWN collection,
+      // or preferably by Functions. Keep minimal surface.
+      match /likes/{docId} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
       }
 
-      match /likes/{userId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && request.auth.uid == userId;
+      // notifications: safest is Functions-only create.
+      match /notifications/{notificationId} {
+        allow read, update, delete: if signedIn() && request.auth.uid == userId;
+        allow create: if false; // Functions-only (prevents spam)
+      }
+
+      match /devices/{deviceId} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
       }
     }
 
-    match /chats/{chatId} {
-      allow read, write: if request.auth != null && request.auth.uid in resource.data.members;
+    
+    // match_sessions (SSOT)
+    
+    match /match_sessions/{sessionId} {
 
-      match /messages/{messageId} {
-        allow read, write: if request.auth != null && request.auth.uid in resource.data.members;
-      }
-    }
+      // Read:
+      // - queue docs: only owner can read
+      // - match docs: only participants can read
+      allow read: if isQueueDoc(sessionId)
+        ? (signedIn() && resource.data.userA == request.auth.uid)
+        : isParticipant(resource.data);
 
-    match /openChatRooms/{roomId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.members[request.auth.uid] == true;
-      allow update: if request.auth != null && (
-        request.resource.data.members[request.auth.uid] == true ||
-        resource.data.members[request.auth.uid] == true
-      );
+      // Queue doc: owner can create/update their own queue only.
+      // Allow status searching/idle so user can stop matching safely.
+      allow create, update: if isQueueDoc(sessionId)
+        && signedIn()
+        && sessionId == 'queue_' + request.auth.uid
+        && request.resource.data.userA == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'userA',
+          'interests',
+          'location',
+          'radiusKm',
+          'mode',
+          'status',
+          'createdAt',
+          'expiresAt',
+          'updatedAt'
+        ])
+        && request.resource.data.mode == 'auto'
+        && request.resource.data.status in ['searching', 'idle'];
 
-      match /messages/{messageId} {
-        allow read, create: if request.auth != null &&
-          get(/databases/$(database)/documents/openChatRooms/$(roomId)).data.members[request.auth.uid] == true;
-      }
-    }
+      // Match doc:
+      // - Clients cannot create match docs (Functions only).
+      // - Participants can ONLY update their own response.
+      allow create: if false;
 
-    // ─────────────────────────────
-    // Community Namespace
-    // ─────────────────────────────
+      allow update: if !isQueueDoc(sessionId)
+        && isParticipant(resource.data)
 
-    match /community/apps/{appId}/profiles/{uid} {
+        // Only responses can change
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['responses'])
 
-      allow read: if request.auth != null;
+        // Freeze all system fields (Functions-only)
+        && request.resource.data.userA == resource.data.userA
+        && request.resource.data.userB == resource.data.userB
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.chatRoomId == resource.data.chatRoomId
+        && request.resource.data.expiresAt == resource.data.expiresAt
+        && request.resource.data.notified == resource.data.notified
 
-      allow create: if request.auth != null
-        && request.auth.uid == uid;
-
-      allow update: if request.auth != null
-        && request.auth.uid == uid;
+        // My response must be valid and I must not change the other user's response.
+        && (
+          (
+            request.auth.uid == resource.data.userA
+            && request.resource.data.responses[request.auth.uid] in ['accepted', 'rejected']
+            && request.resource.data.responses[resource.data.userB]
+              == resource.data.responses[resource.data.userB]
+          )
+          ||
+          (
+            request.auth.uid == resource.data.userB
+            && request.resource.data.responses[request.auth.uid] in ['accepted', 'rejected']
+            && request.resource.data.responses[resource.data.userA]
+              == resource.data.responses[resource.data.userA]
+          )
+        );
 
       allow delete: if false;
     }
 
-    match /community/apps/{appId}/posts/{postId} {
+    
+    // chat_rooms (Functions ONLY)
+    
+    match /chat_rooms/{roomId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participants;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
 
-      allow read: if true;
+      match /messages/{messageId} {
+        allow read: if signedIn()
+          && request.auth.uid in get(
+            /databases/$(database)/documents/chat_rooms/$(roomId)
+          ).data.participants;
 
-      allow create: if request.auth != null
-        && request.resource.data.authorUid == request.auth.uid;
+        // Allow participants to create messages (no notified field from client)
+        allow create: if signedIn()
+          && request.auth.uid in get(
+            /databases/$(database)/documents/chat_rooms/$(roomId)
+          ).data.participants
+          && request.resource.data.senderId == request.auth.uid
+          && !('notified' in request.resource.data);
 
-      allow update, delete: if request.auth != null
-        && resource.data.authorUid == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
 
+    
+    // Legacy matches are denied.
+    
+    match /matches/{matchId} {
+      allow read, write: if false;
+    }
+
+
+    
+    // Community Namespace
+    
+
+    //Community: profiles
+    match /community/apps/main/root/profiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid && canWriteCommunity();
+      allow delete: if false;
+    }
+
+    //Community: posts
+    
+    match /community/apps/main/root/posts/{postId} {
+      allow read: if true;
+
+      // Level2 차단 + 본인 authorUid�??�성
+      allow create: if canWriteCommunity()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.school is string
+        && exists(
+          /databases/$(database)/documents/community/apps/main/root/profiles/$(request.auth.uid)
+        )
+        && request.resource.data.school ==
+          get(
+            /databases/$(database)/documents/community/apps/main/root/profiles/$(request.auth.uid)
+          ).data.school
+        && request.resource.data.type is string
+        && request.resource.data.type in [
+          'free',
+          'question',
+          'life',
+          'housing',
+          'parttime',
+          'visa',
+          'language',
+          'market',
+          'dating'
+        ];
+
+
+      // ?�정/??��???�성?�만 (?�벨2??기존글 ?�정까�? 막을지 ?�책 ?�택)
+      allow update, delete: if signedIn()
+        && resource.data.authorUid == request.auth.uid;
+
+      // comments
+      match /comments/{commentId} {
+        allow read: if true;
+
+        allow create: if canWriteCommunity()
+          && request.resource.data.authorUid == request.auth.uid;
+
+        allow update, delete: if signedIn()
+          && resource.data.authorUid == request.auth.uid;
+
+        // comment reports (client can create own report doc only)
+        // comment reports (client can create own report doc only)
+        match /reports/{reporterUid} {
+          allow read: if false;
+          allow create: if signedIn()
+            && request.auth.uid == reporterUid;
+          allow update, delete: if false;
+        }
+      }
+      // likes (uid doc id)
+      match /likes/{uid} {
+        allow read: if signedIn(); // ?��? true
+        allow create, delete: if signedIn() && request.auth.uid == uid && canWriteCommunity();
+        allow update: if false;
+      }
+      // post reports (uid doc id)
+      match /reports/{reporterUid} {
+        allow read: if false;
+        allow create: if signedIn()
+          && request.auth.uid == reporterUid; // 중복?�고??doc id�?방�?
+        allow update, delete: if false;
+      }
+    }
     match /community/apps/{appId}/chats/{chatId} {
 
       allow read: if request.auth != null

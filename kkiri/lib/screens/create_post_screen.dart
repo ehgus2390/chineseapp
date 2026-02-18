@@ -13,12 +13,24 @@ class CreatePostScreen extends StatefulWidget {
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
+  static const List<String> _allowedCategories = [
+    'free',
+    'question',
+    'life',
+    'housing',
+    'parttime',
+    'visa',
+    'language',
+    'market',
+    'dating',
+  ];
+
   final _textController = TextEditingController();
   final CommunityProfileRepository _profileRepository =
       CommunityProfileRepository();
   final CommunityPostRepository _postRepository = CommunityPostRepository();
 
-  String _type = 'all';
+  String _type = 'free';
   bool _isAnonymous = true;
   bool _submitting = false;
 
@@ -45,6 +57,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       );
       return;
     }
+    if (!_allowedCategories.contains(_type)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid category selected.')),
+      );
+      return;
+    }
 
     setState(() => _submitting = true);
     try {
@@ -56,20 +74,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ? (profile?['region'] as String).trim()
           : '';
 
-      var school = '';
-      var region = '';
-      switch (_type) {
-        case 'school':
-          school = profileSchool;
-          break;
-        case 'region':
-          region = profileRegion;
-          break;
-        case 'all':
-        case 'free':
-        default:
-          break;
-      }
+      final school = profileSchool;
+      final region = profileRegion;
 
       await _postRepository.createPost(
         uid: uid,
@@ -81,8 +87,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      final message = e.toString();
+      if (message.contains('Posting restricted due to policy violation.')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your account is temporarily restricted from posting.',
+            ),
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to create post.')),
       );
@@ -111,12 +128,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _type,
-              items: const [
-                DropdownMenuItem(value: 'all', child: Text('All')),
-                DropdownMenuItem(value: 'school', child: Text('My School')),
-                DropdownMenuItem(value: 'region', child: Text('Region')),
-                DropdownMenuItem(value: 'free', child: Text('Free')),
-              ],
+              items: _allowedCategories
+                  .map(
+                    (category) => DropdownMenuItem(
+                      value: category,
+                      child: Text(category),
+                    ),
+                  )
+                  .toList(),
               onChanged: (value) {
                 if (value == null) return;
                 setState(() => _type = value);

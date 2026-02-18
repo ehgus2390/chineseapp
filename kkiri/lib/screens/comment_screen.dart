@@ -59,8 +59,19 @@ class _CommentScreenState extends State<CommentScreen> {
         isAnonymous: _isAnonymous,
       );
       _textController.clear();
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      final message = e.toString();
+      if (message.contains('Posting restricted due to policy violation.')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your account is temporarily restricted from posting.',
+            ),
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to send comment.')),
       );

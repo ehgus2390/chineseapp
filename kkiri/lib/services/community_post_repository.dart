@@ -16,6 +16,22 @@ class CommunityPostRepository {
   DocumentReference<Map<String, dynamic>> _postRef(String postId) =>
       _posts.doc(postId);
 
+  Future<void> _ensurePostingAllowed(String uid) async {
+    final moderationRef = _firestore.collection('user_moderation').doc(uid);
+    final moderationSnap = await moderationRef.get();
+    final data = moderationSnap.data();
+    final rawLevel = data?['level'];
+    final level = rawLevel is int
+        ? rawLevel
+        : rawLevel is num
+            ? rawLevel.toInt()
+            : 0;
+
+    if (level >= 2) {
+      throw Exception('Posting restricted due to policy violation.');
+    }
+  }
+
   Future<void> createPost({
     required String uid,
     required String text,
@@ -28,6 +44,7 @@ class CommunityPostRepository {
     final value = text.trim();
     final postType = type.trim();
     if (authorUid.isEmpty || value.isEmpty || postType.isEmpty) return;
+    await _ensurePostingAllowed(authorUid);
 
     await _posts.add({
       'authorUid': authorUid,

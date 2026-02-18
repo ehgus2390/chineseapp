@@ -17,6 +17,22 @@ class CommunityCommentRepository {
         .collection('comments');
   }
 
+  Future<void> _ensurePostingAllowed(String uid) async {
+    final moderationRef = _firestore.collection('user_moderation').doc(uid);
+    final moderationSnap = await moderationRef.get();
+    final data = moderationSnap.data();
+    final rawLevel = data?['level'];
+    final level = rawLevel is int
+        ? rawLevel
+        : rawLevel is num
+            ? rawLevel.toInt()
+            : 0;
+
+    if (level >= 2) {
+      throw Exception('Posting restricted due to policy violation.');
+    }
+  }
+
   Future<void> createComment({
     required String uid,
     required String postId,
@@ -27,6 +43,7 @@ class CommunityCommentRepository {
     final normalizedPostId = postId.trim();
     final value = text.trim();
     if (authorUid.isEmpty || normalizedPostId.isEmpty || value.isEmpty) return;
+    await _ensurePostingAllowed(authorUid);
 
     final postRef = _firestore
         .collection('community')

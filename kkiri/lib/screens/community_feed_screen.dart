@@ -64,21 +64,28 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
     switch (index) {
       case 4:
+        if (_school == null) {
+          return visiblePosts.where(FieldPath.documentId,
+              isEqualTo: '__empty__');
+        }
         return visiblePosts
+            .where('school', isEqualTo: _school)
             .where('createdAt', isGreaterThan: cutoff)
             .orderBy('hotScore', descending: true)
             .orderBy('createdAt', descending: true)
             .limit(20);
       case 1:
         if (_school == null) {
-          return visiblePosts.where(FieldPath.documentId, isEqualTo: '__empty__');
+          return visiblePosts.where(FieldPath.documentId,
+              isEqualTo: '__empty__');
         }
         return visiblePosts
             .where('school', isEqualTo: _school)
             .orderBy('createdAt', descending: true);
       case 2:
         if (_region == null) {
-          return visiblePosts.where(FieldPath.documentId, isEqualTo: '__empty__');
+          return visiblePosts.where(FieldPath.documentId,
+              isEqualTo: '__empty__');
         }
         return visiblePosts
             .where('region', isEqualTo: _region)
